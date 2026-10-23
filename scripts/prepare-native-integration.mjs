@@ -14,7 +14,11 @@ if (!process.env.GITHUB_ENV)
     "This helper runs only in an ephemeral GitHub Actions checkout",
   );
 const platform = process.platform === "darwin" ? "macos" : "linux";
-const arch = process.arch === "arm64" ? "arm64" : "x64";
+const arch =
+  process.env.STACKCABIN_TEST_ARCH ||
+  (process.arch === "arm64" ? "arm64" : "x64");
+if (!["arm64", "x64"].includes(arch))
+  throw new Error("Unsupported test architecture");
 const component = process.env.COMPONENT;
 const version = process.env.VERSION;
 if (
