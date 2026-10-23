@@ -17,6 +17,25 @@ Windows อาจขอสิทธิ์ผู้ดูแลระบบสำ
 ตัวแอปรุ่นพัฒนายังไม่ได้ลงลายเซ็นสำหรับเผยแพร่สาธารณะ การติดตั้งและอัปเกรดบน
 เครื่องสะอาดยังต้องผ่านการรับรองตามรายการในรายงานสถานะ
 
+## แพ็กเกจทดลองสำหรับ Linux และ macOS
+
+ใน GitHub Actions ใช้ workflow **Build and verify development installers** เพื่อ
+สร้างแพ็กเกจทดลอง เลือก target เฉพาะระบบได้ ไฟล์อยู่ใน Artifacts ของแต่ละ run
+และเก็บไว้ 7 วัน แพ็กเกจเหล่านี้ยังไม่ได้เผยแพร่เป็น release สาธารณะ
+
+Linux มี `.deb` และ `.AppImage` โดยไฟล์ที่สร้างบน Ubuntu 22.04 ผ่านการเปิดแอป
+บน Ubuntu 24.04 แล้ว การรัน AppImage บนเครื่องที่ไม่มี FUSE ใช้:
+
+```sh
+chmod +x StackCabin_*.AppImage
+APPIMAGE_EXTRACT_AND_RUN=1 ./StackCabin_*.AppImage
+```
+
+macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel ให้ตรวจผลของ run และ
+[รายงานสถานะ](IMPLEMENTATION_STATUS.md) ก่อนนำไปทดลอง การตรวจแพ็กเกจ macOS
+และ PHP สำหรับ macOS 14 ยังดำเนินอยู่ Node.js และเว็บ Static ใช้ catalog ปัจจุบันได้
+ส่วน PHP/ฐานข้อมูลบน Unix จะเพิ่มเข้า catalog หลังแพ็กเกจผ่านการตรวจและมีแหล่งดาวน์โหลดจริง
+
 ## โปรเจกต์แรก
 
 1. กด New project เลือกโฟลเดอร์แม่ ชื่อ และ template หรือ Import project เพื่อนำเข้าโฟลเดอร์เดิม

@@ -37,8 +37,12 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | Core edge cases | Corrupted archives, traversal, signed catalog tampering, interrupted installation, Unicode registration, future schema, port conflicts, secret-free SQLite backup/restore and concurrent destination reservation |
 | Native lifecycle | Real HTTP grandchild, stop of its process tree, and cleanup after its parent exits unexpectedly |
 | Native Desktop E2E | 4 cases against real Rust IPC/SQLite; screenshot `stackcabin-desktop.png` |
-| Cross-platform CI | [Run 39912586708](https://github.com/Sakeerin/StackCabin/actions/runs/39912586708): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds and Desktop E2E |
+| Cross-platform CI | [Run 39951584400](https://github.com/Sakeerin/StackCabin/actions/runs/39951584400): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and real managed Node toolchains |
 | Normal Windows package | Release executable starts without E2E plugins and initializes real SQLite metadata in an isolated directory |
+| Installed preview packages | [Packaging run](https://github.com/Sakeerin/StackCabin/actions/runs/39960323840): Windows NSIS and Ubuntu 22.04 deb installed and started the normal application using real isolated SQLite metadata. macOS packaging verification is being repaired after Tauri cleaned its intermediate `.app` |
+| Ubuntu 24.04 installers | [Run 39961992007](https://github.com/Sakeerin/StackCabin/actions/runs/39961992007): the same Ubuntu 22.04 deb and AppImage passed checksums and real application startup on Ubuntu 24.04; AppImage used extract-and-run without FUSE |
+| Actual disk exhaustion | [Ubuntu 24.04 acceptance](https://github.com/Sakeerin/StackCabin/actions/runs/39960665443): dedicated 32 MiB tmpfs produced ENOSPC during installation; no installed receipt or executable resolution, staging cleaned, same archive installed after freeing owned space |
+| Source download recovery | 15 native packaging helper tests include explicit HTTPS mirror recovery, rejection of checksum mismatch/HTTPS downgrade/credential URLs, traversal and FastCGI fragmentation |
 | Framework acceptance | Express, Vue, React, Nest, Next and Laravel dependency installation and actual HTTP; Laravel runs PHP and Vite together |
 | Browser HMR on Windows | Actual React/Vue/Next browsers updated after source edits through Caddy while preserving a clicked counter. React/Vue WebSocket probes received HTTP 101 and module updates. React's starter now exports `App.jsx` to support Fast Refresh; screenshots `hmr-react.png` / `hmr-next.png` |
 | Real databases | MariaDB/PostgreSQL provision, insert/select, dump, new-identity restore and select; SQLite consistent snapshot/restore |
@@ -86,6 +90,9 @@ update and persistence still use the real application and database.
 2. Run native runtime, browser HMR, tray/Quit, abrupt-app-exit, disk-full,
    clean-machine online/offline installation and upgrade tests on every target VM.
    Local offline archive installation does not establish clean-OS compatibility.
+   Actual ENOSPC recovery passed on an isolated Linux tmpfs. Installed Windows/deb
+   packages and Ubuntu 24.04 AppImage startup passed on hosted CI runners, which
+   contain preinstalled software and do not replace clean-machine certification.
 3. Supply production catalog keys, Windows signing, Apple signing/notarization,
    a maintained signed app-update endpoint, and repository/release configuration.
    App self-update distribution is not enabled in this preview.
