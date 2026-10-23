@@ -151,20 +151,23 @@ impl DatabaseManager {
                 .await?;
         } else {
             let executable = self.runtime.latest_installed(id, "mariadbd")?;
+            let basedir = self.mariadb_root(&executable)?;
             if !data.join("mysql").exists() {
                 let init = self.runtime.latest_installed(id, "install-db")?;
+                #[cfg(unix)]
+                let init = basedir.join(
+                    init.strip_prefix(
+                        executable
+                            .parent()
+                            .and_then(Path::parent)
+                            .context("MariaDB installation root unavailable")?,
+                    )?,
+                );
                 let mut args = vec![format!("--datadir={}", data.display())];
                 if !cfg!(windows) {
                     args.insert(0, "--no-defaults".into());
                     args.extend([
-                        format!(
-                            "--basedir={}",
-                            executable
-                                .parent()
-                                .and_then(Path::parent)
-                                .context("MariaDB installation root unavailable")?
-                                .display()
-                        ),
+                        format!("--basedir={}", basedir.display()),
                         "--auth-root-authentication-method=normal".into(),
                         "--skip-test-db".into(),
                     ]);
@@ -175,6 +178,12 @@ impl DatabaseManager {
             let init_file = SecretFile::new(directory.join("init.sql"), &init_sql)?;
             let init_path = init_file.0.clone();
             bootstrap_secret = Some(init_file);
+            #[cfg(unix)]
+            let executable = basedir.join("bin").join(
+                executable
+                    .file_name()
+                    .context("MariaDB executable name unavailable")?,
+            );
             let args = vec![
                 "--no-defaults".into(),
                 format!("--datadir={}", data.display()),
@@ -187,28 +196,10 @@ impl DatabaseManager {
             let args = {
                 // A private, short socket path avoids other database instances and
                 // macOS's Unix socket length limit, including Unicode app paths.
-                let socket = self.mariadb_socket.get_or_init(|| {
-                    tempfile::Builder::new()
-                        .prefix("sc-db-")
-                        .tempdir_in("/tmp")
-                        .map_err(|error| error.to_string())
-                });
-                let socket = socket
-                    .as_ref()
-                    .map_err(|error| anyhow::anyhow!("{error}"))?;
+                let socket = self.mariadb_directory()?;
                 let mut args = args;
-                args.push(format!(
-                    "--basedir={}",
-                    executable
-                        .parent()
-                        .and_then(Path::parent)
-                        .context("MariaDB installation root unavailable")?
-                        .display()
-                ));
-                args.push(format!(
-                    "--socket={}",
-                    socket.path().join("db.sock").display()
-                ));
+                args.push(format!("--basedir={}", basedir.display()));
+                args.push(format!("--socket={}", socket.join("db.sock").display()));
                 args
             };
             self.supervisor
@@ -582,6 +573,33 @@ impl DatabaseManager {
     fn postgres_program(&self, tool: &str) -> Result<PathBuf> {
         self.postgres_path(&self.runtime.latest_installed("postgres", tool)?)
     }
+    fn mariadb_root(&self, executable: &Path) -> Result<PathBuf> {
+        let root = executable
+            .parent()
+            .and_then(Path::parent)
+            .context("MariaDB installation root unavailable")?;
+        #[cfg(windows)]
+        {
+            Ok(root.to_path_buf())
+        }
+        #[cfg(unix)]
+        {
+            mariadb_compatible_root(root, self.mariadb_directory()?)
+        }
+    }
+    #[cfg(unix)]
+    fn mariadb_directory(&self) -> Result<&Path> {
+        self.mariadb_socket
+            .get_or_init(|| {
+                tempfile::Builder::new()
+                    .prefix("sc-db-")
+                    .tempdir_in("/tmp")
+                    .map_err(|error| error.to_string())
+            })
+            .as_ref()
+            .map(|directory| directory.path())
+            .map_err(|error| anyhow::anyhow!("{error}"))
+    }
     fn postgres_path(&self, path: &Path) -> Result<PathBuf> {
         let alias = self.postgres_alias.get_or_init(|| {
             postgres_compatible_root(&self.root).map_err(|error| format!("{error:#}"))
@@ -591,6 +609,62 @@ impl DatabaseManager {
             path.strip_prefix(&self.root)
                 .context("PostgreSQL path leaves managed storage")?,
         ))
+    }
+}
+
+#[cfg(unix)]
+fn mariadb_compatible_root(root: &Path, directory: &Path) -> Result<PathBuf> {
+    use sha2::{Digest, Sha256};
+    let digest = hex::encode(Sha256::digest(root.as_os_str().as_encoded_bytes()));
+    let alias = directory.join(format!("runtime-{}", &digest[..16]));
+    if std::fs::symlink_metadata(&alias).is_err() {
+        std::os::unix::fs::symlink(root, &alias)?;
+    }
+    anyhow::ensure!(
+        std::fs::canonicalize(&alias)? == std::fs::canonicalize(root)?,
+        "MariaDB runtime alias points outside its managed installation"
+    );
+    Ok(alias)
+}
+
+#[cfg(all(test, unix))]
+mod mariadb_path_tests {
+    use super::*;
+
+    #[test]
+    fn unicode_runtime_has_a_private_ascii_alias_without_moving_files() -> Result<()> {
+        let runtime = tempfile::Builder::new()
+            .prefix("runtime ทดสอบ ")
+            .tempdir()?;
+        let private = tempfile::Builder::new()
+            .prefix("sc-test-")
+            .tempdir_in("/tmp")?;
+        std::fs::write(runtime.path().join("original.txt"), b"preserved")?;
+        let alias = mariadb_compatible_root(runtime.path(), private.path())?;
+        assert!(alias.as_os_str().as_encoded_bytes().is_ascii());
+        assert!(!alias.to_string_lossy().contains(' '));
+        assert_eq!(std::fs::read(alias.join("original.txt"))?, b"preserved");
+        assert!(runtime.path().join("original.txt").is_file());
+        assert_eq!(
+            alias,
+            mariadb_compatible_root(runtime.path(), private.path())?
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn an_existing_alias_cannot_redirect_execution_to_a_different_runtime() -> Result<()> {
+        let runtime = tempfile::tempdir()?;
+        let other = tempfile::tempdir()?;
+        let private = tempfile::Builder::new()
+            .prefix("sc-test-")
+            .tempdir_in("/tmp")?;
+        let alias = mariadb_compatible_root(runtime.path(), private.path())?;
+        std::fs::remove_file(&alias)?;
+        std::os::unix::fs::symlink(other.path(), &alias)?;
+        assert!(mariadb_compatible_root(runtime.path(), private.path()).is_err());
+        assert!(other.path().is_dir());
+        Ok(())
     }
 }
 

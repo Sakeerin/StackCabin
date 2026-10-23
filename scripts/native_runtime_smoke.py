@@ -216,6 +216,16 @@ def postgres(prefix, work, version):
 
 
 def mariadb(prefix, work, version):
+    # Upstream mariadb-install-db splits its basedir search list on spaces.
+    # Keep the actual runtime and data in Unicode paths, and give the script a
+    # private ASCII alias. Never move the user's files to work around this.
+    with tempfile.TemporaryDirectory(prefix="sc-runtime-", dir="/tmp") as directory:
+        alias = Path(directory) / "runtime"
+        alias.symlink_to(prefix, target_is_directory=True)
+        return mariadb_at(alias, work, version)
+
+
+def mariadb_at(prefix, work, version):
     binary = prefix / "bin"
     if version not in execute([binary / "mariadbd", "--version"]):
         raise RuntimeError("MariaDB version differs from package metadata")
