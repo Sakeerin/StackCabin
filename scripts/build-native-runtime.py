@@ -67,6 +67,11 @@ def resolve_macho_dependency(binary, origin, dependency, prefix, rpaths):
             expanded = rpath.replace("@loader_path", str(origin.parent)).replace("@executable_path", str(origin.parent))
             candidates.append(Path(expanded) / tail)
         candidates.extend(prefix.rglob(Path(tail).name))
+        candidates.append(prefix.parent / "dependencies/lib" / Path(tail).name)
+    elif Path(dependency).name == dependency and not dependency.startswith("."):
+        # ICU source builds can use a bare dylib name for their install ID.
+        candidates = [origin.parent / dependency, binary.parent / dependency,
+                      prefix / "lib" / dependency, prefix.parent / "dependencies/lib" / dependency]
     else:
         raise RuntimeError(f"Unsupported Mach-O dependency: {dependency}")
     for candidate in candidates:

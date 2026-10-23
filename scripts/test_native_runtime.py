@@ -84,6 +84,35 @@ class NativePackagingTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Unresolved"):
                 builder.resolve_macho_dependency(root / "tool", root / "tool", "@rpath/missing.dylib", root, [])
 
+    def test_icu_bare_install_name_resolves_from_its_original_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = root / "libraries"
+            original.mkdir()
+            library = original / "libicuio.78.dylib"
+            library.write_bytes(b"ICU library")
+            result = builder.resolve_macho_dependency(root / "prefix/lib/libicuio.78.dylib", library,
+                                                       "libicuio.78.dylib", root / "prefix", [])
+            self.assertEqual(result, library.resolve())
+
+    def test_source_built_rpath_library_is_found_before_packaging(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            libraries = root / "dependencies/lib"
+            libraries.mkdir(parents=True)
+            library = libraries / "libpq.5.dylib"
+            library.write_bytes(b"PostgreSQL client library")
+            prefix = root / "prefix"
+            prefix.mkdir()
+            self.assertEqual(builder.resolve_macho_dependency(prefix / "bin/php", prefix / "bin/php",
+                                                              "@rpath/libpq.5.dylib", prefix, []), library.resolve())
+
+    def test_unqualified_macho_names_cannot_traverse_directories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with self.assertRaisesRegex(RuntimeError, "Unsupported"):
+                builder.resolve_macho_dependency(root / "tool", root / "tool", "../foreign/library.dylib", root, [])
+
     def test_shell_scripts_are_not_misidentified_as_native_binaries(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
