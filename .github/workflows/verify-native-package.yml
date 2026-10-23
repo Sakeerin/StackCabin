@@ -24,10 +24,10 @@ on:
       runner:
         description: macOS 14 hosted runners retire on 2 November 2026; use a maintained VM after that date
         type: choice
-        options: [macos-14, ubuntu-24.04]
+        options: [macos-14, macos-15, macos-15-intel, ubuntu-24.04]
         required: true
       arch:
-        description: macOS package architecture; x64 uses preinstalled Rosetta on the ARM runner
+        description: macOS package architecture; x64 uses preinstalled Rosetta on ARM runners
         type: choice
         options: [arm64, x64]
         default: arm64
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.artifact_name || format('{0}-{1}-{2}', inputs.component, inputs.version, inputs.runner == 'macos-14' && (inputs.arch == 'x64' && 'macos-15-intel' || 'macos-15') || 'ubuntu-22.04') }}
+          name: ${{ inputs.artifact_name || format('{0}-{1}-{2}', inputs.component, inputs.version, startsWith(inputs.runner, 'macos') && ((inputs.runner == 'macos-15-intel' || inputs.arch == 'x64') && 'macos-15-intel' || 'macos-15') || 'ubuntu-22.04') }}
           run-id: ${{ inputs.source_run }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: artifacts/runtimes/
@@ -64,7 +64,7 @@ jobs:
         env:
           COMPONENT: ${{ inputs.component }}
           VERSION: ${{ inputs.version }}
-          STACKCABIN_TEST_ARCH: ${{ inputs.runner == 'macos-14' && inputs.arch || 'x64' }}
+          STACKCABIN_TEST_ARCH: ${{ inputs.runner == 'macos-15-intel' && 'x64' || startsWith(inputs.runner, 'macos') && inputs.arch || 'x64' }}
           STACKCABIN_TEST_FAILED_CANDIDATE: ${{ inputs.failed_candidate }}
         run: node scripts/prepare-native-integration.mjs
       - name: Ephemeral macOS test keychain
