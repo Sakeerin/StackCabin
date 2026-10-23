@@ -14,6 +14,21 @@ and uploads artifacts without publishing them. It bundles non-system libraries,
 rewrites loader paths, verifies required PHP extensions, and includes the source
 archive and provenance alongside each binary archive.
 
+Reviewed source inputs are recorded in `runtime-catalog/source-archives.json`.
+Each new pack is extracted into a Thai/spaced path with the original install
+prefix hidden. PHP must answer a real FastCGI request and read/write SQLite;
+database servers must authenticate separate accounts and pass logical dump/restore.
+The workflow then installs the archive using a temporary signed test catalog and
+runs `native-smoke` against the actual Rust core and OS keychain. These temporary
+keys/catalogs are confined to the CI checkout. The future release URL supplied to
+the workflow is not an upload destination.
+
+macOS provenance records the highest minimum OS version of all bundled Mach-O
+files. The release gate rejects packs requiring a version above 14.0; setting the
+main compiler deployment target does not lower the requirements of bundled
+Homebrew libraries. Rebuild incompatible dependencies for the supported baseline
+before publishing them.
+
 Windows PHP archives come from PHP's release manifest. Windows MariaDB and
 PostgreSQL portable archives come from MariaDB and EDB respectively. Catalog
 generation may fail when a publisher endpoint is unavailable; do not replace a

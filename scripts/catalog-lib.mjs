@@ -125,13 +125,14 @@ export async function verifyCatalog(
   if (release) {
     for (const artifact of catalog.artifacts) {
       if (artifact.platform === "macos" && artifact.minimumOsVersion) {
-        const [major, minor = 0] = artifact.minimumOsVersion
+        const minimum = artifact.minimumOsVersion;
+        const [major, minor = 0, patch = 0] = String(minimum)
           .split(".")
           .map(Number);
         if (
-          !Number.isFinite(major) ||
+          !/^\d+\.\d+(?:\.\d+)?$/.test(minimum) ||
           major > 14 ||
-          (major === 14 && minor > 0)
+          (major === 14 && (minor > 0 || patch > 0))
         )
           throw new Error(
             "Release blocked: " +
