@@ -4,8 +4,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $workspace = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$binary = [IO.Path]::GetFullPath((Join-Path $workspace $Application))
-$data = Join-Path $workspace ('.local/packaged-smoke/' + [Guid]::NewGuid().ToString())
+$binary = if ([IO.Path]::IsPathRooted($Application)) { [IO.Path]::GetFullPath($Application) } else { [IO.Path]::GetFullPath((Join-Path $workspace $Application)) }
+$data = Join-Path $workspace ('.local/packaged smoke ทดสอบ/' + [Guid]::NewGuid().ToString())
 $previous = $env:STACKCABIN_DATA_DIR
 $env:STACKCABIN_DATA_DIR = $data
 $process = $null
