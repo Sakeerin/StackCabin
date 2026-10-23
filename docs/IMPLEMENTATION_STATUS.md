@@ -49,6 +49,7 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | PostgreSQL macOS 14 | [Source-library build](https://github.com/Sakeerin/StackCabin/actions/runs/39920049255) measures 14.0 on both architectures. [Actual macOS 14 ARM acceptance](https://github.com/Sakeerin/StackCabin/actions/runs/39922116967) passed real core provisioning/read/write/backup/restore in a Thai/spaced app-data path |
 | MariaDB Ubuntu 24.04 | [Run 39923305298](https://github.com/Sakeerin/StackCabin/actions/runs/39923305298) passed real core installation, version check, provision/read/write/dump/restore using the Ubuntu 22.04 source-built package |
 | MariaDB macOS core | [ARM source build](https://github.com/Sakeerin/StackCabin/actions/runs/39928392371) and [Intel source build](https://github.com/Sakeerin/StackCabin/actions/runs/39928396223) passed relocation and real core integration with dependencies built for 14.0. [Actual macOS 14 ARM verification](https://github.com/Sakeerin/StackCabin/actions/runs/39933188836) passed installation, provisioning, read/write, backup and restore |
+| MariaDB macOS 14 x64 | [Compatibility verification](https://github.com/Sakeerin/StackCabin/actions/runs/39951635821) passed real core database operations on macOS 14 using preinstalled Rosetta; native Intel installer acceptance remains separate |
 | Ubuntu 24.04 WSL2 | Downloaded/checksummed Ubuntu 22.04 PHP 8.4/8.5, PostgreSQL and MariaDB packs, removed debug symbols, then passed relocated FastCGI/SQLite and database dump/restore as unprivileged `nobody`; this is not a clean desktop installer VM |
 | Project URLs | Readable `.localhost` hosts and dedicated loopback fallback routes verified for PHP, Node and static projects |
 
@@ -71,9 +72,10 @@ update and persistence still use the real application and database.
    dependency closure is rebuilt for that baseline and tested there. MariaDB's
    optional Mroonga engine is excluded from native builds after its bundled
    Groonga source failed to compile with the current macOS SDK.
-   PostgreSQL's pinned OpenSSL/zlib source build passes with a measured 14.0
-   baseline. PHP's library closure and MariaDB's OpenSSL/zlib/PCRE2 closure now
-   target 14.0; their final native build results remain pending. macOS 14 Intel
+   PostgreSQL and MariaDB source builds pass with a measured 14.0 baseline;
+   both also pass actual macOS 14 ARM runtime integration. PHP's library closure
+   targets 14.0; its final build and baseline execution results remain pending.
+   macOS 14 Intel
    PostgreSQL x64 compatibility [passed on macOS 14 under Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/39925179199); that does not replace a
    native Intel installer VM.
    MariaDB's upstream install script splits basedir paths on whitespace. The

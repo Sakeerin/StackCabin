@@ -35,7 +35,9 @@ checksums and licenses accompany the package provenance. The PHP builder likewis
 compiles its required libraries from `runtime-catalog/php-macos-library-sources.json`,
 including ICU, image libraries, curl and libpq. Source-build support is not evidence
 of a passing build: inspect the measured minimum OS field and runtime verification
-before signing any pack. MariaDB still needs a baseline-compatible dependency closure.
+before signing any pack. MariaDB builds its OpenSSL/zlib/PCRE2 closure from pinned
+sources with the same baseline. Its build-time library IDs resolve inside that
+private prefix; the final pack rewrites them for relocation.
 
 Windows PHP archives come from PHP's release manifest. Windows MariaDB and
 PostgreSQL portable archives come from MariaDB and EDB respectively. Catalog
