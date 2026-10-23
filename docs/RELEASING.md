@@ -5,6 +5,15 @@ supported three-platform release additionally requires the following concrete
 artifacts and validation; repository credentials and signing identities are not
 embedded in this checkout.
 
+The manual `Build and verify development installers` workflow prepares unsigned
+preview `.exe`, `.dmg`, `.deb` and `.AppImage` artifacts with seven-day retention.
+It installs the Windows/deb packages only on disposable CI runners and starts the
+normal executables against isolated SQLite data. It does not publish a release.
+Use `Verify an existing development installer on the baseline` with that run ID
+to reuse the Ubuntu 22.04 packages on Ubuntu 24.04 or mount a macOS DMG on macOS 14.
+The AppImage check uses extract-and-run without FUSE. These runners contain
+preinstalled software and do not replace clean-machine installer certification.
+
 ## 1. Complete the verified runtime matrix
 
 Use the `Build reviewed native runtime` GitHub Actions workflow for PHP 8.4/8.5,

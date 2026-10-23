@@ -1,0 +1,82 @@
+name: Verify an existing development installer on the baseline
+on:
+  workflow_dispatch:
+    inputs:
+      source_run:
+        description: Build and verify development installers run ID
+        type: string
+        required: true
+      runner:
+        type: choice
+        options: [ubuntu-24.04, macos-14]
+        required: true
+      arch:
+        description: macOS package architecture; x64 requires preinstalled Rosetta
+        type: choice
+        options: [arm64, x64]
+        default: arm64
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    # The macOS 14 hosted image retires on 2 November 2026.
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: development-installers-${{ startsWith(inputs.runner, 'ubuntu') && 'ubuntu-22.04' || inputs.arch == 'x64' && 'macos-15-intel' || 'macos-15' }}
+          run-id: ${{ inputs.source_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/installers/
+      - name: Verify downloaded installer checksums
+        shell: bash
+        working-directory: artifacts/installers
+        run: |
+          if command -v sha256sum >/dev/null; then
+            sha256sum -c SHA256SUMS.txt
+          else
+            shasum -a 256 -c SHA256SUMS.txt
+          fi
+      - name: Install the Ubuntu 22.04 deb on Ubuntu 24.04
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          packages=(artifacts/installers/deb/*.deb)
+          test "${#packages[@]}" -eq 1
+          sudo apt-get update
+          sudo apt-get install -y xvfb dbus-x11 "./${packages[0]}"
+          xvfb-run -a dbus-run-session -- python scripts/smoke-packaged-unix.py /usr/bin/stackcabin
+      - name: Execute the same AppImage without FUSE
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          images=(artifacts/installers/appimage/*.AppImage)
+          test "${#images[@]}" -eq 1
+          chmod +x "${images[0]}"
+          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a dbus-run-session -- python scripts/smoke-packaged-unix.py "${images[0]}"
+      - name: Verify x64 compatibility support
+        if: runner.os == 'macOS' && inputs.arch == 'x64'
+        run: arch -x86_64 /usr/bin/true
+      - name: Mount the DMG and start its application on macOS 14
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          images=(artifacts/installers/dmg/*.dmg)
+          test "${#images[@]}" -eq 1
+          mount="$RUNNER_TEMP/stackcabin-dmg"
+          destination="$RUNNER_TEMP/installed preview ทดสอบ"
+          mkdir "$mount" "$destination"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount" "${images[0]}"
+          trap 'hdiutil detach "$mount"' EXIT
+          apps=("$mount"/*.app)
+          test "${#apps[@]}" -eq 1
+          ditto "${apps[0]}" "$destination/StackCabin.app"
+          hdiutil detach "$mount"
+          trap - EXIT
+          python scripts/smoke-packaged-unix.py "$destination/StackCabin.app/Contents/MacOS/stackcabin"
