@@ -137,6 +137,17 @@ def minimum_macos(prefix):
     return ".".join(map(str, max(versions))) if versions else None
 
 
+def strip_runtime_symbols(prefix, system):
+    """Remove build debug information, then restore macOS code signatures."""
+    for binary in binary_files(prefix):
+        binary.chmod(binary.stat().st_mode | 0o200)
+        if system == "macos":
+            run(["strip", "-x", binary])
+            run(["codesign", "--force", "--sign", "-", binary])
+        else:
+            run(["strip", "--strip-unneeded", binary])
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--component", choices=["php", "mariadb", "postgres"], required=True)
@@ -191,13 +202,14 @@ def main():
         flags = []
         if system == "macos":
             flags = [f"-DCMAKE_OSX_SYSROOT={os.environ['SDKROOT']}", "-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0"]
-        run(["cmake", "-S", source, "-B", build, f"-DCMAKE_INSTALL_PREFIX={prefix}", "-DINSTALL_LAYOUT=STANDALONE", "-DCMAKE_BUILD_TYPE=Release", "-DWITH_SSL=system", "-DWITH_UNIT_TESTS=OFF", "-DWITH_EMBEDDED_SERVER=OFF", "-DWITH_WSREP=OFF", "-DPLUGIN_ROCKSDB=NO", "-DWITH_NUMA=OFF", *flags])
+        run(["cmake", "-S", source, "-B", build, f"-DCMAKE_INSTALL_PREFIX={prefix}", "-DINSTALL_LAYOUT=STANDALONE", "-DCMAKE_BUILD_TYPE=Release", "-DWITH_SSL=system", "-DWITH_UNIT_TESTS=OFF", "-DWITH_EMBEDDED_SERVER=OFF", "-DWITH_WSREP=OFF", "-DPLUGIN_ROCKSDB=NO", "-DPLUGIN_MROONGA=NO", "-DWITH_NUMA=OFF", *flags])
         run(["cmake", "--build", build, "--parallel", jobs])
         run(["cmake", "--install", build])
         executables = {tool: f"bin/{tool}" for tool in ["mariadbd", "mariadb", "mariadb-dump"]}
         executables["install-db"] = "scripts/mariadb-install-db"
         license_name = "GPL-2.0-only"
     bundle_libraries(prefix, system)
+    strip_runtime_symbols(prefix, system)
     for relative in executables.values():
         if not (prefix / relative).is_file():
             raise RuntimeError(f"Missing executable: {relative}")

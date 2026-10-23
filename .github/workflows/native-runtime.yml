@@ -102,3 +102,32 @@ jobs:
         with:
           name: ${{ inputs.component }}-${{ inputs.version }}-${{ matrix.os }}
           path: artifacts/runtimes/
+  compatibility:
+    name: Ubuntu 24.04 uses the Ubuntu 22.04 package
+    needs: build
+    if: always() && !cancelled()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.component }}-${{ inputs.version }}-ubuntu-22.04
+          path: artifacts/runtimes/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Native and keychain dependencies
+        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev libsecret-1-dev dbus-x11 gnome-keyring
+      - name: Prepare signed integration-test catalog
+        env:
+          COMPONENT: ${{ inputs.component }}
+          VERSION: ${{ inputs.version }}
+        run: node scripts/prepare-native-integration.mjs
+      - name: Verify the same package on Ubuntu 24.04
+        shell: bash
+        run: |
+          export XDG_DATA_HOME="$RUNNER_TEMP/stackcabin-secret-service"
+          dbus-run-session -- bash -eu -c 'mkdir -p "$XDG_DATA_HOME"; printf "%s\n" "stackcabin-ci-only" | gnome-keyring-daemon --unlock --components=secrets; cargo run -p stackcabin-core --example native-smoke'

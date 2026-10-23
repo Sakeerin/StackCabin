@@ -44,6 +44,9 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | Real databases | MariaDB/PostgreSQL provision, insert/select, dump, new-identity restore and select; SQLite consistent snapshot/restore |
 | Windows Unicode data path | Actual PHP/Node/Caddy/MariaDB HTTP/data in a Thai/spaced path; PostgreSQL initialization and restore through the verified ASCII junction |
 | Offline tools | Managed Node 22/24, PHP 8.4/8.5, npm/pnpm/Yarn, Composer, Caddy and databases from local archives; the test does not download framework dependencies |
+| Unix PHP acceptance | PHP 8.4/8.5 [native runs](https://github.com/Sakeerin/StackCabin/actions/workflows/native-runtime.yml): relocated PHP-FPM/SQLite and real Rust-core HTTP passed on Ubuntu 22.04 and macOS 15 Intel/Apple Silicon |
+| PostgreSQL Unix acceptance | [Run 39916993042](https://github.com/Sakeerin/StackCabin/actions/runs/39916993042): PostgreSQL 18.6 SCRAM setup, private project account, insert/select, dump/restore and real Rust-core integration on Ubuntu 22.04 and macOS 15 Intel/Apple Silicon |
+| Ubuntu 24.04 WSL2 | Downloaded/checksummed Ubuntu 22.04 PHP 8.4/8.5 and PostgreSQL packs, removed debug symbols, then passed relocated FastCGI/SQLite and database dump/restore as unprivileged `nobody`; this is not a clean desktop installer VM |
 | Project URLs | Readable `.localhost` hosts and dedicated loopback fallback routes verified for PHP, Node and static projects |
 
 The native Desktop language test dispatches a DOM change event because the
@@ -56,12 +59,15 @@ update and persistence still use the real application and database.
    development catalog contains Node/Caddy/Composer/package managers/CA artifacts
    for all four platform/architecture targets, and PHP/database artifacts for
    Windows x64. Missing packages are shown as unavailable.
-   Initial Linux source builds for PHP 8.4/8.5 and PostgreSQL succeeded; this
-   alone does not establish relocated runtime or database acceptance. The native
-   pipeline now checks relocation, Unicode paths, PHP-FPM/SQLite, authenticated
+   The native pipeline checks relocation, Unicode paths, PHP-FPM/SQLite, authenticated
    database read/write/dump/restore, and installation through the actual Rust core.
    Source archives and publisher checksums are pinned in
    `runtime-catalog/source-archives.json`. CI uploads build artifacts only.
+   Current macOS PHP packs pass on macOS 15 but bundled Homebrew libraries require
+   macOS 15.0. They are blocked from the macOS 14 production catalog until the
+   dependency closure is rebuilt for that baseline and tested there. MariaDB's
+   optional Mroonga engine is excluded from native builds after its bundled
+   Groonga source failed to compile with the current macOS SDK.
 2. Run native runtime, browser HMR, tray/Quit, abrupt-app-exit, disk-full,
    clean-machine online/offline installation and upgrade tests on every target VM.
    Local offline archive installation does not establish clean-OS compatibility.

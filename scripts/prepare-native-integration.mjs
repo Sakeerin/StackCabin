@@ -43,7 +43,7 @@ const result = spawnSync(
   { stdio: "inherit" },
 );
 if (result.status !== 0) process.exit(result.status || 1);
-const smoke = path.join(root, ".local", "native-integration");
+const smoke = path.join(root, ".local", "native-integration ทดสอบ");
 const cache = path.join(smoke, "app-data", "downloads");
 await mkdir(cache, { recursive: true });
 await copyFile(
