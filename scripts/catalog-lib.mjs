@@ -124,6 +124,14 @@ export async function verifyCatalog(
   }
   if (release) {
     for (const artifact of catalog.artifacts) {
+      if (
+        artifact.platform === "macos" &&
+        ["php", "mariadb", "postgres"].includes(artifact.component) &&
+        !artifact.minimumOsVersion
+      )
+        throw new Error(
+          "Release blocked: missing minimum macOS version for " + artifact.id,
+        );
       if (artifact.platform === "macos" && artifact.minimumOsVersion) {
         const minimum = artifact.minimumOsVersion;
         const [major, minor = 0, patch = 0] = String(minimum)
