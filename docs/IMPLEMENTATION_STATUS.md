@@ -52,6 +52,7 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | Node macOS 14 baseline | [ARM](https://github.com/Sakeerin/StackCabin/actions/runs/39951641290) and [x64 through Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/39951647274) passed the same real managed-toolchain smoke |
 | Unix PHP acceptance | PHP 8.4/8.5 [native runs](https://github.com/Sakeerin/StackCabin/actions/workflows/native-runtime.yml): relocated PHP-FPM/SQLite and real Rust-core HTTP passed on Ubuntu 22.04 and macOS 15 Intel/Apple Silicon |
 | PHP ARM source libraries | PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/39960104209) and [8.5](https://github.com/Sakeerin/StackCabin/actions/runs/39960117212) rebuilt their library closure from source, passed relocated FPM/SQLite and real core HTTP with a measured macOS 14.0 minimum. Baseline execution is checked separately |
+| PHP macOS 14 ARM execution | PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/39962667129) and [8.5](https://github.com/Sakeerin/StackCabin/actions/runs/39962594228) passed real Rust-core installation and Caddy/FPM HTTP on macOS 14 using the same source-built archives |
 | PostgreSQL Unix acceptance | [Run 39916993042](https://github.com/Sakeerin/StackCabin/actions/runs/39916993042): PostgreSQL 18.6 SCRAM setup, private project account, insert/select, dump/restore and real Rust-core integration on Ubuntu 22.04 and macOS 15 Intel/Apple Silicon |
 | PostgreSQL macOS 14 | [Source-library build](https://github.com/Sakeerin/StackCabin/actions/runs/39920049255) measures 14.0 on both architectures. [Actual macOS 14 ARM acceptance](https://github.com/Sakeerin/StackCabin/actions/runs/39922116967) passed real core provisioning/read/write/backup/restore in a Thai/spaced app-data path |
 | MariaDB Ubuntu 24.04 | [Run 39923305298](https://github.com/Sakeerin/StackCabin/actions/runs/39923305298) passed real core installation, version check, provision/read/write/dump/restore using the Ubuntu 22.04 source-built package |
@@ -76,13 +77,13 @@ update and persistence still use the real application and database.
    `runtime-catalog/source-archives.json`. CI uploads build artifacts only.
    Earlier macOS PHP packs bundled Homebrew libraries requiring macOS 15.0 and
    remain blocked from production. Replacement ARM packs now build the full
-   dependency closure from source and measure 14.0; native Intel replacements
-   and baseline execution are still being verified. MariaDB's
+   dependency closure from source, measure 14.0 and pass actual macOS 14 ARM
+   installation/HTTP. Native Intel replacements are still being verified. MariaDB's
    optional Mroonga engine is excluded from native builds after its bundled
    Groonga source failed to compile with the current macOS SDK.
    PostgreSQL and MariaDB source builds pass with a measured 14.0 baseline;
-   both also pass actual macOS 14 ARM runtime integration. PHP's library closure
-   targets 14.0; its final build and baseline execution results remain pending.
+   both also pass actual macOS 14 ARM runtime integration. PHP's ARM library closure
+   also passes build and baseline execution; Intel replacements are pending.
    macOS 14 Intel
    PostgreSQL x64 compatibility [passed on macOS 14 under Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/39925179199); that does not replace a
    native Intel installer VM.
