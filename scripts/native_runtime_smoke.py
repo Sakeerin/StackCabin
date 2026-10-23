@@ -32,7 +32,8 @@ def execute(args, *, env=None, sql=None, stdout=None):
     result = subprocess.run([str(a) for a in args], env=env, input=sql, text=True,
                             stdout=stdout or subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
     if result.returncode:
-        raise RuntimeError(redact(f"{Path(args[0]).name} failed: {result.stderr}"))
+        details = (result.stderr or "") + "\n" + (result.stdout or "")
+        raise RuntimeError(redact(f"{Path(args[0]).name} failed: {details[-8000:]}"))
     return result.stdout
 
 
@@ -221,7 +222,7 @@ def mariadb(prefix, work, version):
     admin_password, project_password = password(), password()
     data = work / "data"
     initializer = prefix / "scripts/mariadb-install-db"
-    execute([initializer, f"--datadir={data}", "--auth-root-authentication-method=normal", "--skip-test-db"])
+    execute([initializer, f"--basedir={prefix}", f"--datadir={data}", "--auth-root-authentication-method=normal", "--skip-test-db"])
     bootstrap = work / "bootstrap.sql"
     bootstrap.write_text(f"ALTER USER 'root'@'localhost' IDENTIFIED BY '{admin_password}';\n"
                          f"CREATE USER IF NOT EXISTS 'root'@'127.0.0.1' IDENTIFIED BY '{admin_password}';\n"
@@ -242,7 +243,7 @@ def mariadb(prefix, work, version):
     def query(database, sql, *, owner=False):
         return execute([binary / "mariadb", *arguments("root" if owner else "cabin_user"), database], sql=sql)
 
-    with tempfile.TemporaryDirectory(prefix="sc-socket-") as socket_directory, server([binary / "mariadbd", "--no-defaults", f"--datadir={data}", f"--port={port}",
+    with tempfile.TemporaryDirectory(prefix="sc-socket-") as socket_directory, server([binary / "mariadbd", "--no-defaults", f"--basedir={prefix}", f"--datadir={data}", f"--port={port}",
                  "--bind-address=127.0.0.1", "--skip-name-resolve", f"--socket={Path(socket_directory) / 'db.sock'}",
                  f"--init-file={bootstrap}"], work) as process:
         ready(process, lambda: query("mysql", "SELECT 1;", owner=True))

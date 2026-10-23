@@ -101,6 +101,15 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.component }}-${{ inputs.version }}-${{ matrix.os }}
+          retention-days: 7
+          path: artifacts/runtimes/
+      - name: Preserve failed candidates for diagnosis
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-candidate-${{ inputs.component }}-${{ inputs.version }}-${{ matrix.os }}
+          retention-days: 3
+          if-no-files-found: ignore
           path: artifacts/runtimes/
   compatibility:
     name: Ubuntu 24.04 uses the Ubuntu 22.04 package

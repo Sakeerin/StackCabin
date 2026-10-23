@@ -150,11 +150,20 @@ impl DatabaseManager {
                 )
                 .await?;
         } else {
+            let executable = self.runtime.latest_installed(id, "mariadbd")?;
             if !data.join("mysql").exists() {
                 let init = self.runtime.latest_installed(id, "install-db")?;
                 let mut args = vec![format!("--datadir={}", data.display())];
                 if !cfg!(windows) {
                     args.extend([
+                        format!(
+                            "--basedir={}",
+                            executable
+                                .parent()
+                                .and_then(Path::parent)
+                                .context("MariaDB installation root unavailable")?
+                                .display()
+                        ),
                         "--auth-root-authentication-method=normal".into(),
                         "--skip-test-db".into(),
                     ]);
@@ -165,7 +174,6 @@ impl DatabaseManager {
             let init_file = SecretFile::new(directory.join("init.sql"), &init_sql)?;
             let init_path = init_file.0.clone();
             bootstrap_secret = Some(init_file);
-            let executable = self.runtime.latest_installed(id, "mariadbd")?;
             let args = vec![
                 "--no-defaults".into(),
                 format!("--datadir={}", data.display()),
@@ -188,6 +196,14 @@ impl DatabaseManager {
                     .as_ref()
                     .map_err(|error| anyhow::anyhow!("{error}"))?;
                 let mut args = args;
+                args.push(format!(
+                    "--basedir={}",
+                    executable
+                        .parent()
+                        .and_then(Path::parent)
+                        .context("MariaDB installation root unavailable")?
+                        .display()
+                ));
                 args.push(format!(
                     "--socket={}",
                     socket.path().join("db.sock").display()
