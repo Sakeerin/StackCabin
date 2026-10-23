@@ -5,7 +5,7 @@
       "name": "libiconv",
       "version": "1.19",
       "license": "GPL-3.0-or-later AND LGPL-2.0-or-later",
-      "url": "https://ftpmirror.gnu.org/libiconv/libiconv-1.19.tar.gz",
+      "url": "https://ftp.gnu.org/gnu/libiconv/libiconv-1.19.tar.gz",
       "sha256": "88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6",
       "checksumUrl": "https://formulae.brew.sh/api/formula/libiconv.json"
     },

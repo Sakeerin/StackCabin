@@ -185,6 +185,10 @@ def main():
         shutil.copyfileobj(response, file)
     if hashlib.file_digest(archive.open("rb"), "sha256").hexdigest() != args.source_sha256:
         raise RuntimeError("Publisher source SHA-256 mismatch")
+    output_dir = Path("artifacts/runtimes").resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    # Keep the corresponding publisher source with diagnostic candidates too.
+    shutil.copy2(archive, output_dir / f"{identifier}-source.tar.gz")
     source_dir = work / "source"
     source_dir.mkdir()
     source = unpack(archive, source_dir)
@@ -239,8 +243,6 @@ def main():
         for required in ["curl", "mbstring", "intl", "pdo_mysql", "pdo_pgsql", "pdo_sqlite", "zip", "sodium", "gd", "bcmath"]:
             if required not in modules:
                 raise RuntimeError(f"Missing PHP extension: {required}")
-    output_dir = Path("artifacts/runtimes").resolve()
-    output_dir.mkdir(parents=True, exist_ok=True)
     package = output_dir / f"{identifier}.tar.gz"
     # Dereference links so the runtime installer never needs to trust archive symlinks.
     with tarfile.open(package, "w:gz", dereference=True) as bundle:
@@ -264,7 +266,6 @@ def main():
     if system == "macos":
         metadata["minimumOsVersion"] = minimum_macos(relocated_prefix)
     (output_dir / f"{identifier}.json").write_text(json.dumps(metadata, indent=2) + "\n")
-    shutil.copy2(archive, output_dir / f"{identifier}-source.tar.gz")
     (output_dir / f"{identifier}-provenance.json").write_text(json.dumps({"sourceUrl": args.source_url, "sourceSha256": args.source_sha256, "platform": platform.platform(), "verification": verification, "minimumOsVersion": metadata.get("minimumOsVersion"), "dependencies": dependencies}, indent=2) + "\n")
     print(package)
 

@@ -46,7 +46,10 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | Offline tools | Managed Node 22/24, PHP 8.4/8.5, npm/pnpm/Yarn, Composer, Caddy and databases from local archives; the test does not download framework dependencies |
 | Unix PHP acceptance | PHP 8.4/8.5 [native runs](https://github.com/Sakeerin/StackCabin/actions/workflows/native-runtime.yml): relocated PHP-FPM/SQLite and real Rust-core HTTP passed on Ubuntu 22.04 and macOS 15 Intel/Apple Silicon |
 | PostgreSQL Unix acceptance | [Run 39916993042](https://github.com/Sakeerin/StackCabin/actions/runs/39916993042): PostgreSQL 18.6 SCRAM setup, private project account, insert/select, dump/restore and real Rust-core integration on Ubuntu 22.04 and macOS 15 Intel/Apple Silicon |
-| Ubuntu 24.04 WSL2 | Downloaded/checksummed Ubuntu 22.04 PHP 8.4/8.5 and PostgreSQL packs, removed debug symbols, then passed relocated FastCGI/SQLite and database dump/restore as unprivileged `nobody`; this is not a clean desktop installer VM |
+| PostgreSQL macOS 14 | [Source-library build](https://github.com/Sakeerin/StackCabin/actions/runs/39920049255) measures 14.0 on both architectures. [Actual macOS 14 ARM acceptance](https://github.com/Sakeerin/StackCabin/actions/runs/39922116967) passed real core provisioning/read/write/backup/restore in a Thai/spaced app-data path |
+| MariaDB Ubuntu 24.04 | [Run 39923305298](https://github.com/Sakeerin/StackCabin/actions/runs/39923305298) passed real core installation, version check, provision/read/write/dump/restore using the Ubuntu 22.04 source-built package |
+| MariaDB macOS core | [ARM candidate verification](https://github.com/Sakeerin/StackCabin/actions/runs/39925759813) passed real core installation/provision/read/write/backup/restore after the private runtime-alias fix; the tested candidate is not a certified release |
+| Ubuntu 24.04 WSL2 | Downloaded/checksummed Ubuntu 22.04 PHP 8.4/8.5, PostgreSQL and MariaDB packs, removed debug symbols, then passed relocated FastCGI/SQLite and database dump/restore as unprivileged `nobody`; this is not a clean desktop installer VM |
 | Project URLs | Readable `.localhost` hosts and dedicated loopback fallback routes verified for PHP, Node and static projects |
 
 The native Desktop language test dispatches a DOM change event because the
@@ -68,9 +71,14 @@ update and persistence still use the real application and database.
    dependency closure is rebuilt for that baseline and tested there. MariaDB's
    optional Mroonga engine is excluded from native builds after its bundled
    Groonga source failed to compile with the current macOS SDK.
-   Source builds for PostgreSQL's OpenSSL/zlib and PHP's required library closure
-   now target 14.0 with pinned source checksums. Their CI results and minimum OS
-   measurements must pass before this limitation can be considered resolved.
+   PostgreSQL's pinned OpenSSL/zlib source build passes with a measured 14.0
+   baseline. PHP's library closure and MariaDB's OpenSSL/zlib/PCRE2 closure now
+   target 14.0; their final native build results remain pending. macOS 14 Intel
+   PostgreSQL x64 compatibility [passed on macOS 14 under Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/39925179199); that does not replace a
+   native Intel installer VM.
+   MariaDB's upstream install script splits basedir paths on whitespace. The
+   Unix core uses a verified symlink inside its private temporary directory for
+   runtime tools and a private socket, retaining the real runtime/data locations.
 2. Run native runtime, browser HMR, tray/Quit, abrupt-app-exit, disk-full,
    clean-machine online/offline installation and upgrade tests on every target VM.
    Local offline archive installation does not establish clean-OS compatibility.
