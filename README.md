@@ -143,6 +143,13 @@ Add `mariadb,postgres` to test managed server provisioning and database backup/
 restore once verified packages for the target platform are in the catalog.
 `STACKCABIN_DATA_DIR` can isolate a desktop test session from your personal data.
 
+For real browser HMR checks, run `framework-smoke` first, then run the
+`hmr-session` example with the same disposable `STACKCABIN_SMOKE_DIR`.
+Its `hmr-session.json` lists the React/Vue/Next URLs and fixture folders.
+Edit their source and verify that browser state survives updates; Ctrl+C stops
+all owned servers. Set `STACKCABIN_HMR_FRESH_REACT=1` to prepare a new React fixture.
+The fixture directories must be trusted and inside that workspace's `projects/`.
+
 To exercise all managed Windows tools from the offline pack in a fresh data directory:
 
 ```powershell

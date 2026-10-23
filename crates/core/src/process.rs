@@ -219,6 +219,25 @@ impl OwnedProcess {
             }
             let _ = self.child.kill().await;
         }
+        #[cfg(unix)]
+        self._watchdog.take(); // Kill remaining descendants even when the launcher exited first.
+                               // A launcher can exit before its children release their listening socket.
+        if let Some(port) = self.info.port {
+            let deadline = tokio::time::Instant::now() + Duration::from_secs(3);
+            while tokio::net::TcpStream::connect(("127.0.0.1", port))
+                .await
+                .is_ok()
+            {
+                if tokio::time::Instant::now() >= deadline {
+                    self.info.state = ProcessState::Failed;
+                    self.info.error = Some(format!(
+                        "Port {port} is still occupied after stopping the owned process tree"
+                    ));
+                    return;
+                }
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+        }
         self.info.state = ProcessState::Stopped;
         self.info.pid = None;
         self.info.url = None;
@@ -260,6 +279,9 @@ fn unix_watchdog(group: u32) -> Result<std::os::fd::OwnedFd> {
         }
         if pid == 0 {
             libc::close(fds[1]);
+            // Keep the group reserved through graceful shutdown until pipe EOF
+            // requests the final SIGKILL, including descendants ignoring SIGTERM.
+            libc::signal(libc::SIGTERM, libc::SIG_IGN);
             if libc::setpgid(0, group as i32) != 0 {
                 libc::_exit(0);
             }

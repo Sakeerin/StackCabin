@@ -328,6 +328,12 @@ async fn restore_preserves_a_destination_created_during_verification() {
 #[test]
 #[ignore]
 fn http_worker() {
+    #[cfg(unix)]
+    if std::env::var_os("STACKCABIN_TEST_IGNORE_TERM").is_some() {
+        unsafe {
+            libc::signal(libc::SIGTERM, libc::SIG_IGN);
+        }
+    }
     let port: u16 = std::env::var("STACKCABIN_TEST_PORT")
         .unwrap()
         .parse()
@@ -354,7 +360,10 @@ async fn owned_native_process_health_and_shutdown_are_real() {
             "--nocapture".into(),
         ],
         temp.path(),
-        &BTreeMap::from([("STACKCABIN_TEST_PORT".into(), port.to_string())]),
+        &BTreeMap::from([
+            ("STACKCABIN_TEST_PORT".into(), port.to_string()),
+            ("STACKCABIN_TEST_IGNORE_TERM".into(), "1".into()),
+        ]),
         "worker",
         "test",
         Arc::new(|_| {}),

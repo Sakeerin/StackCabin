@@ -40,7 +40,7 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | Cross-platform CI | [Run 39912586708](https://github.com/Sakeerin/StackCabin/actions/runs/39912586708): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds and Desktop E2E |
 | Normal Windows package | Release executable starts without E2E plugins and initializes real SQLite metadata in an isolated directory |
 | Framework acceptance | Express, Vue, React, Nest, Next and Laravel dependency installation and actual HTTP; Laravel runs PHP and Vite together |
-| HMR scope | Vue/React transformed modules and HMR client are served through Caddy; browser edit-to-render HMR is still a release VM check |
+| Browser HMR on Windows | Actual React/Vue/Next browsers updated after source edits through Caddy while preserving a clicked counter. React/Vue WebSocket probes received HTTP 101 and module updates. React's starter now exports `App.jsx` to support Fast Refresh; screenshots `hmr-react.png` / `hmr-next.png` |
 | Real databases | MariaDB/PostgreSQL provision, insert/select, dump, new-identity restore and select; SQLite consistent snapshot/restore |
 | Windows Unicode data path | Actual PHP/Node/Caddy/MariaDB HTTP/data in a Thai/spaced path; PostgreSQL initialization and restore through the verified ASCII junction |
 | Offline tools | Managed Node 22/24, PHP 8.4/8.5, npm/pnpm/Yarn, Composer, Caddy and databases from local archives; the test does not download framework dependencies |
@@ -48,7 +48,7 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | PostgreSQL Unix acceptance | [Run 39916993042](https://github.com/Sakeerin/StackCabin/actions/runs/39916993042): PostgreSQL 18.6 SCRAM setup, private project account, insert/select, dump/restore and real Rust-core integration on Ubuntu 22.04 and macOS 15 Intel/Apple Silicon |
 | PostgreSQL macOS 14 | [Source-library build](https://github.com/Sakeerin/StackCabin/actions/runs/39920049255) measures 14.0 on both architectures. [Actual macOS 14 ARM acceptance](https://github.com/Sakeerin/StackCabin/actions/runs/39922116967) passed real core provisioning/read/write/backup/restore in a Thai/spaced app-data path |
 | MariaDB Ubuntu 24.04 | [Run 39923305298](https://github.com/Sakeerin/StackCabin/actions/runs/39923305298) passed real core installation, version check, provision/read/write/dump/restore using the Ubuntu 22.04 source-built package |
-| MariaDB macOS core | [ARM candidate verification](https://github.com/Sakeerin/StackCabin/actions/runs/39925759813) passed real core installation/provision/read/write/backup/restore after the private runtime-alias fix; the tested candidate is not a certified release |
+| MariaDB macOS core | [ARM source build](https://github.com/Sakeerin/StackCabin/actions/runs/39928392371) and [Intel source build](https://github.com/Sakeerin/StackCabin/actions/runs/39928396223) passed relocation and real core integration with dependencies built for 14.0. [Actual macOS 14 ARM verification](https://github.com/Sakeerin/StackCabin/actions/runs/39933188836) passed installation, provisioning, read/write, backup and restore |
 | Ubuntu 24.04 WSL2 | Downloaded/checksummed Ubuntu 22.04 PHP 8.4/8.5, PostgreSQL and MariaDB packs, removed debug symbols, then passed relocated FastCGI/SQLite and database dump/restore as unprivileged `nobody`; this is not a clean desktop installer VM |
 | Project URLs | Readable `.localhost` hosts and dedicated loopback fallback routes verified for PHP, Node and static projects |
 

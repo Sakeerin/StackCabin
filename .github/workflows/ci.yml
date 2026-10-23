@@ -59,13 +59,21 @@ jobs:
             target/debug/stackcabin
             dist/
   native-smoke:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-22.04, ubuntu-24.04, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Linux core dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev libsecret-1-dev
       - name: Real runtime installation, HTTP health, and shutdown
         env:
-          STACKCABIN_SMOKE_DIR: ${{ github.workspace }}/.local/native-smoke
-          STACKCABIN_SMOKE_COMPONENTS: node,caddy,php,cacert,composer
+          STACKCABIN_SMOKE_DIR: ${{ github.workspace }}/.local/native smoke ทดสอบ
+          STACKCABIN_SMOKE_COMPONENTS: ${{ runner.os == 'Windows' && 'node,caddy,php,cacert,composer,pnpm,yarn' || 'node,caddy,pnpm,yarn' }}
         run: cargo run -p stackcabin-core --example native-smoke

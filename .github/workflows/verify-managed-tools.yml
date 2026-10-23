@@ -1,0 +1,31 @@
+name: Verify managed tools on the macOS baseline
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: x64 runs through the runner's preinstalled Rosetta
+        type: choice
+        options: [arm64, x64]
+        default: arm64
+permissions:
+  contents: read
+jobs:
+  verify:
+    # This hosted image retires on 2 November 2026; replace with a maintained VM.
+    runs-on: macos-14
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Select the x64 compatibility target
+        if: inputs.arch == 'x64'
+        run: |
+          arch -x86_64 /usr/bin/true
+          rustup target add x86_64-apple-darwin
+          echo "CARGO_BUILD_TARGET=x86_64-apple-darwin" >> "$GITHUB_ENV"
+      - uses: Swatinem/rust-cache@v2
+      - name: Install and execute each managed Node version and package manager
+        env:
+          STACKCABIN_SMOKE_DIR: ${{ github.workspace }}/.local/native smoke ทดสอบ
+          STACKCABIN_SMOKE_COMPONENTS: node,caddy,pnpm,yarn
+        run: cargo run -p stackcabin-core --example native-smoke

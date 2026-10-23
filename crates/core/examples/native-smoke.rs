@@ -111,22 +111,6 @@ async fn main() -> Result<()> {
         }
         let name = format!("smoke-{:?}-{}", preset, uuid::Uuid::new_v4().simple());
         let mut project = core.create(&projects_dir, &name, preset, true)?;
-        if project.spec.preset == Preset::Node {
-            for manager in ["npm", "pnpm", "yarn"] {
-                if manager == "npm"
-                    || core
-                        .runtimes
-                        .list()
-                        .iter()
-                        .any(|r| r.installed && r.artifact.component == manager)
-                {
-                    core.supervisor
-                        .run_task(&project, manager, &["--version".into()], "manager-smoke")
-                        .await?;
-                    println!("PASS {manager} with selected Node.js");
-                }
-            }
-        }
         if let Some(branch) = branch {
             let version = core
                 .runtimes
@@ -143,6 +127,35 @@ async fn main() -> Result<()> {
             project.spec.runtimes[0].version = version;
             core.save_project(&project.id, project.spec.clone(), true)
                 .await?;
+        }
+        if project.spec.preset == Preset::Node {
+            // Observe the actual server executable, independently of the manifest selection.
+            let server = PathBuf::from(&project.path).join("server.mjs");
+            let source = std::fs::read_to_string(&server)?;
+            std::fs::write(
+                server,
+                source.replace(
+                    "res.setHeader('Content-Type'",
+                    "res.setHeader('X-StackCabin-Runtime',process.version);res.setHeader('Content-Type'",
+                ),
+            )?;
+            for manager in ["npm", "pnpm", "yarn"] {
+                if manager == "npm"
+                    || core
+                        .runtimes
+                        .list()
+                        .iter()
+                        .any(|r| r.installed && r.artifact.component == manager)
+                {
+                    core.supervisor
+                        .run_task(&project, manager, &["--version".into()], "manager-smoke")
+                        .await?;
+                    println!(
+                        "PASS {manager} with Node.js {}",
+                        project.spec.runtimes[0].version
+                    );
+                }
+            }
         }
         let status = core.start_project(&project.id).await?;
         let info = status
@@ -168,6 +181,16 @@ async fn main() -> Result<()> {
             .send()
             .await?
             .error_for_status()?;
+        if project.spec.preset == Preset::Node {
+            anyhow::ensure!(
+                response
+                    .headers()
+                    .get("X-StackCabin-Runtime")
+                    .and_then(|v| v.to_str().ok())
+                    == Some(format!("v{}", project.spec.runtimes[0].version).as_str()),
+                "The running Node server used a different runtime than its project selection"
+            );
+        }
         let text = response.text().await?;
         anyhow::ensure!(
             text.contains("ready to build"),

@@ -31,7 +31,7 @@ def build(work, arch, unpack):
 
     cmake_flags = {
         "libxml2": ["-DLIBXML2_WITH_PYTHON=OFF", "-DLIBXML2_WITH_TESTS=OFF", "-DLIBXML2_WITH_LZMA=OFF", "-DLIBXML2_WITH_ICU=OFF"],
-        "libpng": ["-DPNG_STATIC=OFF", "-DPNG_TESTS=OFF", "-DPNG_TOOLS=OFF"],
+        "libpng": ["-DPNG_STATIC=OFF", "-DPNG_TESTS=OFF", "-DPNG_TOOLS=OFF", "-DPNG_FRAMEWORK=OFF"],
         "jpeg-turbo": ["-DENABLE_STATIC=OFF", "-DWITH_TURBOJPEG=OFF", "-DWITH_SIMD=OFF"],
         "freetype": ["-DFT_DISABLE_BZIP2=TRUE", "-DFT_DISABLE_BROTLI=TRUE", "-DFT_DISABLE_HARFBUZZ=TRUE"],
         "libzip": ["-DENABLE_COMMONCRYPTO=OFF", "-DENABLE_GNUTLS=OFF", "-DENABLE_MBEDTLS=OFF", "-DENABLE_OPENSSL=ON",
@@ -56,6 +56,7 @@ def build(work, arch, unpack):
             run(["cmake", "-S", source, "-B", target, f"-DCMAKE_INSTALL_PREFIX={prefix}",
                  f"-DCMAKE_PREFIX_PATH={prefix}", f"-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local",
                  f"-DCMAKE_OSX_SYSROOT={environment['SDKROOT']}", "-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0",
+                 f"-DCMAKE_INSTALL_NAME_DIR={prefix / 'lib'}", "-DCMAKE_MACOSX_RPATH=OFF",
                  "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON", *cmake_flags[name]], source)
             run(["cmake", "--build", target, "--parallel", jobs], source)
             run(["cmake", "--install", target], source)
@@ -78,6 +79,17 @@ def build(work, arch, unpack):
             run([source / "configure", *arguments], source)
             run(["make", "-j", jobs], source)
             run(["make", "install"], source)
+        if name.startswith("icu4c"):
+            # ICU installs bare dylib IDs. PHP executes its CLI while building
+            # phar, before the final relocatable bundle has been assembled.
+            for library in sorted({p.resolve() for p in (prefix / "lib").glob("libicu*.dylib")}):
+                dependencies = subprocess.check_output(["otool", "-L", str(library)], text=True)
+                run(["install_name_tool", "-id", library, library], source)
+                for line in dependencies.splitlines()[1:]:
+                    dependency = line.strip().split(" (", 1)[0]
+                    if "/" not in dependency and (prefix / "lib" / dependency).is_file():
+                        run(["install_name_tool", "-change", dependency, prefix / "lib" / dependency, library], source)
+                run(["codesign", "--force", "--sign", "-", library], source)
         shutil.copy2(archive, output / ("php-dependency-" + filename))
         provenance.append({**dependency, "deploymentTarget": "14.0"})
     os.environ.update(environment)
