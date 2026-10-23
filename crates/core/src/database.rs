@@ -184,7 +184,9 @@ impl DatabaseManager {
                         .tempdir_in("/tmp")
                         .map_err(|error| error.to_string())
                 });
-                let socket = socket.as_ref().map_err(|error| anyhow::anyhow!(error))?;
+                let socket = socket
+                    .as_ref()
+                    .map_err(|error| anyhow::anyhow!("{error}"))?;
                 let mut args = args;
                 args.push(format!(
                     "--socket={}",
