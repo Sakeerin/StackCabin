@@ -29,6 +29,12 @@ main compiler deployment target does not lower the requirements of bundled
 Homebrew libraries. Rebuild incompatible dependencies for the supported baseline
 before publishing them.
 
+The PostgreSQL macOS builder compiles pinned OpenSSL/zlib sources with a 14.0
+deployment target and excludes Homebrew library flags. Their source archives,
+checksums and licenses accompany the package provenance. Other native components
+still need their dependency closures rebuilt for 14.0; inspect the measured
+minimum OS field rather than assuming the compiler setting covers every library.
+
 Windows PHP archives come from PHP's release manifest. Windows MariaDB and
 PostgreSQL portable archives come from MariaDB and EDB respectively. Catalog
 generation may fail when a publisher endpoint is unavailable; do not replace a

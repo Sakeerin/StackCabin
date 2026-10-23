@@ -15,6 +15,7 @@ import subprocess
 import tarfile
 import urllib.request
 from native_runtime_smoke import verify
+from postgres_macos_dependencies import build as build_postgres_dependencies
 
 
 def run(args, **kwargs):
@@ -182,6 +183,9 @@ def main():
     source = unpack(archive, source_dir)
     prefix = work / "prefix"
     jobs = str(min(os.cpu_count() or 2, 4))
+    dependencies = []
+    if system == "macos" and args.component == "postgres":
+        dependencies = build_postgres_dependencies(work, arch, unpack)
     if args.component == "php":
         flags = ["--enable-fpm", "--enable-mbstring", "--enable-intl", "--enable-bcmath", "--enable-exif", "--enable-opcache", "--enable-gd", "--with-jpeg", "--with-freetype", "--with-curl", "--with-openssl", "--with-sodium", "--with-zip", "--with-zlib", "--with-pdo-mysql=mysqlnd", "--with-mysqli=mysqlnd", "--with-pdo-pgsql", "--with-pgsql", "--with-pdo-sqlite", "--with-sqlite3"]
         if system == "macos":
@@ -240,7 +244,7 @@ def main():
         metadata["minimumOsVersion"] = minimum_macos(relocated_prefix)
     (output_dir / f"{identifier}.json").write_text(json.dumps(metadata, indent=2) + "\n")
     shutil.copy2(archive, output_dir / f"{identifier}-source.tar.gz")
-    (output_dir / f"{identifier}-provenance.json").write_text(json.dumps({"sourceUrl": args.source_url, "sourceSha256": args.source_sha256, "platform": platform.platform(), "verification": verification, "minimumOsVersion": metadata.get("minimumOsVersion")}, indent=2) + "\n")
+    (output_dir / f"{identifier}-provenance.json").write_text(json.dumps({"sourceUrl": args.source_url, "sourceSha256": args.source_sha256, "platform": platform.platform(), "verification": verification, "minimumOsVersion": metadata.get("minimumOsVersion"), "dependencies": dependencies}, indent=2) + "\n")
     print(package)
 
 
