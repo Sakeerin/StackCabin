@@ -25,6 +25,7 @@ permissions:
   contents: read
 jobs:
   build:
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -35,19 +36,31 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Verify native packaging helpers
+        run: python -m unittest discover -s scripts -p test_native_runtime.py -v
       - name: Linux build dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential cmake ninja-build pkg-config patchelf bison flex libssl-dev libcurl4-openssl-dev libonig-dev libicu-dev libxml2-dev libzip-dev libsodium-dev libsqlite3-dev libpq-dev libpng-dev libjpeg-dev libfreetype-dev zlib1g-dev libncurses-dev libaio-dev
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake ninja-build pkg-config patchelf bison flex libssl-dev libcurl4-openssl-dev libonig-dev libicu-dev libxml2-dev libzip-dev libsodium-dev libsqlite3-dev libpq-dev libpng-dev libjpeg-dev libfreetype-dev zlib1g-dev libncurses-dev libaio-dev libdbus-1-dev libsecret-1-dev dbus-x11 gnome-keyring
       - name: macOS build dependencies
         if: runner.os == 'macOS'
         run: |
-          brew install cmake pkg-config bison flex openssl@3 curl oniguruma icu4c libzip libsodium sqlite libpq jpeg-turbo freetype
-          for package in bison flex openssl@3 curl oniguruma icu4c libzip libsodium sqlite libpq jpeg-turbo freetype; do
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"
+          echo "CC=$(xcrun --find clang)" >> "$GITHUB_ENV"
+          echo "CXX=$(xcrun --find clang++)" >> "$GITHUB_ENV"
+          brew install cmake pkg-config bison flex openssl@3 curl oniguruma icu4c libzip libsodium sqlite libpq jpeg-turbo freetype libiconv libxml2 libpng zlib
+          for package in bison flex openssl@3 curl oniguruma icu4c libzip libsodium sqlite libpq jpeg-turbo freetype libiconv libxml2 libpng zlib; do
             prefix="$(brew --prefix "$package")"
             echo "$prefix/bin" >> "$GITHUB_PATH"
             pkgpaths="$prefix/lib/pkgconfig:${pkgpaths:-}"
+            includes="-I$prefix/include ${includes:-}"
+            libraries="-L$prefix/lib ${libraries:-}"
+            cmakepaths="$prefix;${cmakepaths:-}"
           done
           echo "PKG_CONFIG_PATH=$pkgpaths" >> "$GITHUB_ENV"
+          echo "CPPFLAGS=$includes" >> "$GITHUB_ENV"
+          echo "LDFLAGS=$libraries" >> "$GITHUB_ENV"
+          echo "CMAKE_PREFIX_PATH=$cmakepaths" >> "$GITHUB_ENV"
+          echo "MACOSX_DEPLOYMENT_TARGET=14.0" >> "$GITHUB_ENV"
       - name: Build and check relocatable package
         env:
           COMPONENT: ${{ inputs.component }}
@@ -57,7 +70,35 @@ jobs:
           RELEASE_BASE_URL: ${{ inputs.release_base_url }}
         shell: bash
         run: python scripts/build-native-runtime.py --component "$COMPONENT" --version "$VERSION" --source-url "$SOURCE_URL" --source-sha256 "$SOURCE_SHA256" --release-base-url "$RELEASE_BASE_URL"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Prepare signed integration-test catalog
+        env:
+          COMPONENT: ${{ inputs.component }}
+          VERSION: ${{ inputs.version }}
+        run: node scripts/prepare-native-integration.mjs
+      - name: Ephemeral macOS test keychain
+        if: runner.os == 'macOS' && inputs.component != 'php'
+        shell: bash
+        run: |
+          keychain="$RUNNER_TEMP/stackcabin-integration.keychain-db"
+          security create-keychain -p 'stackcabin-ci-only' "$keychain"
+          security unlock-keychain -p 'stackcabin-ci-only' "$keychain"
+          security default-keychain -d user -s "$keychain"
+          security list-keychains -d user -s "$keychain"
+      - name: Real core integration on macOS
+        if: runner.os == 'macOS'
+        run: cargo run -p stackcabin-core --example native-smoke
+      - name: Real core integration on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          export XDG_DATA_HOME="$RUNNER_TEMP/stackcabin-secret-service"
+          dbus-run-session -- bash -eu -c 'mkdir -p "$XDG_DATA_HOME"; printf "%s\n" "stackcabin-ci-only" | gnome-keyring-daemon --unlock --components=secrets; cargo run -p stackcabin-core --example native-smoke'
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.component }}-${{ matrix.os }}
+          name: ${{ inputs.component }}-${{ inputs.version }}-${{ matrix.os }}
           path: artifacts/runtimes/

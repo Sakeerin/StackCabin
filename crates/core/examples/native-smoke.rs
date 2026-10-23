@@ -83,6 +83,7 @@ async fn main() -> Result<()> {
     let projects_dir = root.join("projects");
     std::fs::create_dir_all(&projects_dir)?;
     let mut ids = vec![];
+    let branches = std::env::var("STACKCABIN_SMOKE_BRANCHES").ok();
     for (preset, branch) in [
         (Preset::Static, None),
         (Preset::Node, Some("22.")),
@@ -90,6 +91,13 @@ async fn main() -> Result<()> {
         (Preset::Php, Some("8.4.")),
         (Preset::Php, Some("8.5.")),
     ] {
+        if branch.is_some_and(|branch| {
+            branches
+                .as_ref()
+                .is_some_and(|selected| !selected.split(',').any(|item| item == branch))
+        }) {
+            continue;
+        }
         if preset == Preset::Static && !components.contains("caddy") {
             continue;
         }

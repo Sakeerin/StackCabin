@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **23 October 2026**, Windows x64.
+Development version: **0.1.0**, checked on **23 October 2026**.
 This is a working development preview. It has not passed the plan's simultaneous
 Windows/macOS/Ubuntu production acceptance gate.
 
@@ -37,6 +37,7 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | Core edge cases | Corrupted archives, traversal, signed catalog tampering, interrupted installation, Unicode registration, future schema, port conflicts, secret-free SQLite backup/restore and concurrent destination reservation |
 | Native lifecycle | Real HTTP grandchild, stop of its process tree, and cleanup after its parent exits unexpectedly |
 | Native Desktop E2E | 4 cases against real Rust IPC/SQLite; screenshot `stackcabin-desktop.png` |
+| Cross-platform CI | [Run 39912586708](https://github.com/Sakeerin/StackCabin/actions/runs/39912586708): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds and Desktop E2E |
 | Normal Windows package | Release executable starts without E2E plugins and initializes real SQLite metadata in an isolated directory |
 | Framework acceptance | Express, Vue, React, Nest, Next and Laravel dependency installation and actual HTTP; Laravel runs PHP and Vite together |
 | HMR scope | Vue/React transformed modules and HMR client are served through Caddy; browser edit-to-render HMR is still a release VM check |
@@ -55,6 +56,12 @@ update and persistence still use the real application and database.
    development catalog contains Node/Caddy/Composer/package managers/CA artifacts
    for all four platform/architecture targets, and PHP/database artifacts for
    Windows x64. Missing packages are shown as unavailable.
+   Initial Linux source builds for PHP 8.4/8.5 and PostgreSQL succeeded; this
+   alone does not establish relocated runtime or database acceptance. The native
+   pipeline now checks relocation, Unicode paths, PHP-FPM/SQLite, authenticated
+   database read/write/dump/restore, and installation through the actual Rust core.
+   Source archives and publisher checksums are pinned in
+   `runtime-catalog/source-archives.json`. CI uploads build artifacts only.
 2. Run native runtime, browser HMR, tray/Quit, abrupt-app-exit, disk-full,
    clean-machine online/offline installation and upgrade tests on every target VM.
    Local offline archive installation does not establish clean-OS compatibility.

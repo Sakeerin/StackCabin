@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import tarfile
 import urllib.request
+from native_runtime_smoke import verify
 
 
 def run(args, **kwargs):
@@ -31,39 +32,81 @@ def unpack(archive, destination):
             if not target.is_relative_to(destination.resolve()):
                 raise RuntimeError("Unsafe source archive")
         source.extractall(destination, filter="data")
-    return next(p for p in destination.iterdir() if p.is_dir())
+    roots = [p for p in destination.iterdir() if p.is_dir()]
+    if len(roots) != 1:
+        raise RuntimeError("Source archive must contain one top-level directory")
+    return roots[0]
+
+
+def binary_files(prefix):
+    magic = {b"\x7fELF", b"\xcf\xfa\xed\xfe", b"\xce\xfa\xed\xfe",
+             b"\xfe\xed\xfa\xcf", b"\xfe\xed\xfa\xce", b"\xca\xfe\xba\xbe"}
+    for file in prefix.rglob("*"):
+        if file.is_file():
+            with file.open("rb") as stream:
+                if stream.read(4) in magic:
+                    yield file
+
+
+def resolve_macho_dependency(binary, origin, dependency, prefix, rpaths):
+    if dependency.startswith("/"):
+        return Path(dependency).resolve()
+    if dependency.startswith("@loader_path/"):
+        candidates = [origin.parent / dependency.removeprefix("@loader_path/"),
+                      binary.parent / dependency.removeprefix("@loader_path/")]
+    elif dependency.startswith("@executable_path/"):
+        tail = dependency.removeprefix("@executable_path/")
+        candidates = [origin.parent / tail, prefix / "bin" / tail, prefix / "sbin" / tail]
+    elif dependency.startswith("@rpath/"):
+        tail = dependency.removeprefix("@rpath/")
+        candidates = []
+        for rpath in rpaths:
+            expanded = rpath.replace("@loader_path", str(origin.parent)).replace("@executable_path", str(origin.parent))
+            candidates.append(Path(expanded) / tail)
+        candidates.extend(prefix.rglob(Path(tail).name))
+    else:
+        raise RuntimeError(f"Unsupported Mach-O dependency: {dependency}")
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate.resolve()
+    raise RuntimeError(f"Unresolved Mach-O dependency {dependency} from {binary}")
 
 
 def bundle_libraries(prefix, system):
     """Copy non-system dependencies and rewrite loader paths after relocation."""
     lib = prefix / "lib"
     lib.mkdir(exist_ok=True)
-    queue = [p for p in prefix.rglob("*") if p.is_file() and (os.access(p, os.X_OK) or ".so" in p.name or p.suffix == ".dylib")]
+    queue = list(binary_files(prefix))
+    origins = {p: p for p in queue}
     visited = set()
     while queue:
         binary = queue.pop()
-        if binary in visited:
+        if binary.resolve() in visited:
             continue
-        visited.add(binary)
+        visited.add(binary.resolve())
         if system == "macos":
-            try:
-                dependencies = [line.strip().split(" (", 1)[0] for line in output(["otool", "-L", str(binary)]).splitlines()[1:]]
-            except subprocess.CalledProcessError:
-                continue
+            dependencies = [line.strip().split(" (", 1)[0] for line in output(["otool", "-L", str(binary)]).splitlines()[1:]]
+            rpaths = re.findall(r"cmd LC_RPATH\s+cmdsize \d+\s+path (.*?) \(offset", output(["otool", "-l", str(binary)]))
+            origin = origins.get(binary, binary)
             binary.chmod(binary.stat().st_mode | 0o200)
             for dependency in dependencies:
-                if dependency.startswith(("/usr/lib/", "/System/", "@")):
+                if dependency.startswith(("/usr/lib/", "/System/")):
                     continue
-                original = Path(dependency)
-                if not original.is_file() or original == binary:
+                original = resolve_macho_dependency(binary, origin, dependency, prefix, rpaths)
+                if original == origin.resolve():
                     continue
-                copied = lib / original.name
+                copied = original if original.is_relative_to(prefix) else lib / original.name
                 if copied.resolve() != original.resolve() and not copied.exists():
                     shutil.copy2(original.resolve(), copied)
+                    origins[copied] = original
                     queue.append(copied)
+                elif copied.exists() and copied.resolve() != original.resolve():
+                    previous = origins.get(copied, copied)
+                    if hashlib.file_digest(previous.open("rb"), "sha256").hexdigest() != hashlib.file_digest(original.open("rb"), "sha256").hexdigest():
+                        raise RuntimeError(f"Conflicting bundled libraries: {copied.name}")
                 relative = os.path.relpath(copied, binary.parent)
                 run(["install_name_tool", "-change", dependency, f"@loader_path/{relative}", binary])
-            if binary.suffix == ".dylib":
+            if binary.suffix in (".dylib", ".so"):
                 run(["install_name_tool", "-id", f"@rpath/{binary.name}", binary])
             run(["codesign", "--force", "--sign", "-", binary])
         else:
@@ -71,6 +114,8 @@ def bundle_libraries(prefix, system):
                 dependencies = output(["ldd", str(binary)])
             except subprocess.CalledProcessError:
                 continue
+            if "=> not found" in dependencies:
+                raise RuntimeError(f"Unresolved ELF dependencies:\n{dependencies}")
             for soname, source in re.findall(r"\s*(\S+) => (/\S+)", dependencies):
                 if re.match(r"^(libc|libm|libpthread|libdl|librt|ld-linux|libresolv)\.so", soname):
                     continue
@@ -82,6 +127,16 @@ def bundle_libraries(prefix, system):
             run(["patchelf", "--set-rpath", f"$ORIGIN/{relative}:$ORIGIN", binary])
 
 
+def minimum_macos(prefix):
+    versions = []
+    for binary in binary_files(prefix):
+        commands = output(["otool", "-l", binary])
+        values = re.findall(r"\bminos (\d+(?:\.\d+)+)", commands)
+        values += re.findall(r"cmd LC_VERSION_MIN_MACOSX\s+cmdsize \d+\s+version (\d+(?:\.\d+)+)", commands)
+        versions.extend(tuple(map(int, value.split("."))) for value in values)
+    return ".".join(map(str, max(versions))) if versions else None
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--component", choices=["php", "mariadb", "postgres"], required=True)
@@ -91,6 +146,10 @@ def main():
     parser.add_argument("--release-base-url", required=True)
     parser.add_argument("--work", default=".local/native-build")
     args = parser.parse_args()
+    if platform.system() not in ("Darwin", "Linux"):
+        raise RuntimeError("Native source packages must be built on macOS or Linux")
+    if not re.fullmatch(r"\d+\.\d+(?:\.\d+)?", args.version):
+        raise RuntimeError("Use an exact numeric publisher version")
     if not re.fullmatch(r"[0-9a-f]{64}", args.source_sha256):
         raise RuntimeError("A reviewed publisher SHA-256 is required")
     if not args.source_url.startswith("https://") or not args.release_base_url.startswith("https://"):
@@ -114,6 +173,8 @@ def main():
     jobs = str(min(os.cpu_count() or 2, 4))
     if args.component == "php":
         flags = ["--enable-fpm", "--enable-mbstring", "--enable-intl", "--enable-bcmath", "--enable-exif", "--enable-opcache", "--enable-gd", "--with-jpeg", "--with-freetype", "--with-curl", "--with-openssl", "--with-sodium", "--with-zip", "--with-zlib", "--with-pdo-mysql=mysqlnd", "--with-mysqli=mysqlnd", "--with-pdo-pgsql", "--with-pgsql", "--with-pdo-sqlite", "--with-sqlite3"]
+        if system == "macos":
+            flags.append(f"--with-iconv={output(['brew', '--prefix', 'libiconv']).strip()}")
         run([source / "configure", f"--prefix={prefix}", *flags], cwd=source)
         run(["make", "-j", jobs], cwd=source)
         run(["make", "install"], cwd=source)
@@ -127,7 +188,10 @@ def main():
         license_name = "PostgreSQL"
     else:
         build = work / "build"
-        run(["cmake", "-S", source, "-B", build, f"-DCMAKE_INSTALL_PREFIX={prefix}", "-DINSTALL_LAYOUT=STANDALONE", "-DCMAKE_BUILD_TYPE=Release", "-DWITH_SSL=system", "-DWITH_UNIT_TESTS=OFF", "-DWITH_EMBEDDED_SERVER=OFF", "-DWITH_WSREP=OFF", "-DPLUGIN_ROCKSDB=NO", "-DWITH_NUMA=OFF"])
+        flags = []
+        if system == "macos":
+            flags = [f"-DCMAKE_OSX_SYSROOT={os.environ['SDKROOT']}", "-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0"]
+        run(["cmake", "-S", source, "-B", build, f"-DCMAKE_INSTALL_PREFIX={prefix}", "-DINSTALL_LAYOUT=STANDALONE", "-DCMAKE_BUILD_TYPE=Release", "-DWITH_SSL=system", "-DWITH_UNIT_TESTS=OFF", "-DWITH_EMBEDDED_SERVER=OFF", "-DWITH_WSREP=OFF", "-DPLUGIN_ROCKSDB=NO", "-DWITH_NUMA=OFF", *flags])
         run(["cmake", "--build", build, "--parallel", jobs])
         run(["cmake", "--install", build])
         executables = {tool: f"bin/{tool}" for tool in ["mariadbd", "mariadb", "mariadb-dump"]}
@@ -149,11 +213,22 @@ def main():
     # Dereference links so the runtime installer never needs to trust archive symlinks.
     with tarfile.open(package, "w:gz", dereference=True) as bundle:
         bundle.add(prefix, arcname=identifier)
+    relocated = work / "relocated package ทดสอบ"
+    relocated.mkdir()
+    relocated_prefix = unpack(package, relocated)
+    hidden_prefix = work / "build-prefix-hidden"
+    prefix.rename(hidden_prefix)
+    try:
+        verification = verify(relocated_prefix, args.component, args.version)
+    finally:
+        hidden_prefix.rename(prefix)
     digest = hashlib.file_digest(package.open("rb"), "sha256").hexdigest()
     metadata = {"id": identifier, "component": args.component, "version": args.version, "platform": system, "arch": arch, "url": f"{args.release_base_url.rstrip('/')}/{package.name}", "sha256": digest, "archive": "tar.gz", "stripComponents": 1, "executables": executables, "license": license_name, "sourceUrl": args.source_url, "size": package.stat().st_size}
+    if system == "macos":
+        metadata["minimumOsVersion"] = minimum_macos(relocated_prefix)
     (output_dir / f"{identifier}.json").write_text(json.dumps(metadata, indent=2) + "\n")
     shutil.copy2(archive, output_dir / f"{identifier}-source.tar.gz")
-    (output_dir / f"{identifier}-provenance.json").write_text(json.dumps({"sourceUrl": args.source_url, "sourceSha256": args.source_sha256, "platform": platform.platform()}, indent=2) + "\n")
+    (output_dir / f"{identifier}-provenance.json").write_text(json.dumps({"sourceUrl": args.source_url, "sourceSha256": args.source_sha256, "platform": platform.platform(), "verification": verification, "minimumOsVersion": metadata.get("minimumOsVersion")}, indent=2) + "\n")
     print(package)
 
 

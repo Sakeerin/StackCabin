@@ -1,0 +1,33 @@
+{
+  "reviewedAt": "2026-10-23T06:53:45.573Z",
+  "sources": [
+    {
+      "component": "php",
+      "version": "8.4.27",
+      "sourceUrl": "https://www.php.net/distributions/php-8.4.27.tar.gz",
+      "sourceSha256": "5bafed9994c1a49796b25b5f61c22c9183bfe046b6acc7b363842d03c77f972f",
+      "checksumUrl": "https://www.php.net/releases/index.php?json&version=8.4.27"
+    },
+    {
+      "component": "php",
+      "version": "8.5.12",
+      "sourceUrl": "https://www.php.net/distributions/php-8.5.12.tar.gz",
+      "sourceSha256": "81a0f450349e84b08eb43faa85f8a4c835684f3cc1c50471775d1317a046c525",
+      "checksumUrl": "https://www.php.net/releases/index.php?json&version=8.5.12"
+    },
+    {
+      "component": "mariadb",
+      "version": "12.3.3",
+      "sourceUrl": "https://archive.mariadb.org/mariadb-12.3.3/source/mariadb-12.3.3.tar.gz",
+      "sourceSha256": "e99d739fd4a55f9a11dea7bd2287a262673e287550af3071c8469dd2bec0c163",
+      "checksumUrl": "https://archive.mariadb.org/mariadb-12.3.3/source/sha256sums.txt"
+    },
+    {
+      "component": "postgres",
+      "version": "18.6",
+      "sourceUrl": "https://ftp.postgresql.org/pub/source/v18.6/postgresql-18.6.tar.gz",
+      "sourceSha256": "983ee554ec53dbeb9b70797bef9fcf4e67e117e7e48ca1463cc80b3ff8e8ff3f",
+      "checksumUrl": "https://ftp.postgresql.org/pub/source/v18.6/postgresql-18.6.tar.gz.sha256"
+    }
+  ]
+}

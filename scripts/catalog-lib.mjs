@@ -123,6 +123,25 @@ export async function verifyCatalog(
       throw new Error(`Invalid integrity metadata: ${a.id}`);
   }
   if (release) {
+    for (const artifact of catalog.artifacts) {
+      if (artifact.platform === "macos" && artifact.minimumOsVersion) {
+        const [major, minor = 0] = artifact.minimumOsVersion
+          .split(".")
+          .map(Number);
+        if (
+          !Number.isFinite(major) ||
+          major > 14 ||
+          (major === 14 && minor > 0)
+        )
+          throw new Error(
+            "Release blocked: " +
+              artifact.id +
+              " requires macOS " +
+              artifact.minimumOsVersion +
+              "; the supported baseline is 14.0.",
+          );
+      }
+    }
     const provenance = JSON.parse(
       await readFile(path.join(directory, "provenance.json"), "utf8"),
     );

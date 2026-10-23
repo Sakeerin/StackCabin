@@ -21,6 +21,8 @@ pub struct DatabaseManager {
     ports: Mutex<BTreeMap<String, u16>>,
     transition: Mutex<()>,
     postgres_alias: std::sync::OnceLock<std::result::Result<PathBuf, String>>,
+    #[cfg(unix)]
+    mariadb_socket: std::sync::OnceLock<std::result::Result<tempfile::TempDir, String>>,
 }
 type ClientCommand = (
     PathBuf,
@@ -41,6 +43,8 @@ impl DatabaseManager {
             ports: Mutex::new(ports),
             transition: Mutex::new(()),
             postgres_alias: Default::default(),
+            #[cfg(unix)]
+            mariadb_socket: Default::default(),
         }
     }
     pub async fn list(&self) -> Vec<ServiceInfo> {
@@ -162,21 +166,34 @@ impl DatabaseManager {
             let init_path = init_file.0.clone();
             bootstrap_secret = Some(init_file);
             let executable = self.runtime.latest_installed(id, "mariadbd")?;
+            let args = vec![
+                "--no-defaults".into(),
+                format!("--datadir={}", data.display()),
+                format!("--port={port}"),
+                "--bind-address=127.0.0.1".into(),
+                "--skip-name-resolve".into(),
+                format!("--init-file={}", init_path.display()),
+            ];
+            #[cfg(unix)]
+            let args = {
+                // A private, short socket path avoids other database instances and
+                // macOS's Unix socket length limit, including Unicode app paths.
+                let socket = self.mariadb_socket.get_or_init(|| {
+                    tempfile::Builder::new()
+                        .prefix("sc-db-")
+                        .tempdir_in("/tmp")
+                        .map_err(|error| error.to_string())
+                });
+                let socket = socket.as_ref().map_err(|error| anyhow::anyhow!(error))?;
+                let mut args = args;
+                args.push(format!(
+                    "--socket={}",
+                    socket.path().join("db.sock").display()
+                ));
+                args
+            };
             self.supervisor
-                .start_service(
-                    id,
-                    &executable,
-                    &[
-                        "--no-defaults".into(),
-                        format!("--datadir={}", data.display()),
-                        format!("--port={port}"),
-                        "--bind-address=127.0.0.1".into(),
-                        "--skip-name-resolve".into(),
-                        format!("--init-file={}", init_path.display()),
-                    ],
-                    &BTreeMap::new(),
-                    port,
-                )
+                .start_service(id, &executable, &args, &BTreeMap::new(), port)
                 .await?;
         }
         let mut authenticated = false;
