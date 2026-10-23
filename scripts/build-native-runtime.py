@@ -193,6 +193,9 @@ def main():
         flags = ["--enable-fpm", "--enable-mbstring", "--enable-intl", "--enable-bcmath", "--enable-exif", "--enable-opcache", "--enable-gd", "--with-jpeg", "--with-freetype", "--with-curl", "--with-openssl", "--with-sodium", "--with-zip", "--with-zlib", "--with-pdo-mysql=mysqlnd", "--with-mysqli=mysqlnd", "--with-pdo-pgsql", "--with-pgsql", "--with-pdo-sqlite", "--with-sqlite3"]
         if system == "macos":
             flags.append(f"--with-iconv={work / 'dependencies'}")
+            # Apple's resolver symbols are not part of libSystem when linking
+            # against the isolated library prefix instead of Homebrew flags.
+            os.environ["LIBS"] = (os.environ.get("LIBS", "") + " -lresolv").strip()
         run([source / "configure", f"--prefix={prefix}", *flags], cwd=source)
         run(["make", "-j", jobs], cwd=source)
         run(["make", "install"], cwd=source)
