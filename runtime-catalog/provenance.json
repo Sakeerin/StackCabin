@@ -1,0 +1,198 @@
+{
+  "developmentKey": true,
+  "generatedAt": "2026-10-23T05:07:53.178Z",
+  "artifacts": [
+    {
+      "id": "pnpm-10.34.7-windows-x64",
+      "url": "https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz",
+      "sourceUrl": "https://registry.npmjs.org/pnpm",
+      "sha256": "c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694"
+    },
+    {
+      "id": "pnpm-10.34.7-macos-x64",
+      "url": "https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz",
+      "sourceUrl": "https://registry.npmjs.org/pnpm",
+      "sha256": "c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694"
+    },
+    {
+      "id": "pnpm-10.34.7-macos-arm64",
+      "url": "https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz",
+      "sourceUrl": "https://registry.npmjs.org/pnpm",
+      "sha256": "c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694"
+    },
+    {
+      "id": "pnpm-10.34.7-linux-x64",
+      "url": "https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz",
+      "sourceUrl": "https://registry.npmjs.org/pnpm",
+      "sha256": "c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694"
+    },
+    {
+      "id": "node-24.22.1-windows-x64",
+      "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-win-x64.zip",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "sha256": "d2046d28c2c3dcd211ac5145c0bf30e2047ef9dfb306693c8c6e2eccd8b95fa5"
+    },
+    {
+      "id": "node-24.22.1-macos-x64",
+      "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-darwin-x64.tar.gz",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "sha256": "d132557e7ee2b85af08b0c8c34338e65c6430f2238d01f727728ef42dc83b035"
+    },
+    {
+      "id": "node-24.22.1-macos-arm64",
+      "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-darwin-arm64.tar.gz",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "sha256": "89c682593d76cd44233fa53b1563264e7de9cbb189cad169135c5b4fadfbc0a7"
+    },
+    {
+      "id": "node-24.22.1-linux-x64",
+      "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-linux-x64.tar.gz",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "sha256": "eb6728e77c576a35162c122c45ccadf224d89ff00abc8dae46cc2897c6002d7c"
+    },
+    {
+      "id": "node-22.23.4-windows-x64",
+      "url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-win-x64.zip",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "sha256": "cbc74b5e0982c9dbb41525fd8fb5dcd32fbee237863f7829072f4639a1ce5f20"
+    },
+    {
+      "id": "node-22.23.4-macos-x64",
+      "url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-darwin-x64.tar.gz",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "sha256": "efcc2b0db6f94bf53eddb038fe2b370277a042bd29e4f19b8f8e23598795b819"
+    },
+    {
+      "id": "node-22.23.4-macos-arm64",
+      "url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-darwin-arm64.tar.gz",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "sha256": "c9e1dbc748b33ed2d14f42445191ecaf14c56259c7a9a26d0042c49ec2b66428"
+    },
+    {
+      "id": "node-22.23.4-linux-x64",
+      "url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-linux-x64.tar.gz",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "sha256": "b8492284c76a54baf58d61668dd0e41ee0fc98adabf9503d30f05d08f55b4406"
+    },
+    {
+      "id": "caddy-2.11.7-windows-x64",
+      "url": "https://github.com/caddyserver/caddy/releases/download/v2.11.7/caddy_2.11.7_windows_amd64.zip",
+      "sourceUrl": "https://github.com/caddyserver/caddy",
+      "sha256": "0a1edc0b799512051c57071ce0e798d3f2cf67dc98171366f1d2b326072e3b06"
+    },
+    {
+      "id": "caddy-2.11.7-macos-x64",
+      "url": "https://github.com/caddyserver/caddy/releases/download/v2.11.7/caddy_2.11.7_mac_amd64.tar.gz",
+      "sourceUrl": "https://github.com/caddyserver/caddy",
+      "sha256": "110c53e5c093e4cfce6eda787f94f23bef913c309f620fab26b4f678031841ad"
+    },
+    {
+      "id": "caddy-2.11.7-macos-arm64",
+      "url": "https://github.com/caddyserver/caddy/releases/download/v2.11.7/caddy_2.11.7_mac_arm64.tar.gz",
+      "sourceUrl": "https://github.com/caddyserver/caddy",
+      "sha256": "cda3030e5d5b13eb9f0b6fb541037f633bddd958c070c5f561d7a5cccb581665"
+    },
+    {
+      "id": "caddy-2.11.7-linux-x64",
+      "url": "https://github.com/caddyserver/caddy/releases/download/v2.11.7/caddy_2.11.7_linux_amd64.tar.gz",
+      "sourceUrl": "https://github.com/caddyserver/caddy",
+      "sha256": "727b91701a392de6ebc5027509f548bf39979e5216340d0faed8fa5e69c84f8b"
+    },
+    {
+      "id": "php-8.5.12-windows-x64",
+      "url": "https://downloads.php.net/~windows/releases/php-8.5.12-nts-Win32-vs17-x64.zip",
+      "sourceUrl": "https://www.php.net/downloads.php",
+      "sha256": "2ab242af38d76bdf417cde5ec048b1bcd76a5a40f39a3d15d5f046f38571c477"
+    },
+    {
+      "id": "php-8.4.27-windows-x64",
+      "url": "https://downloads.php.net/~windows/releases/php-8.4.27-nts-Win32-vs17-x64.zip",
+      "sourceUrl": "https://www.php.net/downloads.php",
+      "sha256": "93bd8a815a52156606fb906d0573437908c61f96e2cc52c03a51e36a41bf5236"
+    },
+    {
+      "id": "composer-2.10.3-windows-x64",
+      "url": "https://getcomposer.org/download/2.10.3/composer.phar",
+      "sourceUrl": "https://github.com/composer/composer",
+      "sha256": "7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6"
+    },
+    {
+      "id": "composer-2.10.3-macos-x64",
+      "url": "https://getcomposer.org/download/2.10.3/composer.phar",
+      "sourceUrl": "https://github.com/composer/composer",
+      "sha256": "7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6"
+    },
+    {
+      "id": "composer-2.10.3-macos-arm64",
+      "url": "https://getcomposer.org/download/2.10.3/composer.phar",
+      "sourceUrl": "https://github.com/composer/composer",
+      "sha256": "7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6"
+    },
+    {
+      "id": "composer-2.10.3-linux-x64",
+      "url": "https://getcomposer.org/download/2.10.3/composer.phar",
+      "sourceUrl": "https://github.com/composer/composer",
+      "sha256": "7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6"
+    },
+    {
+      "id": "yarn-1.22.22-windows-x64",
+      "url": "https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz",
+      "sourceUrl": "https://registry.npmjs.org/yarn",
+      "sha256": "c17d3797fb9a9115bf375e31bfd30058cac6bc9c3b8807a3d8cb2094794b51ca"
+    },
+    {
+      "id": "yarn-1.22.22-macos-x64",
+      "url": "https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz",
+      "sourceUrl": "https://registry.npmjs.org/yarn",
+      "sha256": "c17d3797fb9a9115bf375e31bfd30058cac6bc9c3b8807a3d8cb2094794b51ca"
+    },
+    {
+      "id": "yarn-1.22.22-macos-arm64",
+      "url": "https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz",
+      "sourceUrl": "https://registry.npmjs.org/yarn",
+      "sha256": "c17d3797fb9a9115bf375e31bfd30058cac6bc9c3b8807a3d8cb2094794b51ca"
+    },
+    {
+      "id": "yarn-1.22.22-linux-x64",
+      "url": "https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz",
+      "sourceUrl": "https://registry.npmjs.org/yarn",
+      "sha256": "c17d3797fb9a9115bf375e31bfd30058cac6bc9c3b8807a3d8cb2094794b51ca"
+    },
+    {
+      "id": "cacert-796f1389bfea-windows-x64",
+      "url": "https://curl.se/ca/cacert.pem",
+      "sourceUrl": "https://curl.se/docs/caextract.html",
+      "sha256": "796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe"
+    },
+    {
+      "id": "cacert-796f1389bfea-macos-x64",
+      "url": "https://curl.se/ca/cacert.pem",
+      "sourceUrl": "https://curl.se/docs/caextract.html",
+      "sha256": "796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe"
+    },
+    {
+      "id": "cacert-796f1389bfea-macos-arm64",
+      "url": "https://curl.se/ca/cacert.pem",
+      "sourceUrl": "https://curl.se/docs/caextract.html",
+      "sha256": "796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe"
+    },
+    {
+      "id": "cacert-796f1389bfea-linux-x64",
+      "url": "https://curl.se/ca/cacert.pem",
+      "sourceUrl": "https://curl.se/docs/caextract.html",
+      "sha256": "796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe"
+    },
+    {
+      "id": "mariadb-12.3.3-windows-x64",
+      "url": "https://archive.mariadb.org/mariadb-12.3.3/winx64-packages/mariadb-12.3.3-winx64.zip",
+      "sourceUrl": "https://github.com/MariaDB/server",
+      "sha256": "4b5706b47148b47c8f36963c8352d1ddee37a1287b4690428f631a74b09b85a0"
+    },
+    {
+      "id": "postgres-18.6-windows-x64",
+      "url": "https://get.enterprisedb.com/postgresql/postgresql-18.6-1-windows-x64-binaries.zip",
+      "sourceUrl": "https://www.postgresql.org/download/windows/",
+      "sha256": "fbe23da234ee31547bf8a36d29dfd81e82b849df2d2b78d2eecb43d360252f8c"
+    }
+  ]
+}

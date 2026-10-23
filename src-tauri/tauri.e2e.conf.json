@@ -1,0 +1,1 @@
+{"build":{"beforeBuildCommand":"npm run build:e2e"},"app":{"withGlobalTauri":true,"security":{"capabilities":["main-window",{"identifier":"desktop-e2e","windows":["main"],"permissions":["wdio:default","wdio-webdriver:default"]}]}}}

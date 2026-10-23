@@ -1,0 +1,93 @@
+# Release preparation
+
+The application source can build local development installers. Publishing a
+supported three-platform release additionally requires the following concrete
+artifacts and validation; repository credentials and signing identities are not
+embedded in this checkout.
+
+## 1. Complete the verified runtime matrix
+
+Use the `Build reviewed native runtime` GitHub Actions workflow for PHP 8.4/8.5,
+MariaDB 12.3, and PostgreSQL 18 on Ubuntu x64, macOS x64, and macOS arm64. Supply
+the exact publisher source URL and reviewed SHA-256. The workflow builds packages
+and uploads artifacts without publishing them. It bundles non-system libraries,
+rewrites loader paths, verifies required PHP extensions, and includes the source
+archive and provenance alongside each binary archive.
+
+Windows PHP archives come from PHP's release manifest. Windows MariaDB and
+PostgreSQL portable archives come from MariaDB and EDB respectively. Catalog
+generation may fail when a publisher endpoint is unavailable; do not replace a
+missing hash with a guessed value. Review the resulting executables and run the
+native smoke suite before signing any package into the production catalog.
+
+Merge native artifact JSON objects into one JSON array and pass it as
+`--extra=artifacts.json` to the catalog builder. Host archives at the exact HTTPS
+locations in those objects. Preserve required third-party notices and source
+distribution obligations with the corresponding artifact release.
+
+## 2. Establish the production trust root
+
+Generate an Ed25519 signing key outside the repository. Supply its PEM content as
+`STACKCABIN_CATALOG_PRIVATE_KEY`, run the builder without `--dev`, and review the
+catalog/public-key change. The private key must remain in release secrets. Never
+distribute the local development key.
+
+```sh
+node scripts/build-catalog.mjs --extra=artifacts.json
+node scripts/verify-catalog.mjs --release
+```
+
+The release gate rejects the development catalog and requires PHP 8.4/8.5,
+Node 22/24, Caddy, Composer, MariaDB, PostgreSQL, pnpm, and Yarn for every target.
+Every target must run both the native runtime smoke suite and the desktop E2E
+suite. A source build alone does not establish runtime compatibility.
+
+## 3. Prepare installer variants
+
+- Windows: sign the executable and installer using the release certificate;
+  configure Tauri's Windows signing settings. The normal installer downloads
+  WebView2 if necessary. An offline installer must override
+  `bundle.windows.webviewInstallMode` to `{"type":"offlineInstaller"}` so the
+  full WebView2 payload is included. Include the officially signed Visual C++
+  2015–2022 x64 redistributable for PHP and database binaries.
+- macOS: supply the Apple signing identity/certificate and notarization
+  credentials. Build and test Intel and Apple Silicon separately.
+- Ubuntu: build against the oldest supported Ubuntu baseline. Verify the
+  `.deb` dependencies and AppImage on both 22.04 and 24.04. Include the required
+  library packages for a clean offline machine or use the bundled AppImage with
+  extraction-and-run fallback when FUSE is unavailable.
+
+Create the offline pack with `scripts/offline-pack.mjs`. On Windows, run
+`scripts/windows-offline-bundle.ps1` after building the installer; it downloads
+and verifies Microsoft's signed full WebView2/Visual C++ payloads and generates
+an offline install script with a checksum manifest. It does not execute installers.
+Test the resulting complete folder with networking disabled.
+The offline runtime pack by itself does not install OS prerequisites or arbitrary
+framework dependencies.
+
+`npm run licenses` generates the bundled npm/Cargo license texts and runtime
+source inventory. Audit target-specific packages that are not cached on the build
+machine, bundled runtime libraries, and corresponding-source obligations before
+public distribution. For Microsoft prerequisites, review the publisher's
+[WebView2 deployment terms](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution)
+and [redistributable guidance](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist).
+
+The `Package reviewed release` workflow uploads installer artifacts only. It does
+not create a public release or publish to GitHub automatically. App updater
+distribution is not enabled until a maintained signed update endpoint and release
+keys are configured; runtime catalog signing is a separate trust boundary.
+
+## 4. Acceptance gate
+
+On fresh VMs for every supported OS/architecture:
+
+1. Install online and offline with no PHP/Node/database tools on PATH.
+2. Start every preset; verify Vue/React/Next HMR and concurrent PHP/Node versions.
+3. Exercise port conflicts, child crashes, app termination, and process-tree cleanup.
+4. Provision database users, write data, back up, and restore into a new identity.
+5. Test Thai/spaced paths, download cancellation, corrupted archives, and disk-full
+   failure without publishing a valid receipt.
+6. Upgrade the application and confirm existing manifests, credentials, and
+   database data remain usable.
+
+Only then mark that platform supported and publish its signed installer.

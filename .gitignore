@@ -1,0 +1,17 @@
+node_modules/
+dist/
+target/
+.local/
+artifacts/
+*.log
+.env
+.env.*
+!.env.example
+src-tauri/gen/
+coverage/
+*.tsbuildinfo
+test-results/
+playwright-report/
+*.pfx
+*.p12
+*.key

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "StackCabin",
+  "version": "0.1.0",
+  "identifier": "dev.stackcabin.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "StackCabin",
+        "width": 1380,
+        "height": 900,
+        "minWidth": 1000,
+        "minHeight": 680,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost data:; style-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'; frame-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "shortDescription": "Your development stack, ready to run.",
+    "category": "DeveloperTool",
+    "icon": ["icons/icon.png", "icons/icon.ico"],
+    "resources": [
+      "../runtime-catalog/*",
+      "../resources/THIRD_PARTY_NOTICES.txt",
+      "../LICENSE"
+    ],
+    "windows": {
+      "nsis": { "installMode": "currentUser" },
+      "webviewInstallMode": { "type": "downloadBootstrapper" }
+    },
+    "macOS": { "minimumSystemVersion": "14.0" },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0",
+          "libayatana-appindicator3-1",
+          "libsecret-1-0"
+        ]
+      }
+    }
+  }
+}

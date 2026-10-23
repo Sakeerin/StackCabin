@@ -1,0 +1,63 @@
+name: Build reviewed native runtime
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        type: choice
+        options: [php, mariadb, postgres]
+        required: true
+      version:
+        type: string
+        required: true
+      source_url:
+        description: Publisher source tarball URL
+        type: string
+        required: true
+      source_sha256:
+        description: Reviewed publisher SHA-256
+        type: string
+        required: true
+      release_base_url:
+        description: Future HTTPS location; this workflow uploads artifacts only
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake ninja-build pkg-config patchelf bison flex libssl-dev libcurl4-openssl-dev libonig-dev libicu-dev libxml2-dev libzip-dev libsodium-dev libsqlite3-dev libpq-dev libpng-dev libjpeg-dev libfreetype-dev zlib1g-dev libncurses-dev libaio-dev
+      - name: macOS build dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake pkg-config bison flex openssl@3 curl oniguruma icu4c libzip libsodium sqlite libpq jpeg-turbo freetype
+          for package in bison flex openssl@3 curl oniguruma icu4c libzip libsodium sqlite libpq jpeg-turbo freetype; do
+            prefix="$(brew --prefix "$package")"
+            echo "$prefix/bin" >> "$GITHUB_PATH"
+            pkgpaths="$prefix/lib/pkgconfig:${pkgpaths:-}"
+          done
+          echo "PKG_CONFIG_PATH=$pkgpaths" >> "$GITHUB_ENV"
+      - name: Build and check relocatable package
+        env:
+          COMPONENT: ${{ inputs.component }}
+          VERSION: ${{ inputs.version }}
+          SOURCE_URL: ${{ inputs.source_url }}
+          SOURCE_SHA256: ${{ inputs.source_sha256 }}
+          RELEASE_BASE_URL: ${{ inputs.release_base_url }}
+        shell: bash
+        run: python scripts/build-native-runtime.py --component "$COMPONENT" --version "$VERSION" --source-url "$SOURCE_URL" --source-sha256 "$SOURCE_SHA256" --release-base-url "$RELEASE_BASE_URL"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.component }}-${{ matrix.os }}
+          path: artifacts/runtimes/

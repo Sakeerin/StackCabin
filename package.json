@@ -1,0 +1,53 @@
+{
+  "name": "stackcabin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build && node scripts/third-party-notices.mjs",
+    "build:e2e": "node scripts/build-e2e-frontend.mjs",
+    "preview": "vite preview --host 127.0.0.1",
+    "tauri": "tauri",
+    "desktop": "tauri dev",
+    "desktop:build": "tauri build",
+    "test": "vitest run",
+    "test:core": "cargo test -p stackcabin-core",
+    "test:desktop": "wdio run ./wdio.conf.mjs",
+    "desktop:test:build": "tauri build --debug --no-bundle --features e2e --config src-tauri/tauri.e2e.conf.json",
+    "types": "cargo run -p stackcabin-core --bin export-types",
+    "catalog:build": "node scripts/build-catalog.mjs",
+    "catalog:verify": "node scripts/verify-catalog.mjs",
+    "licenses": "node scripts/third-party-notices.mjs",
+    "offline:pack": "node scripts/offline-pack.mjs",
+    "check": "npm run build && npm test && npm run test:core"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/plugin-dialog": "^2.4.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.8.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.4.0",
+    "@wdio/cli": "^9.32.0",
+    "@wdio/local-runner": "^9.32.0",
+    "@wdio/mocha-framework": "^9.32.0",
+    "@wdio/spec-reporter": "^9.32.0",
+    "@wdio/tauri-plugin": "^1.5.0",
+    "@wdio/tauri-service": "^1.5.0",
+    "jsdom": "^26.1.0",
+    "prettier": "^3.9.10",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^3.2.0"
+  }
+}

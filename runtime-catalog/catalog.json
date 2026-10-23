@@ -1,0 +1,567 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-23T05:07:53.174Z",
+  "artifacts": [
+    {
+      "id": "pnpm-10.34.7-windows-x64",
+      "component": "pnpm",
+      "version": "10.34.7",
+      "platform": "windows",
+      "arch": "x64",
+      "url": "https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz",
+      "sha256": "c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694",
+      "archive": "tar.gz",
+      "stripComponents": 1,
+      "executables": {
+        "pnpm": "bin/pnpm.cjs"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://registry.npmjs.org/pnpm",
+      "size": 4894868
+    },
+    {
+      "id": "pnpm-10.34.7-macos-x64",
+      "component": "pnpm",
+      "version": "10.34.7",
+      "platform": "macos",
+      "arch": "x64",
+      "url": "https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz",
+      "sha256": "c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694",
+      "archive": "tar.gz",
+      "stripComponents": 1,
+      "executables": {
+        "pnpm": "bin/pnpm.cjs"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://registry.npmjs.org/pnpm",
+      "size": 4894868
+    },
+    {
+      "id": "pnpm-10.34.7-macos-arm64",
+      "component": "pnpm",
+      "version": "10.34.7",
+      "platform": "macos",
+      "arch": "arm64",
+      "url": "https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz",
+      "sha256": "c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694",
+      "archive": "tar.gz",
+      "stripComponents": 1,
+      "executables": {
+        "pnpm": "bin/pnpm.cjs"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://registry.npmjs.org/pnpm",
+      "size": 4894868
+    },
+    {
+      "id": "pnpm-10.34.7-linux-x64",
+      "component": "pnpm",
+      "version": "10.34.7",
+      "platform": "linux",
+      "arch": "x64",
+      "url": "https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz",
+      "sha256": "c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694",
+      "archive": "tar.gz",
+      "stripComponents": 1,
+      "executables": {
+        "pnpm": "bin/pnpm.cjs"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://registry.npmjs.org/pnpm",
+      "size": 4894868
+    },
+    {
+      "id": "node-24.22.1-windows-x64",
+      "component": "node",
+      "version": "24.22.1",
+      "platform": "windows",
+      "arch": "x64",
+      "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-win-x64.zip",
+      "sha256": "d2046d28c2c3dcd211ac5145c0bf30e2047ef9dfb306693c8c6e2eccd8b95fa5",
+      "archive": "zip",
+      "stripComponents": 1,
+      "executables": {
+        "node": "node.exe",
+        "npm": "node_modules/npm/bin/npm-cli.js"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "size": 0
+    },
+    {
+      "id": "node-24.22.1-macos-x64",
+      "component": "node",
+      "version": "24.22.1",
+      "platform": "macos",
+      "arch": "x64",
+      "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-darwin-x64.tar.gz",
+      "sha256": "d132557e7ee2b85af08b0c8c34338e65c6430f2238d01f727728ef42dc83b035",
+      "archive": "tar.gz",
+      "stripComponents": 1,
+      "executables": {
+        "node": "bin/node",
+        "npm": "lib/node_modules/npm/bin/npm-cli.js"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "size": 0
+    },
+    {
+      "id": "node-24.22.1-macos-arm64",
+      "component": "node",
+      "version": "24.22.1",
+      "platform": "macos",
+      "arch": "arm64",
+      "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-darwin-arm64.tar.gz",
+      "sha256": "89c682593d76cd44233fa53b1563264e7de9cbb189cad169135c5b4fadfbc0a7",
+      "archive": "tar.gz",
+      "stripComponents": 1,
+      "executables": {
+        "node": "bin/node",
+        "npm": "lib/node_modules/npm/bin/npm-cli.js"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "size": 0
+    },
+    {
+      "id": "node-24.22.1-linux-x64",
+      "component": "node",
+      "version": "24.22.1",
+      "platform": "linux",
+      "arch": "x64",
+      "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-linux-x64.tar.gz",
+      "sha256": "eb6728e77c576a35162c122c45ccadf224d89ff00abc8dae46cc2897c6002d7c",
+      "archive": "tar.gz",
+      "stripComponents": 1,
+      "executables": {
+        "node": "bin/node",
+        "npm": "lib/node_modules/npm/bin/npm-cli.js"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "size": 0
+    },
+    {
+      "id": "node-22.23.4-windows-x64",
+      "component": "node",
+      "version": "22.23.4",
+      "platform": "windows",
+      "arch": "x64",
+      "url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-win-x64.zip",
+      "sha256": "cbc74b5e0982c9dbb41525fd8fb5dcd32fbee237863f7829072f4639a1ce5f20",
+      "archive": "zip",
+      "stripComponents": 1,
+      "executables": {
+        "node": "node.exe",
+        "npm": "node_modules/npm/bin/npm-cli.js"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "size": 0
+    },
+    {
+      "id": "node-22.23.4-macos-x64",
+      "component": "node",
+      "version": "22.23.4",
+      "platform": "macos",
+      "arch": "x64",
+      "url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-darwin-x64.tar.gz",
+      "sha256": "efcc2b0db6f94bf53eddb038fe2b370277a042bd29e4f19b8f8e23598795b819",
+      "archive": "tar.gz",
+      "stripComponents": 1,
+      "executables": {
+        "node": "bin/node",
+        "npm": "lib/node_modules/npm/bin/npm-cli.js"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "size": 0
+    },
+    {
+      "id": "node-22.23.4-macos-arm64",
+      "component": "node",
+      "version": "22.23.4",
+      "platform": "macos",
+      "arch": "arm64",
+      "url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-darwin-arm64.tar.gz",
+      "sha256": "c9e1dbc748b33ed2d14f42445191ecaf14c56259c7a9a26d0042c49ec2b66428",
+      "archive": "tar.gz",
+      "stripComponents": 1,
+      "executables": {
+        "node": "bin/node",
+        "npm": "lib/node_modules/npm/bin/npm-cli.js"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "size": 0
+    },
+    {
+      "id": "node-22.23.4-linux-x64",
+      "component": "node",
+      "version": "22.23.4",
+      "platform": "linux",
+      "arch": "x64",
+      "url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-linux-x64.tar.gz",
+      "sha256": "b8492284c76a54baf58d61668dd0e41ee0fc98adabf9503d30f05d08f55b4406",
+      "archive": "tar.gz",
+      "stripComponents": 1,
+      "executables": {
+        "node": "bin/node",
+        "npm": "lib/node_modules/npm/bin/npm-cli.js"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://github.com/nodejs/node",
+      "size": 0
+    },
+    {
+      "id": "caddy-2.11.7-windows-x64",
+      "component": "caddy",
+      "version": "2.11.7",
+      "platform": "windows",
+      "arch": "x64",
+      "url": "https://github.com/caddyserver/caddy/releases/download/v2.11.7/caddy_2.11.7_windows_amd64.zip",
+      "sha256": "0a1edc0b799512051c57071ce0e798d3f2cf67dc98171366f1d2b326072e3b06",
+      "archive": "zip",
+      "stripComponents": 0,
+      "executables": {
+        "caddy": "caddy.exe"
+      },
+      "license": "Apache-2.0",
+      "sourceUrl": "https://github.com/caddyserver/caddy",
+      "size": 18479498
+    },
+    {
+      "id": "caddy-2.11.7-macos-x64",
+      "component": "caddy",
+      "version": "2.11.7",
+      "platform": "macos",
+      "arch": "x64",
+      "url": "https://github.com/caddyserver/caddy/releases/download/v2.11.7/caddy_2.11.7_mac_amd64.tar.gz",
+      "sha256": "110c53e5c093e4cfce6eda787f94f23bef913c309f620fab26b4f678031841ad",
+      "archive": "tar.gz",
+      "stripComponents": 0,
+      "executables": {
+        "caddy": "caddy"
+      },
+      "license": "Apache-2.0",
+      "sourceUrl": "https://github.com/caddyserver/caddy",
+      "size": 18551994
+    },
+    {
+      "id": "caddy-2.11.7-macos-arm64",
+      "component": "caddy",
+      "version": "2.11.7",
+      "platform": "macos",
+      "arch": "arm64",
+      "url": "https://github.com/caddyserver/caddy/releases/download/v2.11.7/caddy_2.11.7_mac_arm64.tar.gz",
+      "sha256": "cda3030e5d5b13eb9f0b6fb541037f633bddd958c070c5f561d7a5cccb581665",
+      "archive": "tar.gz",
+      "stripComponents": 0,
+      "executables": {
+        "caddy": "caddy"
+      },
+      "license": "Apache-2.0",
+      "sourceUrl": "https://github.com/caddyserver/caddy",
+      "size": 17297953
+    },
+    {
+      "id": "caddy-2.11.7-linux-x64",
+      "component": "caddy",
+      "version": "2.11.7",
+      "platform": "linux",
+      "arch": "x64",
+      "url": "https://github.com/caddyserver/caddy/releases/download/v2.11.7/caddy_2.11.7_linux_amd64.tar.gz",
+      "sha256": "727b91701a392de6ebc5027509f548bf39979e5216340d0faed8fa5e69c84f8b",
+      "archive": "tar.gz",
+      "stripComponents": 0,
+      "executables": {
+        "caddy": "caddy"
+      },
+      "license": "Apache-2.0",
+      "sourceUrl": "https://github.com/caddyserver/caddy",
+      "size": 18113754
+    },
+    {
+      "id": "php-8.5.12-windows-x64",
+      "component": "php",
+      "version": "8.5.12",
+      "platform": "windows",
+      "arch": "x64",
+      "url": "https://downloads.php.net/~windows/releases/php-8.5.12-nts-Win32-vs17-x64.zip",
+      "sha256": "2ab242af38d76bdf417cde5ec048b1bcd76a5a40f39a3d15d5f046f38571c477",
+      "archive": "zip",
+      "stripComponents": 0,
+      "executables": {
+        "php": "php.exe",
+        "php-cgi": "php-cgi.exe"
+      },
+      "license": "PHP-3.01",
+      "sourceUrl": "https://www.php.net/downloads.php",
+      "size": 0
+    },
+    {
+      "id": "php-8.4.27-windows-x64",
+      "component": "php",
+      "version": "8.4.27",
+      "platform": "windows",
+      "arch": "x64",
+      "url": "https://downloads.php.net/~windows/releases/php-8.4.27-nts-Win32-vs17-x64.zip",
+      "sha256": "93bd8a815a52156606fb906d0573437908c61f96e2cc52c03a51e36a41bf5236",
+      "archive": "zip",
+      "stripComponents": 0,
+      "executables": {
+        "php": "php.exe",
+        "php-cgi": "php-cgi.exe"
+      },
+      "license": "PHP-3.01",
+      "sourceUrl": "https://www.php.net/downloads.php",
+      "size": 0
+    },
+    {
+      "id": "composer-2.10.3-windows-x64",
+      "component": "composer",
+      "version": "2.10.3",
+      "platform": "windows",
+      "arch": "x64",
+      "url": "https://getcomposer.org/download/2.10.3/composer.phar",
+      "sha256": "7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6",
+      "archive": "file",
+      "stripComponents": 0,
+      "executables": {
+        "composer": "composer.phar"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://github.com/composer/composer",
+      "size": 3642137
+    },
+    {
+      "id": "composer-2.10.3-macos-x64",
+      "component": "composer",
+      "version": "2.10.3",
+      "platform": "macos",
+      "arch": "x64",
+      "url": "https://getcomposer.org/download/2.10.3/composer.phar",
+      "sha256": "7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6",
+      "archive": "file",
+      "stripComponents": 0,
+      "executables": {
+        "composer": "composer.phar"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://github.com/composer/composer",
+      "size": 3642137
+    },
+    {
+      "id": "composer-2.10.3-macos-arm64",
+      "component": "composer",
+      "version": "2.10.3",
+      "platform": "macos",
+      "arch": "arm64",
+      "url": "https://getcomposer.org/download/2.10.3/composer.phar",
+      "sha256": "7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6",
+      "archive": "file",
+      "stripComponents": 0,
+      "executables": {
+        "composer": "composer.phar"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://github.com/composer/composer",
+      "size": 3642137
+    },
+    {
+      "id": "composer-2.10.3-linux-x64",
+      "component": "composer",
+      "version": "2.10.3",
+      "platform": "linux",
+      "arch": "x64",
+      "url": "https://getcomposer.org/download/2.10.3/composer.phar",
+      "sha256": "7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6",
+      "archive": "file",
+      "stripComponents": 0,
+      "executables": {
+        "composer": "composer.phar"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://github.com/composer/composer",
+      "size": 3642137
+    },
+    {
+      "id": "yarn-1.22.22-windows-x64",
+      "component": "yarn",
+      "version": "1.22.22",
+      "platform": "windows",
+      "arch": "x64",
+      "url": "https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz",
+      "sha256": "c17d3797fb9a9115bf375e31bfd30058cac6bc9c3b8807a3d8cb2094794b51ca",
+      "archive": "tar.gz",
+      "stripComponents": 1,
+      "executables": {
+        "yarn": "bin/yarn.js"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://registry.npmjs.org/yarn",
+      "size": 1238429
+    },
+    {
+      "id": "yarn-1.22.22-macos-x64",
+      "component": "yarn",
+      "version": "1.22.22",
+      "platform": "macos",
+      "arch": "x64",
+      "url": "https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz",
+      "sha256": "c17d3797fb9a9115bf375e31bfd30058cac6bc9c3b8807a3d8cb2094794b51ca",
+      "archive": "tar.gz",
+      "stripComponents": 1,
+      "executables": {
+        "yarn": "bin/yarn.js"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://registry.npmjs.org/yarn",
+      "size": 1238429
+    },
+    {
+      "id": "yarn-1.22.22-macos-arm64",
+      "component": "yarn",
+      "version": "1.22.22",
+      "platform": "macos",
+      "arch": "arm64",
+      "url": "https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz",
+      "sha256": "c17d3797fb9a9115bf375e31bfd30058cac6bc9c3b8807a3d8cb2094794b51ca",
+      "archive": "tar.gz",
+      "stripComponents": 1,
+      "executables": {
+        "yarn": "bin/yarn.js"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://registry.npmjs.org/yarn",
+      "size": 1238429
+    },
+    {
+      "id": "yarn-1.22.22-linux-x64",
+      "component": "yarn",
+      "version": "1.22.22",
+      "platform": "linux",
+      "arch": "x64",
+      "url": "https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz",
+      "sha256": "c17d3797fb9a9115bf375e31bfd30058cac6bc9c3b8807a3d8cb2094794b51ca",
+      "archive": "tar.gz",
+      "stripComponents": 1,
+      "executables": {
+        "yarn": "bin/yarn.js"
+      },
+      "license": "MIT",
+      "sourceUrl": "https://registry.npmjs.org/yarn",
+      "size": 1238429
+    },
+    {
+      "id": "cacert-796f1389bfea-windows-x64",
+      "component": "cacert",
+      "version": "796f1389bfea",
+      "platform": "windows",
+      "arch": "x64",
+      "url": "https://curl.se/ca/cacert.pem",
+      "sha256": "796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe",
+      "archive": "file",
+      "stripComponents": 0,
+      "executables": {
+        "cacert": "cacert.pem"
+      },
+      "license": "MPL-2.0",
+      "sourceUrl": "https://curl.se/docs/caextract.html",
+      "size": 200116
+    },
+    {
+      "id": "cacert-796f1389bfea-macos-x64",
+      "component": "cacert",
+      "version": "796f1389bfea",
+      "platform": "macos",
+      "arch": "x64",
+      "url": "https://curl.se/ca/cacert.pem",
+      "sha256": "796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe",
+      "archive": "file",
+      "stripComponents": 0,
+      "executables": {
+        "cacert": "cacert.pem"
+      },
+      "license": "MPL-2.0",
+      "sourceUrl": "https://curl.se/docs/caextract.html",
+      "size": 200116
+    },
+    {
+      "id": "cacert-796f1389bfea-macos-arm64",
+      "component": "cacert",
+      "version": "796f1389bfea",
+      "platform": "macos",
+      "arch": "arm64",
+      "url": "https://curl.se/ca/cacert.pem",
+      "sha256": "796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe",
+      "archive": "file",
+      "stripComponents": 0,
+      "executables": {
+        "cacert": "cacert.pem"
+      },
+      "license": "MPL-2.0",
+      "sourceUrl": "https://curl.se/docs/caextract.html",
+      "size": 200116
+    },
+    {
+      "id": "cacert-796f1389bfea-linux-x64",
+      "component": "cacert",
+      "version": "796f1389bfea",
+      "platform": "linux",
+      "arch": "x64",
+      "url": "https://curl.se/ca/cacert.pem",
+      "sha256": "796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe",
+      "archive": "file",
+      "stripComponents": 0,
+      "executables": {
+        "cacert": "cacert.pem"
+      },
+      "license": "MPL-2.0",
+      "sourceUrl": "https://curl.se/docs/caextract.html",
+      "size": 200116
+    },
+    {
+      "id": "mariadb-12.3.3-windows-x64",
+      "component": "mariadb",
+      "version": "12.3.3",
+      "platform": "windows",
+      "arch": "x64",
+      "url": "https://archive.mariadb.org/mariadb-12.3.3/winx64-packages/mariadb-12.3.3-winx64.zip",
+      "sha256": "4b5706b47148b47c8f36963c8352d1ddee37a1287b4690428f631a74b09b85a0",
+      "archive": "zip",
+      "stripComponents": 1,
+      "executables": {
+        "mariadbd": "bin/mariadbd.exe",
+        "mariadb": "bin/mariadb.exe",
+        "mariadb-dump": "bin/mariadb-dump.exe",
+        "install-db": "bin/mysql_install_db.exe"
+      },
+      "license": "GPL-2.0-only",
+      "sourceUrl": "https://github.com/MariaDB/server",
+      "size": 104081715
+    },
+    {
+      "id": "postgres-18.6-windows-x64",
+      "component": "postgres",
+      "version": "18.6",
+      "platform": "windows",
+      "arch": "x64",
+      "url": "https://get.enterprisedb.com/postgresql/postgresql-18.6-1-windows-x64-binaries.zip",
+      "sha256": "fbe23da234ee31547bf8a36d29dfd81e82b849df2d2b78d2eecb43d360252f8c",
+      "archive": "zip",
+      "stripComponents": 1,
+      "executables": {
+        "postgres": "bin/postgres.exe",
+        "initdb": "bin/initdb.exe",
+        "psql": "bin/psql.exe",
+        "pg_dump": "bin/pg_dump.exe",
+        "pg_ctl": "bin/pg_ctl.exe"
+      },
+      "license": "PostgreSQL",
+      "sourceUrl": "https://www.postgresql.org/download/windows/",
+      "size": 343808005
+    }
+  ]
+}
