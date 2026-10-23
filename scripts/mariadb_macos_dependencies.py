@@ -36,6 +36,7 @@ def build(work, arch, unpack):
         subprocess.run([str(value) for value in arguments], env=environment, check=True)
 
     run(["cmake", "-S", source, "-B", target, f"-DCMAKE_INSTALL_PREFIX={prefix}",
+         f"-DCMAKE_INSTALL_NAME_DIR={prefix / 'lib'}", "-DCMAKE_MACOSX_RPATH=OFF",
          f"-DCMAKE_OSX_SYSROOT={environment['SDKROOT']}", "-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0",
          "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON", "-DPCRE2_BUILD_PCRE2_8=ON",
          "-DPCRE2_BUILD_PCRE2_16=OFF", "-DPCRE2_BUILD_PCRE2_32=OFF", "-DPCRE2_BUILD_TESTS=OFF",

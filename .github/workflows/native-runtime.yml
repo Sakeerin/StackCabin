@@ -21,6 +21,11 @@ on:
         description: Future HTTPS location; this workflow uploads artifacts only
         type: string
         required: true
+      target:
+        description: Rebuild one platform when the other packages have already passed
+        type: choice
+        options: [all, linux, macos-arm64, macos-x64]
+        default: all
 permissions:
   contents: read
 jobs:
@@ -29,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-15, macos-15-intel]
+        os: ${{ fromJSON(inputs.target == 'linux' && '["ubuntu-22.04"]' || inputs.target == 'macos-arm64' && '["macos-15"]' || inputs.target == 'macos-x64' && '["macos-15-intel"]' || '["ubuntu-22.04","macos-15","macos-15-intel"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -114,7 +119,7 @@ jobs:
   compatibility:
     name: Ubuntu 24.04 uses the Ubuntu 22.04 package
     needs: build
-    if: always() && !cancelled()
+    if: always() && !cancelled() && (inputs.target == 'all' || inputs.target == 'linux')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
