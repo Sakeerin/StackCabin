@@ -8,7 +8,7 @@ import {
 } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { root } from "./catalog-lib.mjs";
+import { root, sha256 } from "./catalog-lib.mjs";
 if (!process.env.GITHUB_ENV)
   throw new Error(
     "This helper runs only in an ephemeral GitHub Actions checkout",
@@ -24,9 +24,69 @@ if (
   throw new Error("Pass an exact native component/version");
 const identifier = [component, version, platform, arch].join("-");
 const folder = path.join(root, "artifacts", "runtimes");
-const artifact = JSON.parse(
-  await readFile(path.join(folder, identifier + ".json"), "utf8"),
-);
+let artifact;
+try {
+  artifact = JSON.parse(
+    await readFile(path.join(folder, identifier + ".json"), "utf8"),
+  );
+} catch (error) {
+  if (
+    error.code !== "ENOENT" ||
+    process.env.STACKCABIN_TEST_FAILED_CANDIDATE !== "true"
+  )
+    throw error;
+  const source = JSON.parse(
+    await readFile(
+      path.join(root, "runtime-catalog/source-archives.json"),
+      "utf8",
+    ),
+  ).sources.find(
+    (source) => source.component === component && source.version === version,
+  );
+  if (!source)
+    throw new Error("Candidate version is not a reviewed publisher source");
+  const bytes = await readFile(path.join(folder, identifier + ".tar.gz"));
+  const tools =
+    component === "php"
+      ? { php: "bin/php", "php-fpm": "sbin/php-fpm" }
+      : component === "postgres"
+        ? Object.fromEntries(
+            ["postgres", "initdb", "psql", "pg_dump", "pg_ctl"].map((tool) => [
+              tool,
+              "bin/" + tool,
+            ]),
+          )
+        : {
+            mariadbd: "bin/mariadbd",
+            mariadb: "bin/mariadb",
+            "mariadb-dump": "bin/mariadb-dump",
+            "install-db": "scripts/mariadb-install-db",
+          };
+  artifact = {
+    id: identifier,
+    component,
+    version,
+    platform,
+    arch,
+    archive: "tar.gz",
+    stripComponents: 1,
+    sha256: sha256(bytes),
+    size: bytes.length,
+    executables: tools,
+    sourceUrl: source.sourceUrl,
+    url:
+      "https://example.invalid/test-only-candidate/" + identifier + ".tar.gz",
+    license:
+      component === "mariadb"
+        ? "GPL-2.0-only"
+        : component === "php"
+          ? "PHP-3.01"
+          : "PostgreSQL",
+  };
+  console.log(
+    "TEST ONLY: verifying an unapproved failed-build candidate; no release metadata is created.",
+  );
+}
 if (artifact.id !== identifier)
   throw new Error("Native artifact identity mismatch");
 const extra = path.join(root, ".local", "native-test-catalog.json");

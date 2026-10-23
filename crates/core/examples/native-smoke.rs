@@ -63,12 +63,14 @@ async fn main() -> Result<()> {
                     .map(PathBuf::from),
             )
             .await?;
-        if ["php", "node"].contains(&artifact.component.as_str()) {
-            let executable = core.runtimes.resolve(
-                &artifact.component,
-                &artifact.version,
-                &artifact.component,
-            )?;
+        if ["php", "node", "mariadb", "postgres"].contains(&artifact.component.as_str()) {
+            let tool = match artifact.component.as_str() {
+                "mariadb" => "mariadbd",
+                other => other,
+            };
+            let executable = core
+                .runtimes
+                .resolve(&artifact.component, &artifact.version, tool)?;
             let output = tokio::process::Command::new(executable)
                 .arg("--version")
                 .output()

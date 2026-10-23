@@ -17,6 +17,7 @@ import urllib.request
 from native_runtime_smoke import verify
 from postgres_macos_dependencies import build as build_postgres_dependencies
 from php_macos_dependencies import build as build_php_dependencies
+from mariadb_macos_dependencies import build as build_mariadb_dependencies
 
 
 def run(args, **kwargs):
@@ -189,6 +190,8 @@ def main():
         dependencies = build_postgres_dependencies(work, arch, unpack)
     elif system == "macos" and args.component == "php":
         dependencies = build_php_dependencies(work, arch, unpack)
+    elif system == "macos" and args.component == "mariadb":
+        dependencies = build_mariadb_dependencies(work, arch, unpack)
     if args.component == "php":
         flags = ["--enable-fpm", "--enable-mbstring", "--enable-intl", "--enable-bcmath", "--enable-exif", "--enable-opcache", "--enable-gd", "--with-jpeg", "--with-freetype", "--with-curl", "--with-openssl", "--with-sodium", "--with-zip", "--with-zlib", "--with-pdo-mysql=mysqlnd", "--with-mysqli=mysqlnd", "--with-pdo-pgsql", "--with-pgsql", "--with-pdo-sqlite", "--with-sqlite3"]
         if system == "macos":
@@ -211,7 +214,9 @@ def main():
         build = work / "build"
         flags = []
         if system == "macos":
-            flags = [f"-DCMAKE_OSX_SYSROOT={os.environ['SDKROOT']}", "-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0"]
+            flags = [f"-DCMAKE_OSX_SYSROOT={os.environ['SDKROOT']}", "-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0",
+                     f"-DCMAKE_PREFIX_PATH={work / 'dependencies'}", "-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local",
+                     f"-DOPENSSL_ROOT_DIR={work / 'dependencies'}", "-DWITH_PCRE=system"]
         run(["cmake", "-S", source, "-B", build, f"-DCMAKE_INSTALL_PREFIX={prefix}", "-DINSTALL_LAYOUT=STANDALONE", "-DCMAKE_BUILD_TYPE=Release", "-DWITH_SSL=system", "-DWITH_UNIT_TESTS=OFF", "-DWITH_EMBEDDED_SERVER=OFF", "-DWITH_WSREP=OFF", "-DPLUGIN_ROCKSDB=NO", "-DPLUGIN_MROONGA=NO", "-DWITH_NUMA=OFF", *flags])
         run(["cmake", "--build", build, "--parallel", jobs])
         run(["cmake", "--install", build])

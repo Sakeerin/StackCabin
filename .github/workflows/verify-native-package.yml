@@ -17,6 +17,10 @@ on:
         description: Optional exact artifact name for older build runs
         type: string
         required: false
+      failed_candidate:
+        description: Test an unapproved candidate lacking final metadata; never publishes it
+        type: boolean
+        default: false
       runner:
         description: macOS 14 hosted runners retire on 2 November 2026; use a maintained VM after that date
         type: choice
@@ -49,6 +53,7 @@ jobs:
         env:
           COMPONENT: ${{ inputs.component }}
           VERSION: ${{ inputs.version }}
+          STACKCABIN_TEST_FAILED_CANDIDATE: ${{ inputs.failed_candidate }}
         run: node scripts/prepare-native-integration.mjs
       - name: Ephemeral macOS test keychain
         if: runner.os == 'macOS' && inputs.component != 'php'
