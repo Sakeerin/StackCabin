@@ -68,6 +68,9 @@ update and persistence still use the real application and database.
    dependency closure is rebuilt for that baseline and tested there. MariaDB's
    optional Mroonga engine is excluded from native builds after its bundled
    Groonga source failed to compile with the current macOS SDK.
+   Source builds for PostgreSQL's OpenSSL/zlib and PHP's required library closure
+   now target 14.0 with pinned source checksums. Their CI results and minimum OS
+   measurements must pass before this limitation can be considered resolved.
 2. Run native runtime, browser HMR, tray/Quit, abrupt-app-exit, disk-full,
    clean-machine online/offline installation and upgrade tests on every target VM.
    Local offline archive installation does not establish clean-OS compatibility.

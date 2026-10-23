@@ -20,7 +20,7 @@ SOURCES = [
 ]
 
 
-def build(work, arch, unpack):
+def build(work, arch, unpack, component="postgres"):
     prefix = work / "dependencies"
     environment = dict(os.environ)
     for key in ["CPPFLAGS", "CFLAGS", "CXXFLAGS", "LDFLAGS", "PKG_CONFIG_PATH", "PKG_CONFIG_LIBDIR", "CMAKE_PREFIX_PATH"]:
@@ -57,7 +57,7 @@ def build(work, arch, unpack):
             run([source / "configure", f"--prefix={prefix}", "--shared"], source)
             run(["make", "-j", jobs], source)
             run(["make", "install"], source)
-        shutil.copy2(archive, output / ("postgres-dependency-" + archive.name))
+        shutil.copy2(archive, output / (component + "-dependency-" + archive.name))
         provenance.append({**dependency, "deploymentTarget": "14.0"})
     environment.update({"CPPFLAGS": f"-I{prefix / 'include'}",
                         "LDFLAGS": f"-L{prefix / 'lib'} -mmacosx-version-min=14.0",
@@ -66,5 +66,5 @@ def build(work, arch, unpack):
     os.environ.update(environment)
     # os.environ.update does not remove the old values that were intentionally dropped.
     os.environ.pop("CMAKE_PREFIX_PATH", None)
-    (output / "postgres-dependency-provenance.json").write_text(json.dumps(provenance, indent=2) + "\n")
+    (output / (component + "-dependency-provenance.json")).write_text(json.dumps(provenance, indent=2) + "\n")
     return provenance

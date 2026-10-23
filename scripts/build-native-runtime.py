@@ -16,6 +16,7 @@ import tarfile
 import urllib.request
 from native_runtime_smoke import verify
 from postgres_macos_dependencies import build as build_postgres_dependencies
+from php_macos_dependencies import build as build_php_dependencies
 
 
 def run(args, **kwargs):
@@ -186,10 +187,12 @@ def main():
     dependencies = []
     if system == "macos" and args.component == "postgres":
         dependencies = build_postgres_dependencies(work, arch, unpack)
+    elif system == "macos" and args.component == "php":
+        dependencies = build_php_dependencies(work, arch, unpack)
     if args.component == "php":
         flags = ["--enable-fpm", "--enable-mbstring", "--enable-intl", "--enable-bcmath", "--enable-exif", "--enable-opcache", "--enable-gd", "--with-jpeg", "--with-freetype", "--with-curl", "--with-openssl", "--with-sodium", "--with-zip", "--with-zlib", "--with-pdo-mysql=mysqlnd", "--with-mysqli=mysqlnd", "--with-pdo-pgsql", "--with-pgsql", "--with-pdo-sqlite", "--with-sqlite3"]
         if system == "macos":
-            flags.append(f"--with-iconv={output(['brew', '--prefix', 'libiconv']).strip()}")
+            flags.append(f"--with-iconv={work / 'dependencies'}")
         run([source / "configure", f"--prefix={prefix}", *flags], cwd=source)
         run(["make", "-j", jobs], cwd=source)
         run(["make", "install"], cwd=source)
@@ -232,12 +235,17 @@ def main():
     relocated = work / "relocated package ทดสอบ"
     relocated.mkdir()
     relocated_prefix = unpack(package, relocated)
-    hidden_prefix = work / "build-prefix-hidden"
-    prefix.rename(hidden_prefix)
+    moved = []
     try:
+        for original in [prefix, work / "dependencies"]:
+            if original.exists():
+                hidden = work / (original.name + "-hidden")
+                original.rename(hidden)
+                moved.append((original, hidden))
         verification = verify(relocated_prefix, args.component, args.version)
     finally:
-        hidden_prefix.rename(prefix)
+        for original, hidden in reversed(moved):
+            hidden.rename(original)
     digest = hashlib.file_digest(package.open("rb"), "sha256").hexdigest()
     metadata = {"id": identifier, "component": args.component, "version": args.version, "platform": system, "arch": arch, "url": f"{args.release_base_url.rstrip('/')}/{package.name}", "sha256": digest, "archive": "tar.gz", "stripComponents": 1, "executables": executables, "license": license_name, "sourceUrl": args.source_url, "size": package.stat().st_size}
     if system == "macos":

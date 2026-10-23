@@ -31,9 +31,11 @@ before publishing them.
 
 The PostgreSQL macOS builder compiles pinned OpenSSL/zlib sources with a 14.0
 deployment target and excludes Homebrew library flags. Their source archives,
-checksums and licenses accompany the package provenance. Other native components
-still need their dependency closures rebuilt for 14.0; inspect the measured
-minimum OS field rather than assuming the compiler setting covers every library.
+checksums and licenses accompany the package provenance. The PHP builder likewise
+compiles its required libraries from `runtime-catalog/php-macos-library-sources.json`,
+including ICU, image libraries, curl and libpq. Source-build support is not evidence
+of a passing build: inspect the measured minimum OS field and runtime verification
+before signing any pack. MariaDB still needs a baseline-compatible dependency closure.
 
 Windows PHP archives come from PHP's release manifest. Windows MariaDB and
 PostgreSQL portable archives come from MariaDB and EDB respectively. Catalog
