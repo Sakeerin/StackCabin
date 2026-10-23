@@ -28,7 +28,8 @@ def build(work, arch, unpack, component="postgres"):
     # Do not inherit Homebrew library flags: those bottles can require macOS 15.
     environment.update({"MACOSX_DEPLOYMENT_TARGET": "14.0",
                         "CFLAGS": "-O2 -mmacosx-version-min=14.0",
-                        "CXXFLAGS": "-O2 -mmacosx-version-min=14.0"})
+                        "CXXFLAGS": "-O2 -mmacosx-version-min=14.0",
+                        "LDFLAGS": "-Wl,-headerpad_max_install_names"})
     jobs = str(min(os.cpu_count() or 2, 4))
     provenance = []
     output = Path("artifacts/runtimes").resolve()
@@ -60,7 +61,7 @@ def build(work, arch, unpack, component="postgres"):
         shutil.copy2(archive, output / (component + "-dependency-" + archive.name))
         provenance.append({**dependency, "deploymentTarget": "14.0"})
     environment.update({"CPPFLAGS": f"-I{prefix / 'include'}",
-                        "LDFLAGS": f"-L{prefix / 'lib'} -mmacosx-version-min=14.0",
+                        "LDFLAGS": f"-L{prefix / 'lib'} -mmacosx-version-min=14.0 -Wl,-headerpad_max_install_names",
                         "PKG_CONFIG_PATH": str(prefix / "lib/pkgconfig"),
                         "PKG_CONFIG_LIBDIR": str(prefix / "lib/pkgconfig")})
     os.environ.update(environment)
