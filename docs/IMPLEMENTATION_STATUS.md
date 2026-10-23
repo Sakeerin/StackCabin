@@ -39,7 +39,7 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | Native Desktop E2E | 4 cases against real Rust IPC/SQLite; screenshot `stackcabin-desktop.png` |
 | Cross-platform CI | [Run 39951584400](https://github.com/Sakeerin/StackCabin/actions/runs/39951584400): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and real managed Node toolchains |
 | Normal Windows package | Release executable starts without E2E plugins and initializes real SQLite metadata in an isolated directory |
-| Installed preview packages | [Packaging run](https://github.com/Sakeerin/StackCabin/actions/runs/39960323840): Windows NSIS and Ubuntu 22.04 deb installed and started the normal application using real isolated SQLite metadata. macOS packaging verification is being repaired after Tauri cleaned its intermediate `.app` |
+| Installed preview packages | [Windows/Ubuntu packaging](https://github.com/Sakeerin/StackCabin/actions/runs/39960323840): NSIS and Ubuntu 22.04 deb installed and started the normal application using real isolated SQLite metadata. [Repaired macOS packaging](https://github.com/Sakeerin/StackCabin/actions/runs/39961884329) keeps the `.app` alongside the DMG; ARM normal-app startup passed, Intel/baseline checks are pending |
 | Ubuntu 24.04 installers | [Run 39961992007](https://github.com/Sakeerin/StackCabin/actions/runs/39961992007): the same Ubuntu 22.04 deb and AppImage passed checksums and real application startup on Ubuntu 24.04; AppImage used extract-and-run without FUSE |
 | Actual disk exhaustion | [Ubuntu 24.04 acceptance](https://github.com/Sakeerin/StackCabin/actions/runs/39960665443): dedicated 32 MiB tmpfs produced ENOSPC during installation; no installed receipt or executable resolution, staging cleaned, same archive installed after freeing owned space |
 | Source download recovery | 15 native packaging helper tests include explicit HTTPS mirror recovery, rejection of checksum mismatch/HTTPS downgrade/credential URLs, traversal and FastCGI fragmentation |
@@ -51,6 +51,7 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | Managed Node toolchains | [Cross-platform smoke](https://github.com/Sakeerin/StackCabin/actions/runs/39951584400) passed installation, npm/pnpm/Yarn, concurrent Node 22/24 HTTP through Caddy and shutdown on Windows, Ubuntu 22.04/24.04, macOS ARM/Intel. Each server's response identifies its actual Node version |
 | Node macOS 14 baseline | [ARM](https://github.com/Sakeerin/StackCabin/actions/runs/39951641290) and [x64 through Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/39951647274) passed the same real managed-toolchain smoke |
 | Unix PHP acceptance | PHP 8.4/8.5 [native runs](https://github.com/Sakeerin/StackCabin/actions/workflows/native-runtime.yml): relocated PHP-FPM/SQLite and real Rust-core HTTP passed on Ubuntu 22.04 and macOS 15 Intel/Apple Silicon |
+| PHP ARM source libraries | PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/39960104209) and [8.5](https://github.com/Sakeerin/StackCabin/actions/runs/39960117212) rebuilt their library closure from source, passed relocated FPM/SQLite and real core HTTP with a measured macOS 14.0 minimum. Baseline execution is checked separately |
 | PostgreSQL Unix acceptance | [Run 39916993042](https://github.com/Sakeerin/StackCabin/actions/runs/39916993042): PostgreSQL 18.6 SCRAM setup, private project account, insert/select, dump/restore and real Rust-core integration on Ubuntu 22.04 and macOS 15 Intel/Apple Silicon |
 | PostgreSQL macOS 14 | [Source-library build](https://github.com/Sakeerin/StackCabin/actions/runs/39920049255) measures 14.0 on both architectures. [Actual macOS 14 ARM acceptance](https://github.com/Sakeerin/StackCabin/actions/runs/39922116967) passed real core provisioning/read/write/backup/restore in a Thai/spaced app-data path |
 | MariaDB Ubuntu 24.04 | [Run 39923305298](https://github.com/Sakeerin/StackCabin/actions/runs/39923305298) passed real core installation, version check, provision/read/write/dump/restore using the Ubuntu 22.04 source-built package |
@@ -73,9 +74,10 @@ update and persistence still use the real application and database.
    database read/write/dump/restore, and installation through the actual Rust core.
    Source archives and publisher checksums are pinned in
    `runtime-catalog/source-archives.json`. CI uploads build artifacts only.
-   Current macOS PHP packs pass on macOS 15 but bundled Homebrew libraries require
-   macOS 15.0. They are blocked from the macOS 14 production catalog until the
-   dependency closure is rebuilt for that baseline and tested there. MariaDB's
+   Earlier macOS PHP packs bundled Homebrew libraries requiring macOS 15.0 and
+   remain blocked from production. Replacement ARM packs now build the full
+   dependency closure from source and measure 14.0; native Intel replacements
+   and baseline execution are still being verified. MariaDB's
    optional Mroonga engine is excluded from native builds after its bundled
    Groonga source failed to compile with the current macOS SDK.
    PostgreSQL and MariaDB source builds pass with a measured 14.0 baseline;
