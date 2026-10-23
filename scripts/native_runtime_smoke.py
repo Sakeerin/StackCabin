@@ -222,7 +222,7 @@ def mariadb(prefix, work, version):
     admin_password, project_password = password(), password()
     data = work / "data"
     initializer = prefix / "scripts/mariadb-install-db"
-    execute([initializer, f"--basedir={prefix}", f"--datadir={data}", "--auth-root-authentication-method=normal", "--skip-test-db"])
+    execute([initializer, "--no-defaults", f"--basedir={prefix}", f"--datadir={data}", "--auth-root-authentication-method=normal", "--skip-test-db"])
     bootstrap = work / "bootstrap.sql"
     bootstrap.write_text(f"ALTER USER 'root'@'localhost' IDENTIFIED BY '{admin_password}';\n"
                          f"CREATE USER IF NOT EXISTS 'root'@'127.0.0.1' IDENTIFIED BY '{admin_password}';\n"

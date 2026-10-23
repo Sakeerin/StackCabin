@@ -155,6 +155,7 @@ impl DatabaseManager {
                 let init = self.runtime.latest_installed(id, "install-db")?;
                 let mut args = vec![format!("--datadir={}", data.display())];
                 if !cfg!(windows) {
+                    args.insert(0, "--no-defaults".into());
                     args.extend([
                         format!(
                             "--basedir={}",

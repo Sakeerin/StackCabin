@@ -1,5 +1,8 @@
 name: Verify StackCabin
 on: [push, pull_request, workflow_dispatch]
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
