@@ -1,6 +1,12 @@
 name: Build and verify development installers
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Rebuild only the packages needing verification
+        type: choice
+        options: [all, macos, macos-arm64, macos-x64, linux, windows]
+        default: all
 permissions:
   contents: read
 jobs:
@@ -8,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-22.04, macos-15, macos-15-intel]
+        os: ${{ fromJSON(inputs.target == 'macos' && '["macos-15","macos-15-intel"]' || inputs.target == 'macos-arm64' && '["macos-15"]' || inputs.target == 'macos-x64' && '["macos-15-intel"]' || inputs.target == 'linux' && '["ubuntu-22.04"]' || inputs.target == 'windows' && '["windows-latest"]' || '["windows-latest","ubuntu-22.04","macos-15","macos-15-intel"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
