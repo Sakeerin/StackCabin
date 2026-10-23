@@ -34,7 +34,7 @@ jobs:
           case "$RUNNER_OS" in
             Windows) bundles=nsis ;;
             Linux) bundles=deb,appimage ;;
-            macOS) bundles=dmg ;;
+            macOS) bundles=app,dmg ;;
           esac
           node node_modules/@tauri-apps/cli/tauri.js build --bundles "$bundles"
       - name: Install and start the Windows preview in the disposable runner
@@ -63,9 +63,16 @@ jobs:
           test -n "$binary"
           python scripts/smoke-packaged-unix.py "$binary"
       - name: Installer checksums
+        if: always() && !cancelled()
         run: node scripts/release-checksums.mjs
       - uses: actions/upload-artifact@v4
+        if: always() && !cancelled()
         with:
           name: development-installers-${{ matrix.os }}
           retention-days: 7
-          path: target/release/bundle/
+          path: |
+            target/release/bundle/nsis/*.exe
+            target/release/bundle/dmg/*.dmg
+            target/release/bundle/deb/*.deb
+            target/release/bundle/appimage/*.AppImage
+            target/release/bundle/SHA256SUMS.txt

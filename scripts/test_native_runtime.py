@@ -7,6 +7,10 @@ import tarfile
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
+import hashlib
+import urllib.error
+from source_download import download_verified
 
 import native_runtime_smoke as smoke
 
@@ -16,6 +20,53 @@ spec.loader.exec_module(builder)
 
 
 class NativePackagingTests(unittest.TestCase):
+    def test_source_download_uses_an_explicit_mirror_after_network_failures(self):
+        with tempfile.TemporaryDirectory() as directory:
+            data = b"verified publisher source"
+            response = io.BytesIO(data)
+            response.geturl = lambda: "https://mirror.example/source"
+            with patch("source_download.urllib.request.urlopen", side_effect=[
+                urllib.error.URLError("temporary timeout"), urllib.error.URLError("temporary timeout"),
+                urllib.error.URLError("temporary timeout"), response,
+            ]) as request, patch("source_download.time.sleep"):
+                target = Path(directory) / "source.tar.gz"
+                selected = download_verified(["https://publisher.example/source", "https://mirror.example/source"],
+                                             target, hashlib.sha256(data).hexdigest())
+            self.assertEqual(selected, "https://mirror.example/source")
+            self.assertEqual(request.call_args.args[0], selected)
+            self.assertEqual(target.read_bytes(), data)
+            self.assertFalse(target.with_name(target.name + ".part").exists())
+
+    def test_source_checksum_failure_never_replaces_a_verified_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "source.tar.gz"
+            target.write_bytes(b"previous verified source")
+            response = io.BytesIO(b"tampered source")
+            response.geturl = lambda: "https://publisher.example/source"
+            with patch("source_download.urllib.request.urlopen", return_value=response) as request:
+                with self.assertRaisesRegex(RuntimeError, "SHA-256 mismatch"):
+                    download_verified([response.geturl()], target, hashlib.sha256(b"expected source").hexdigest())
+            self.assertEqual(request.call_count, 1)
+            self.assertEqual(target.read_bytes(), b"previous verified source")
+            self.assertFalse(target.with_name(target.name + ".part").exists())
+
+    def test_source_https_downgrade_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            response = io.BytesIO(b"source")
+            response.geturl = lambda: "http://publisher.example/source"
+            target = Path(directory) / "source.tar.gz"
+            with patch("source_download.urllib.request.urlopen", return_value=response):
+                with self.assertRaisesRegex(RuntimeError, "HTTPS"):
+                    download_verified(["https://publisher.example/source"], target, "0" * 64)
+            self.assertFalse(target.exists())
+            self.assertFalse(target.with_name(target.name + ".part").exists())
+
+    def test_source_credentials_are_rejected_before_network_access(self):
+        with patch("source_download.urllib.request.urlopen") as request:
+            with self.assertRaises(ValueError):
+                download_verified(["https://secret@publisher.example/source"], Path("unused"), "0" * 64)
+        request.assert_not_called()
+
     def archive(self, directory, name, content=b"source", link=None):
         file = directory / "source.tar.gz"
         with tarfile.open(file, "w:gz") as archive:

@@ -1,12 +1,11 @@
 """Compile PHP's required library closure with the macOS 14 deployment target."""
-import hashlib
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import urllib.parse
-import urllib.request
+from source_download import download_verified
 
 from postgres_macos_dependencies import build as build_crypto
 
@@ -42,11 +41,7 @@ def build(work, arch, unpack):
         # Preserve the publisher's archive suffix, including xz/bz2/tgz sources.
         filename = Path(urllib.parse.urlparse(dependency["url"]).path).name
         archive = work / filename
-        with urllib.request.urlopen(dependency["url"], timeout=120) as response, archive.open("wb") as stream:
-            shutil.copyfileobj(response, stream)
-        with archive.open("rb") as stream:
-            if hashlib.file_digest(stream, "sha256").hexdigest() != dependency["sha256"]:
-                raise RuntimeError(f"PHP dependency source SHA-256 mismatch: {dependency['name']}")
+        download_url = download_verified([dependency["url"], *dependency.get("mirrors", [])], archive, dependency["sha256"])
         directory = work / (dependency["name"].replace("@", "-") + "-source")
         directory.mkdir()
         source = unpack(archive, directory)
@@ -91,7 +86,7 @@ def build(work, arch, unpack):
                         run(["install_name_tool", "-change", dylib_reference, prefix / "lib" / dylib_reference, library], source)
                 run(["codesign", "--force", "--sign", "-", library], source)
         shutil.copy2(archive, output / ("php-dependency-" + filename))
-        provenance.append({**dependency, "deploymentTarget": "14.0"})
+        provenance.append({**dependency, "downloadUrl": download_url, "deploymentTarget": "14.0"})
     os.environ.update(environment)
     (output / "php-dependency-provenance.json").write_text(json.dumps(provenance, indent=2) + "\n")
     return provenance
