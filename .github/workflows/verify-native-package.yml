@@ -1,0 +1,64 @@
+name: Verify an existing native package
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        type: choice
+        options: [php, postgres, mariadb]
+        required: true
+      version:
+        type: string
+        required: true
+      source_run:
+        description: Native build run ID in this repository
+        type: string
+        required: true
+      runner:
+        description: macOS 14 hosted runners retire on 2 November 2026; use a maintained VM after that date
+        type: choice
+        options: [macos-14, ubuntu-24.04]
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.component }}-${{ inputs.version }}-${{ inputs.runner == 'macos-14' && 'macos-15' || 'ubuntu-22.04' }}
+          run-id: ${{ inputs.source_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/runtimes/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Linux keychain dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev libsecret-1-dev dbus-x11 gnome-keyring
+      - name: Prepare signed integration-test catalog
+        env:
+          COMPONENT: ${{ inputs.component }}
+          VERSION: ${{ inputs.version }}
+        run: node scripts/prepare-native-integration.mjs
+      - name: Ephemeral macOS test keychain
+        if: runner.os == 'macOS' && inputs.component != 'php'
+        run: |
+          keychain="$RUNNER_TEMP/stackcabin-test.keychain-db"
+          security create-keychain -p 'stackcabin-ci-only' "$keychain"
+          security unlock-keychain -p 'stackcabin-ci-only' "$keychain"
+          security default-keychain -d user -s "$keychain"
+          security list-keychains -d user -s "$keychain"
+      - name: Real core integration on macOS
+        if: runner.os == 'macOS'
+        run: cargo run -p stackcabin-core --example native-smoke
+      - name: Real core integration on Linux
+        if: runner.os == 'Linux'
+        run: |
+          export XDG_DATA_HOME="$RUNNER_TEMP/stackcabin-secret-service"
+          dbus-run-session -- bash -eu -c 'mkdir -p "$XDG_DATA_HOME"; printf "%s\n" "stackcabin-ci-only" | gnome-keyring-daemon --unlock --components=secrets; cargo run -p stackcabin-core --example native-smoke'
