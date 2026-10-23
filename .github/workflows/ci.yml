@@ -77,3 +77,13 @@ jobs:
           STACKCABIN_SMOKE_DIR: ${{ github.workspace }}/.local/native smoke ทดสอบ
           STACKCABIN_SMOKE_COMPONENTS: ${{ runner.os == 'Windows' && 'node,caddy,php,cacert,composer,pnpm,yarn' || 'node,caddy,pnpm,yarn' }}
         run: cargo run -p stackcabin-core --example native-smoke
+      - name: Recover runtime installation after actual disk exhaustion
+        if: matrix.os == 'ubuntu-24.04'
+        shell: bash
+        run: |
+          quota="$RUNNER_TEMP/stackcabin-quota"
+          mkdir "$quota"
+          sudo mount -t tmpfs -o size=32m,nosuid,nodev,noexec tmpfs "$quota"
+          trap 'sudo umount "$quota"' EXIT
+          sudo chown "$(id -u):$(id -g)" "$quota"
+          STACKCABIN_QUOTA_ROOT="$quota" cargo run -p stackcabin-core --example disk-full-smoke
