@@ -86,9 +86,9 @@ def build(work, arch, unpack):
                 dependencies = subprocess.check_output(["otool", "-L", str(library)], text=True)
                 run(["install_name_tool", "-id", library, library], source)
                 for line in dependencies.splitlines()[1:]:
-                    dependency = line.strip().split(" (", 1)[0]
-                    if "/" not in dependency and (prefix / "lib" / dependency).is_file():
-                        run(["install_name_tool", "-change", dependency, prefix / "lib" / dependency, library], source)
+                    dylib_reference = line.strip().split(" (", 1)[0]
+                    if "/" not in dylib_reference and (prefix / "lib" / dylib_reference).is_file():
+                        run(["install_name_tool", "-change", dylib_reference, prefix / "lib" / dylib_reference, library], source)
                 run(["codesign", "--force", "--sign", "-", library], source)
         shutil.copy2(archive, output / ("php-dependency-" + filename))
         provenance.append({**dependency, "deploymentTarget": "14.0"})
