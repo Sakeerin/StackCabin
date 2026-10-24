@@ -11,7 +11,7 @@ $prerequisites = Join-Path $bundle 'prerequisites'
 New-Item -ItemType Directory -Force -Path $prerequisites | Out-Null
 $sources = @{
     'MicrosoftEdgeWebView2RuntimeInstallerX64.exe' = 'https://go.microsoft.com/fwlink/p/?LinkId=2124701'
-    'vc_redist.x64.exe' = 'https://aka.ms/vc14/vc_redist.x64.exe'
+    'vc_redist.x64.exe' = (Get-Content -LiteralPath (Join-Path $workspace 'runtime-catalog/windows-prerequisites.json') -Raw | ConvertFrom-Json).visualCpp.url
 }
 $manifest = @()
 foreach ($name in $sources.Keys) {
@@ -26,6 +26,10 @@ foreach ($name in $sources.Keys) {
     }
     $manifest += @{ file = "prerequisites/$name"; sha256 = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLower(); url = $sources[$name]; signer = $signature.SignerCertificate.Subject }
 }
+& (Join-Path $workspace 'src-tauri/windows/install-vc-runtime.ps1') -PayloadDirectory $prerequisites -Manifest (Join-Path $workspace 'runtime-catalog/windows-prerequisites.json') -CheckOnly
+if ($LASTEXITCODE -ne 0) { throw 'Pinned Visual C++ prerequisite verification failed' }
+Copy-Item -LiteralPath (Join-Path $workspace 'src-tauri/windows/install-vc-runtime.ps1') -Destination $prerequisites -Force
+Copy-Item -LiteralPath (Join-Path $workspace 'runtime-catalog/windows-prerequisites.json') -Destination $bundle -Force
 $sourceInstaller = [IO.Path]::GetFullPath((Join-Path $workspace $Installer))
 if (!(Test-Path -LiteralPath $sourceInstaller)) { throw 'Build the normal Windows installer first.' }
 Copy-Item -LiteralPath $sourceInstaller -Destination (Join-Path $bundle 'StackCabin-setup.exe') -Force

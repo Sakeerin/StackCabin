@@ -1,4 +1,7 @@
 $ErrorActionPreference = 'Stop'
+foreach ($module in @('Microsoft.PowerShell.Management', 'Microsoft.PowerShell.Utility', 'Microsoft.PowerShell.Security')) {
+    Import-Module (Join-Path $PSHOME "Modules/$module")
+}
 $payloads = @('StackCabin-setup.exe', 'prerequisites/vc_redist.x64.exe', 'prerequisites/MicrosoftEdgeWebView2RuntimeInstallerX64.exe')
 $manifest = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'installer-manifest.json') -Raw | ConvertFrom-Json
 foreach ($relative in $payloads) {
@@ -9,9 +12,9 @@ foreach ($relative in $payloads) {
         throw "Installer checksum mismatch: $relative"
     }
 }
-Write-Output 'Installing Microsoft Visual C++ runtime. Windows may request administrator approval.'
-$vc = Start-Process -FilePath (Join-Path $PSScriptRoot $payloads[1]) -ArgumentList '/install', '/passive', '/norestart' -WindowStyle Hidden -Wait -PassThru
-if ($vc.ExitCode -notin @(0, 1638, 3010)) { throw "Visual C++ installer failed: $($vc.ExitCode)" }
+& (Join-Path $PSScriptRoot 'prerequisites/install-vc-runtime.ps1') -PayloadDirectory (Join-Path $PSScriptRoot 'prerequisites') -Manifest (Join-Path $PSScriptRoot 'windows-prerequisites.json')
+$vcExitCode = $LASTEXITCODE
+if ($vcExitCode -notin @(0, 3010)) { throw "Visual C++ setup failed: $vcExitCode" }
 $client = 'Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
 $hasWebView = @("HKCU:\$client", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}") | Where-Object {
     $version = (Get-ItemProperty -LiteralPath $_ -Name pv -ErrorAction SilentlyContinue).pv
@@ -24,4 +27,4 @@ if (!$hasWebView) {
 }
 Write-Output 'Opening the StackCabin installer.'
 Start-Process -FilePath (Join-Path $PSScriptRoot $payloads[0]) -Wait
-if ($vc.ExitCode -eq 3010) { Write-Output 'Windows requested a restart after installing Visual C++. Restart before launching runtimes.' }
+if ($vcExitCode -eq 3010) { Write-Output 'Windows requested a restart after installing Visual C++. Restart before launching runtimes.' }
