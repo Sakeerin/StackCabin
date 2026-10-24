@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **23 October 2026**.
+Development version: **0.1.0**, checked on **24 October 2026**.
 This is a working development preview. It has not passed the plan's simultaneous
 Windows/macOS/Ubuntu production acceptance gate.
 
@@ -37,12 +37,14 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | Core edge cases | Corrupted archives, traversal, signed catalog tampering, interrupted installation, Unicode registration, future schema, port conflicts, secret-free SQLite backup/restore and concurrent destination reservation |
 | Native lifecycle | Real HTTP grandchild, stop of its process tree, and cleanup after its parent exits unexpectedly |
 | Native Desktop E2E | 4 cases against real Rust IPC/SQLite; screenshot `stackcabin-desktop.png` |
-| Cross-platform CI | [Run 39951584400](https://github.com/Sakeerin/StackCabin/actions/runs/39951584400): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and real managed Node toolchains |
+| Cross-platform CI | [Run 40047449625](https://github.com/Sakeerin/StackCabin/actions/runs/40047449625): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and real managed Node toolchains after static liblzma linkage |
 | Normal Windows package | Release executable starts without E2E plugins and initializes real SQLite metadata in an isolated directory |
-| Installed preview packages | [Windows/Ubuntu packaging](https://github.com/Sakeerin/StackCabin/actions/runs/39960323840): NSIS and Ubuntu 22.04 deb installed and started the normal application using real isolated SQLite metadata. [Repaired macOS packaging](https://github.com/Sakeerin/StackCabin/actions/runs/39961884329) keeps the `.app` alongside the DMG; ARM normal-app startup passed, Intel/baseline checks are pending |
+| Installed preview packages | [Run 40047451505](https://github.com/Sakeerin/StackCabin/actions/runs/40047451505): Windows NSIS, Ubuntu 22.04 deb, and macOS ARM/Intel DMGs built successfully; normal application startup used isolated SQLite metadata. macOS bundle checks reject external non-system library paths and unsupported minimum OS versions |
+| Windows prerequisites | The NSIS installer embeds pinned Microsoft Visual C++ 14.51.36247 x64, verifies SHA-256/Authenticode/version, detects existing runtime versions, and elevates only Microsoft's installer when needed. Four read-only integrity tests passed. [Installed-package verification](https://github.com/Sakeerin/StackCabin/actions/runs/40048115886) confirmed the required version and application startup in a Thai/spaced installation path; that runner already had 14.51, so missing-runtime/UAC acceptance remains a clean-VM check |
+| macOS 14 installers | Fixed the Intel bundle's external Homebrew liblzma dependency by linking xz statically. DMG mount/copy, strict binary dependency/minimum-OS checks and actual application startup passed for [ARM](https://github.com/Sakeerin/StackCabin/actions/runs/40048119819) and [x64 via Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/40048533899) |
 | Ubuntu 24.04 installers | [Run 39961992007](https://github.com/Sakeerin/StackCabin/actions/runs/39961992007): the same Ubuntu 22.04 deb and AppImage passed checksums and real application startup on Ubuntu 24.04; AppImage used extract-and-run without FUSE |
 | Actual disk exhaustion | [Ubuntu 24.04 acceptance](https://github.com/Sakeerin/StackCabin/actions/runs/39960665443): dedicated 32 MiB tmpfs produced ENOSPC during installation; no installed receipt or executable resolution, staging cleaned, same archive installed after freeing owned space |
-| Source download recovery | 15 native packaging helper tests include explicit HTTPS mirror recovery, rejection of checksum mismatch/HTTPS downgrade/credential URLs, traversal and FastCGI fragmentation |
+| Packaging verification | 21 helper tests cover explicit HTTPS mirror recovery, checksum/signature-path failures, traversal, FastCGI fragmentation and complete installer checksum verification. Legacy deb staging records are excluded without ignoring missing or corrupted distributed installers |
 | Framework acceptance | Express, Vue, React, Nest, Next and Laravel dependency installation and actual HTTP; Laravel runs PHP and Vite together |
 | Browser HMR on Windows | Actual React/Vue/Next browsers updated after source edits through Caddy while preserving a clicked counter. React/Vue WebSocket probes received HTTP 101 and module updates. React's starter now exports `App.jsx` to support Fast Refresh; screenshots `hmr-react.png` / `hmr-next.png` |
 | Real databases | MariaDB/PostgreSQL provision, insert/select, dump, new-identity restore and select; SQLite consistent snapshot/restore |
@@ -53,6 +55,7 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | Unix PHP acceptance | PHP 8.4/8.5 [native runs](https://github.com/Sakeerin/StackCabin/actions/workflows/native-runtime.yml): relocated PHP-FPM/SQLite and real Rust-core HTTP passed on Ubuntu 22.04 and macOS 15 Intel/Apple Silicon |
 | PHP ARM source libraries | PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/39960104209) and [8.5](https://github.com/Sakeerin/StackCabin/actions/runs/39960117212) rebuilt their library closure from source, passed relocated FPM/SQLite and real core HTTP with a measured macOS 14.0 minimum. Baseline execution is checked separately |
 | PHP macOS 14 ARM execution | PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/39962667129) and [8.5](https://github.com/Sakeerin/StackCabin/actions/runs/39962594228) passed real Rust-core installation and Caddy/FPM HTTP on macOS 14 using the same source-built archives |
+| PHP macOS 14 x64 execution | Source-built PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/39961891973) and [8.5](https://github.com/Sakeerin/StackCabin/actions/runs/39960124131) passed on native Intel macOS 15. The same packs passed installation/Caddy/FPM HTTP on macOS 14 through Rosetta for [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/40046616930) and [8.5](https://github.com/Sakeerin/StackCabin/actions/runs/40046620479) |
 | PostgreSQL Unix acceptance | [Run 39916993042](https://github.com/Sakeerin/StackCabin/actions/runs/39916993042): PostgreSQL 18.6 SCRAM setup, private project account, insert/select, dump/restore and real Rust-core integration on Ubuntu 22.04 and macOS 15 Intel/Apple Silicon |
 | PostgreSQL macOS 14 | [Source-library build](https://github.com/Sakeerin/StackCabin/actions/runs/39920049255) measures 14.0 on both architectures. [Actual macOS 14 ARM acceptance](https://github.com/Sakeerin/StackCabin/actions/runs/39922116967) passed real core provisioning/read/write/backup/restore in a Thai/spaced app-data path |
 | MariaDB Ubuntu 24.04 | [Run 39923305298](https://github.com/Sakeerin/StackCabin/actions/runs/39923305298) passed real core installation, version check, provision/read/write/dump/restore using the Ubuntu 22.04 source-built package |
@@ -78,12 +81,14 @@ update and persistence still use the real application and database.
    Earlier macOS PHP packs bundled Homebrew libraries requiring macOS 15.0 and
    remain blocked from production. Replacement ARM packs now build the full
    dependency closure from source, measure 14.0 and pass actual macOS 14 ARM
-   installation/HTTP. Native Intel replacements are still being verified. MariaDB's
+   installation/HTTP. Intel replacements also pass native macOS 15 and macOS 14
+   through Rosetta. MariaDB's
    optional Mroonga engine is excluded from native builds after its bundled
    Groonga source failed to compile with the current macOS SDK.
    PostgreSQL and MariaDB source builds pass with a measured 14.0 baseline;
    both also pass actual macOS 14 ARM runtime integration. PHP's ARM library closure
-   also passes build and baseline execution; Intel replacements are pending.
+   also passes build and baseline execution on both architectures, with the
+   x64 macOS 14 checks running through Rosetta.
    macOS 14 Intel
    PostgreSQL x64 compatibility [passed on macOS 14 under Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/39925179199); that does not replace a
    native Intel installer VM.
@@ -96,6 +101,9 @@ update and persistence still use the real application and database.
    Actual ENOSPC recovery passed on an isolated Linux tmpfs. Installed Windows/deb
    packages and Ubuntu 24.04 AppImage startup passed on hosted CI runners, which
    contain preinstalled software and do not replace clean-machine certification.
+   `docs/VM_ACCEPTANCE.md` records the target matrix and manual desktop checks;
+   the Windows acceptance-kit workflow packages the existing native harness so
+   a clean VM does not need Rust/Node/PHP installed globally to run the test.
 3. Supply production catalog keys, Windows signing, Apple signing/notarization,
    a maintained signed app-update endpoint, and repository/release configuration.
    App self-update distribution is not enabled in this preview.

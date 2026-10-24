@@ -79,11 +79,15 @@ suite. A source build alone does not establish runtime compatibility.
 ## 3. Prepare installer variants
 
 - Windows: sign the executable and installer using the release certificate;
-  configure Tauri's Windows signing settings. The normal installer downloads
-  WebView2 if necessary. An offline installer must override
-  `bundle.windows.webviewInstallMode` to `{"type":"offlineInstaller"}` so the
-  full WebView2 payload is included. Include the officially signed Visual C++
-  2015–2022 x64 redistributable for PHP and database binaries.
+  configure Tauri's Windows signing settings. NSIS packages embed the Microsoft
+  Visual C++ v14 x64 payload pinned in `runtime-catalog/windows-prerequisites.json`.
+  `beforeBundleCommand` verifies its hash, Microsoft signature and version without
+  executing it. Setup rechecks the payload, detects the installed version and
+  requests elevation only for Microsoft's installer when an upgrade is needed.
+  WebView2 downloads when absent. The full offline folder installs its signed
+  WebView2 payload before opening NSIS, so NSIS can detect the installed runtime.
+  A separate single-file offline NSIS variant can instead use Tauri's
+  `bundle.windows.webviewInstallMode: {"type":"offlineInstaller"}`.
 - macOS: supply the Apple signing identity/certificate and notarization
   credentials. Build and test Intel and Apple Silicon separately.
 - Ubuntu: build against the oldest supported Ubuntu baseline. Verify the

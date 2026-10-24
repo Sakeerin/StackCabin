@@ -1,12 +1,15 @@
 # เริ่มใช้งาน StackCabin
 
-รุ่นนี้เป็นรุ่นพัฒนา 0.1.0 ที่ทดสอบบน Windows x64 อ่านขอบเขตและงานก่อนเปิดตัว
+รุ่นนี้เป็นรุ่นพัฒนา 0.1.0 มีผลทดสอบบน Windows x64, Ubuntu และ macOS อ่านขอบเขตและงานก่อนเปิดตัว
 ได้ใน [รายงานสถานะ](IMPLEMENTATION_STATUS.md)
 
 ## ติดตั้งบน Windows
 
 แบบออนไลน์: เปิด `StackCabin_0.1.0_x64-setup.exe` ใน
 `target/release/bundle/nsis/` แล้วติดตั้ง runtime ที่ต้องการจากหน้า Runtimes
+ตัวติดตั้งรวม Visual C++ x64 ที่ตรึงเวอร์ชันและตรวจลายเซ็น Microsoft ไว้แล้ว
+หากต้องติดตั้งหรืออัปเดตส่วนนี้ Windows อาจขอสิทธิ์ผู้ดูแลระบบ ส่วน WebView2
+จะดาวน์โหลดเมื่อเครื่องยังไม่มี
 
 แบบออฟไลน์: คัดลอกโฟลเดอร์ `artifacts/offline-windows-x64` ทั้งโฟลเดอร์ไปยัง
 เครื่องปลายทาง แล้วเปิด `Install.cmd` ตัวช่วยจะตรวจ checksum และติดตั้ง
@@ -31,10 +34,13 @@ chmod +x StackCabin_*.AppImage
 APPIMAGE_EXTRACT_AND_RUN=1 ./StackCabin_*.AppImage
 ```
 
-macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel ให้ตรวจผลของ run และ
-[รายงานสถานะ](IMPLEMENTATION_STATUS.md) ก่อนนำไปทดลอง การตรวจแพ็กเกจ macOS
-และ PHP สำหรับ macOS 14 ยังดำเนินอยู่ Node.js และเว็บ Static ใช้ catalog ปัจจุบันได้
+macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel โดยผ่านการเปิดแอปบน macOS 14
+ทั้ง ARM และ x64 ผ่าน Rosetta แล้ว ดูขอบเขตใน [รายงานสถานะ](IMPLEMENTATION_STATUS.md)
+Node.js และเว็บ Static ใช้ catalog ปัจจุบันได้
 ส่วน PHP/ฐานข้อมูลบน Unix จะเพิ่มเข้า catalog หลังแพ็กเกจผ่านการตรวจและมีแหล่งดาวน์โหลดจริง
+
+สำหรับผู้ทดสอบ VM มี [คู่มือรับรองเครื่องสะอาด](VM_ACCEPTANCE.md) และ workflow
+สร้างชุดทดสอบ Windows แบบพกพาที่ใช้ runtime ของ StackCabin โดยไม่ต้องติดตั้ง Rust/Node/PHP ของระบบ
 
 ## โปรเจกต์แรก
 
