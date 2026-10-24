@@ -4,7 +4,7 @@ on:
     inputs:
       target:
         type: choice
-        options: [all, linux, macos-arm64, macos-x64]
+        options: [all, linux, linux-baseline, macos-arm64, macos-x64]
         default: all
       package_qa:
         description: Also build an internal VM test kit with matching offline archives
@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.target == 'linux' && '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"},{"os":"ubuntu-24.04","platform":"linux","arch":"x64"}]' || inputs.target == 'macos-arm64' && '[{"os":"macos-14","platform":"macos","arch":"arm64"}]' || inputs.target == 'macos-x64' && '[{"os":"macos-14","platform":"macos","arch":"x64"},{"os":"macos-15-intel","platform":"macos","arch":"x64"}]' || '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"},{"os":"ubuntu-24.04","platform":"linux","arch":"x64"},{"os":"macos-14","platform":"macos","arch":"arm64"},{"os":"macos-14","platform":"macos","arch":"x64"},{"os":"macos-15-intel","platform":"macos","arch":"x64"}]') }}
+        include: ${{ fromJSON(inputs.target == 'linux-baseline' && '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"}]' || inputs.target == 'linux' && '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"},{"os":"ubuntu-24.04","platform":"linux","arch":"x64"}]' || inputs.target == 'macos-arm64' && '[{"os":"macos-14","platform":"macos","arch":"arm64"}]' || inputs.target == 'macos-x64' && '[{"os":"macos-14","platform":"macos","arch":"x64"},{"os":"macos-15-intel","platform":"macos","arch":"x64"}]' || '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"},{"os":"ubuntu-24.04","platform":"linux","arch":"x64"},{"os":"macos-14","platform":"macos","arch":"arm64"},{"os":"macos-14","platform":"macos","arch":"x64"},{"os":"macos-15-intel","platform":"macos","arch":"x64"}]') }}
     runs-on: ${{ matrix.os }}
     env:
       STACKCABIN_TEST_ARCH: ${{ matrix.arch }}

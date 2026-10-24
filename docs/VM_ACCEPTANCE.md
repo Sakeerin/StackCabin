@@ -61,6 +61,8 @@ expire after seven days: update the reviewed run selections after rebuilding;
 missing/expired packages must fail rather than silently use another build.
 
 To prepare a VM kit, select the platform and enable `package_qa` on that workflow.
+Use `linux-baseline` to build the Linux kit on Ubuntu 22.04; `linux` runs both
+Ubuntu versions. Keep the Ubuntu 22.04 executable for testing the older baseline.
 After the combined tests pass, it builds the real acceptance executable in release
 mode and packages it with the matching offline archives, source commit, checksums,
 component notices and this guide. Download the `native-qa-*.tar.gz` artifact and
