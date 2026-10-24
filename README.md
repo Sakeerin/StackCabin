@@ -176,4 +176,4 @@ cargo run -p stackcabin-core --example native-smoke
 [Architecture and contracts](docs/ARCHITECTURE.md) ·
 [Release preparation](docs/RELEASING.md) · [MIT license](LICENSE)
 
-[Clean-machine VM acceptance and portable Windows QA kit](docs/VM_ACCEPTANCE.md)
+[Clean-machine VM acceptance and portable runtime QA kits](docs/VM_ACCEPTANCE.md)

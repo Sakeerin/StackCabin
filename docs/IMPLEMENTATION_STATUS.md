@@ -37,8 +37,8 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | Core edge cases            | Corrupted archives, traversal, signed catalog tampering, interrupted installation, Unicode registration, future schema, port conflicts, secret-free SQLite backup/restore and concurrent destination reservation                                                                                                                                                                                                                                                                                                                    |
 | Native lifecycle           | Real HTTP grandchild, stop of its process tree, and cleanup after its parent exits unexpectedly                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Native Desktop E2E         | 4 cases against real Rust IPC/SQLite; screenshot `stackcabin-desktop.png`                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Cross-platform CI          | [Run 40047449625](https://github.com/Sakeerin/StackCabin/actions/runs/40047449625): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and real managed Node toolchains after static liblzma linkage                                                                                                                                                                                                                                                                  |
-| Normal Windows package     | Release executable starts without E2E plugins and initializes real SQLite metadata in an isolated directory                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Cross-platform CI          | [Run 40056818097](https://github.com/Sakeerin/StackCabin/actions/runs/40056818097): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and managed toolchains, including the unreachable-proxy regression                                                                                                                                                                                                                                                             |
+| Normal Windows package     | [Run 40056742523](https://github.com/Sakeerin/StackCabin/actions/runs/40056742523): release NSIS includes the loopback/proxy fix and pinned Microsoft prerequisite; normal application startup initializes isolated SQLite without E2E plugins                                                                                                                                                                                                                                                                                      |
 | Installed preview packages | [Run 40047451505](https://github.com/Sakeerin/StackCabin/actions/runs/40047451505): Windows NSIS, Ubuntu 22.04 deb, and macOS ARM/Intel DMGs built successfully; normal application startup used isolated SQLite metadata. macOS bundle checks reject external non-system library paths and unsupported minimum OS versions                                                                                                                                                                                                         |
 | Windows prerequisites      | The NSIS installer embeds pinned Microsoft Visual C++ 14.51.36247 x64, verifies SHA-256/Authenticode/version, detects existing runtime versions, and elevates only Microsoft's installer when needed. Four read-only integrity tests passed. [Installed-package verification](https://github.com/Sakeerin/StackCabin/actions/runs/40048115886) confirmed the required version and application startup in a Thai/spaced installation path; that runner already had 14.51, so missing-runtime/UAC acceptance remains a clean-VM check |
 | macOS 14 installers        | Fixed the Intel bundle's external Homebrew liblzma dependency by linking xz statically. DMG mount/copy, strict binary dependency/minimum-OS checks and actual application startup passed for [ARM](https://github.com/Sakeerin/StackCabin/actions/runs/40048119819) and [x64 via Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/40048533899)                                                                                                                                                                          |
@@ -59,11 +59,23 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | PostgreSQL Unix acceptance | [Run 39916993042](https://github.com/Sakeerin/StackCabin/actions/runs/39916993042): PostgreSQL 18.6 SCRAM setup, private project account, insert/select, dump/restore and real Rust-core integration on Ubuntu 22.04 and macOS 15 Intel/Apple Silicon                                                                                                                                                                                                                                                                               |
 | PostgreSQL macOS 14        | [Source-library build](https://github.com/Sakeerin/StackCabin/actions/runs/39920049255) measures 14.0 on both architectures. [Actual macOS 14 ARM acceptance](https://github.com/Sakeerin/StackCabin/actions/runs/39922116967) passed real core provisioning/read/write/backup/restore in a Thai/spaced app-data path                                                                                                                                                                                                               |
 | MariaDB Ubuntu 24.04       | [Run 39923305298](https://github.com/Sakeerin/StackCabin/actions/runs/39923305298) passed real core installation, version check, provision/read/write/dump/restore using the Ubuntu 22.04 source-built package                                                                                                                                                                                                                                                                                                                      |
-| MariaDB macOS core         | [ARM source build](https://github.com/Sakeerin/StackCabin/actions/runs/39928392371) passed with a measured 14.0 minimum. [Actual macOS 14 ARM verification](https://github.com/Sakeerin/StackCabin/actions/runs/39933188836) passed installation, provisioning, read/write, backup and restore. The [Intel source build](https://github.com/Sakeerin/StackCabin/actions/runs/39928396223) passed runtime tests but its complete package measures 15.0; the combined-stack gate correctly rejects it pending replacement             |
+| MariaDB macOS core         | [ARM source build](https://github.com/Sakeerin/StackCabin/actions/runs/39928392371) and [corrected Intel source build](https://github.com/Sakeerin/StackCabin/actions/runs/40055522282) passed relocation and real core database operations with a measured 14.0 minimum. The Intel replacement excludes the optional CONNECT ODBC adapter that pulled in newer Homebrew libltdl                                                                                                                                                    |
 | MariaDB macOS 14 x64       | [Compatibility verification](https://github.com/Sakeerin/StackCabin/actions/runs/39951635821) passed real core database operations on macOS 14 using preinstalled Rosetta; native Intel installer acceptance remains separate                                                                                                                                                                                                                                                                                                       |
 | Ubuntu 24.04 WSL2          | Downloaded/checksummed Ubuntu 22.04 PHP 8.4/8.5, PostgreSQL and MariaDB packs, removed debug symbols, then passed relocated FastCGI/SQLite and database dump/restore as unprivileged `nobody`; this is not a clean desktop installer VM                                                                                                                                                                                                                                                                                             |
 | Project URLs               | Readable `.localhost` hosts and dedicated loopback fallback routes verified for PHP, Node and static projects                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| Portable Windows QA kit    | [Run 40048847772](https://github.com/Sakeerin/StackCabin/actions/runs/40048847772) builds the existing native smoke harness as a release executable, with a wrapper that refuses nonempty workspaces, binary checksum, source commit, VM guide and component notices                                                                                                                                                                                                                                                                |
+| Portable Windows QA kit    | [Run 40056740193](https://github.com/Sakeerin/StackCabin/actions/runs/40056740193) builds the release harness with actual PHP/Node HTTP version checks and loopback isolation; five wrapper tests verify checksum failures and preservation of existing files, hidden data and junction targets                                                                                                                                                                                                                                     |
+
+Portable Unix kits passed compilation, archive extraction and execution of the
+release harness in fresh workspaces on [macOS 14 ARM](https://github.com/Sakeerin/StackCabin/actions/runs/40057001216)
+and [Ubuntu 22.04](https://github.com/Sakeerin/StackCabin/actions/runs/40057065876).
+The corrected Intel stack also passed the same tests on
+[native Intel macOS 15 and macOS 14 through Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/40057509499),
+including both PHP branches, both Node branches and both database restores.
+The same Ubuntu 22.04 kit passed on [Ubuntu 24.04 with only loopback available](https://github.com/Sakeerin/StackCabin/actions/runs/40057428684),
+as an ordinary user: all runtime installations, five concurrent web projects,
+package-manager version checks, both database dumps/restores and owned shutdown
+completed without external network interfaces. This is runtime/offline evidence,
+not clean-desktop installer certification.
 
 Internal health checks, Caddy reloads and routed readiness now use direct
 loopback clients with finite timeouts and no redirect following. An isolated
@@ -77,37 +89,24 @@ update and persistence still use the real application and database.
 
 ## Remaining production gates
 
-1. Build and certify Unix PHP/MariaDB/PostgreSQL packages. The checked-in
-   development catalog contains Node/Caddy/Composer/package managers/CA artifacts
-   for all four platform/architecture targets, and PHP/database artifacts for
-   Windows x64. Missing packages are shown as unavailable.
-   The native pipeline checks relocation, Unicode paths, PHP-FPM/SQLite, authenticated
-   database read/write/dump/restore, and installation through the actual Rust core.
-   Source archives and publisher checksums are pinned in
-   `runtime-catalog/source-archives.json`. CI uploads build artifacts only.
-   Earlier macOS PHP packs bundled Homebrew libraries requiring macOS 15.0 and
-   remain blocked from production. Replacement ARM packs now build the full
-   dependency closure from source, measure 14.0 and pass actual macOS 14 ARM
-   installation/HTTP. Intel replacements also pass native macOS 15 and macOS 14
-   through Rosetta. MariaDB's
-   optional Mroonga engine is excluded from native builds after its bundled
-   Groonga source failed to compile with the current macOS SDK.
-   PostgreSQL and the ARM MariaDB source builds pass with a measured 14.0 baseline;
-   the older Intel MariaDB package measures 15.0 despite passing runtime tests
-   through Rosetta. The combined-stack check blocks it; source builds now reject
-   any library above the 14.0 baseline before writing approved metadata.
-   both also pass actual macOS 14 ARM runtime integration. PHP's ARM library closure
-   also passes build and baseline execution on both architectures, with the
-   x64 macOS 14 checks running through Rosetta.
-   macOS 14 Intel
-   PostgreSQL x64 compatibility [passed on macOS 14 under Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/39925179199); that does not replace a
-   native Intel installer VM.
-   MariaDB's upstream install script splits basedir paths on whitespace. The
-   Unix core uses a verified symlink inside its private temporary directory for
-   runtime tools and a private socket, retaining the real runtime/data locations.
-   Native MariaDB packs exclude CONNECT's optional ODBC adapter: its host
-   unixODBC dependency pulled in Intel Homebrew libltdl requiring 15.0. Native SQL
-   connections, per-project accounts and logical backups do not use that adapter.
+1. Publish and certify the reviewed Unix PHP/MariaDB/PostgreSQL packages at stable
+   HTTPS locations, then sign a complete production catalog. The checked-in
+   development catalog still contains 32 entries: Node/Caddy/Composer/package
+   managers/CA artifacts for all targets, and PHP/database artifacts for Windows
+   x64. Normal Unix preview UI correctly shows the missing native packages as
+   unavailable. Temporary QA catalogs do not change that shipping catalog.
+   Source archives/checksums are pinned in `runtime-catalog/source-archives.json`;
+   `native-test-builds.json` selects existing CI artifacts for internal tests.
+   Native builds verify relocation, Unicode paths, FPM/SQLite, authenticated SQL,
+   dump/restore and real core installation. Every macOS library must measure at
+   most 14.0 before approved metadata is written. Replacement PHP/PostgreSQL/
+   MariaDB packages meet that baseline; the earlier incompatible PHP and Intel
+   MariaDB archives remain excluded.
+   Native MariaDB excludes optional Mroonga and CONNECT ODBC support. The latter
+   previously pulled in host Intel libltdl requiring 15.0; native SQL accounts and
+   logical backups do not use that adapter. A private Unix runtime alias/socket
+   accommodates the upstream bootstrap script while retaining Unicode data paths.
+   Rosetta checks still do not replace a native macOS 14 Intel installer VM.
 2. Run native runtime, browser HMR, tray/Quit, abrupt-app-exit, disk-full,
    clean-machine online/offline installation and upgrade tests on every target VM.
    Local offline archive installation does not establish clean-OS compatibility.
@@ -115,8 +114,10 @@ update and persistence still use the real application and database.
    packages and Ubuntu 24.04 AppImage startup passed on hosted CI runners, which
    contain preinstalled software and do not replace clean-machine certification.
    `docs/VM_ACCEPTANCE.md` records the target matrix and manual desktop checks;
-   the Windows acceptance-kit workflow packages the existing native harness so
-   a clean VM does not need Rust/Node/PHP installed globally to run the test.
+   portable acceptance kits package the real native harness for Windows,
+   macOS ARM/x64 and Ubuntu x64, with matching Unix offline archives. A VM does
+   not need global Rust/Node/PHP to run these harnesses once OS prerequisites
+   and the normal desktop credential store are ready.
 3. Supply production catalog keys, Windows signing, Apple signing/notarization,
    a maintained signed app-update endpoint, and repository/release configuration.
    App self-update distribution is not enabled in this preview.

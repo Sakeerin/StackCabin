@@ -93,6 +93,18 @@ a fresh OS credential store. It refuses a namespace with any external interface.
 This establishes runtime installation and operation without an external network;
 it still does not replace installation on a clean desktop VM.
 
+Internal kit evidence from 24 October 2026 (artifacts expire after seven days):
+
+| Target       | Build and verification                                                                                                                                                                                                          |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Windows x64  | [Release harness and five wrapper safeguard checks](https://github.com/Sakeerin/StackCabin/actions/runs/40056740193); use the matching Windows offline pack from the normal catalog                                             |
+| macOS 14 ARM | [Build, package, extract and run](https://github.com/Sakeerin/StackCabin/actions/runs/40057001216)                                                                                                                              |
+| macOS x64    | [Native Intel 15 and macOS 14 through Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/40057509499); select the matching artifact, including the macOS 14 x64 kit for baseline testing                              |
+| Ubuntu x64   | [Ubuntu 22.04 kit](https://github.com/Sakeerin/StackCabin/actions/runs/40057065876), reused successfully on [Ubuntu 24.04 with no external network interfaces](https://github.com/Sakeerin/StackCabin/actions/runs/40057428684) |
+
+Use `SOURCE_COMMIT.txt` and the included checksums to identify the exact kit.
+These internal runtime tests complement the desktop/installer VM record below.
+
 ## Desktop checks on every target
 
 1. Start from a clean snapshot without development runtimes. Test installation
