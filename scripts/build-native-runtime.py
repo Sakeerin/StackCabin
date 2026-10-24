@@ -236,7 +236,10 @@ def main():
             flags = [f"-DCMAKE_OSX_SYSROOT={os.environ['SDKROOT']}", "-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0",
                      f"-DCMAKE_PREFIX_PATH={work / 'dependencies'}", "-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local",
                      f"-DOPENSSL_ROOT_DIR={work / 'dependencies'}", "-DWITH_PCRE=system"]
-        run(["cmake", "-S", source, "-B", build, f"-DCMAKE_INSTALL_PREFIX={prefix}", "-DINSTALL_LAYOUT=STANDALONE", "-DCMAKE_BUILD_TYPE=Release", "-DWITH_SSL=system", "-DWITH_UNIT_TESTS=OFF", "-DWITH_EMBEDDED_SERVER=OFF", "-DWITH_WSREP=OFF", "-DPLUGIN_ROCKSDB=NO", "-DPLUGIN_MROONGA=NO", "-DWITH_NUMA=OFF", *flags])
+        # CONNECT's optional ODBC adapter finds host unixODBC/libltdl even when
+        # Homebrew prefixes are ignored. It is outside this app's native SQL
+        # scope; exclude it consistently instead of shipping a newer-OS library.
+        run(["cmake", "-S", source, "-B", build, f"-DCMAKE_INSTALL_PREFIX={prefix}", "-DINSTALL_LAYOUT=STANDALONE", "-DCMAKE_BUILD_TYPE=Release", "-DWITH_SSL=system", "-DWITH_UNIT_TESTS=OFF", "-DWITH_EMBEDDED_SERVER=OFF", "-DWITH_WSREP=OFF", "-DPLUGIN_ROCKSDB=NO", "-DPLUGIN_MROONGA=NO", "-DWITH_NUMA=OFF", "-DCONNECT_WITH_ODBC=OFF", *flags])
         run(["cmake", "--build", build, "--parallel", jobs])
         run(["cmake", "--install", build])
         executables = {tool: f"bin/{tool}" for tool in ["mariadbd", "mariadb", "mariadb-dump"]}

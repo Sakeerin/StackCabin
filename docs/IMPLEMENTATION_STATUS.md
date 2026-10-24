@@ -99,6 +99,9 @@ update and persistence still use the real application and database.
    MariaDB's upstream install script splits basedir paths on whitespace. The
    Unix core uses a verified symlink inside its private temporary directory for
    runtime tools and a private socket, retaining the real runtime/data locations.
+   Native MariaDB packs exclude CONNECT's optional ODBC adapter: its host
+   unixODBC dependency pulled in Intel Homebrew libltdl requiring 15.0. Native SQL
+   connections, per-project accounts and logical backups do not use that adapter.
 2. Run native runtime, browser HMR, tray/Quit, abrupt-app-exit, disk-full,
    clean-machine online/offline installation and upgrade tests on every target VM.
    Local offline archive installation does not establish clean-OS compatibility.
