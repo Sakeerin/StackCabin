@@ -95,6 +95,7 @@ export async function saveArchive(defaultPath: string): Promise<string | null> {
   });
 }
 export const emptySnapshot: Snapshot = {
+  qaMode: false,
   projects: [],
   statuses: [],
   runtimes: [],

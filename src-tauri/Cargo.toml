@@ -24,5 +24,6 @@ tauri-plugin-wdio = { version = "1", optional = true }
 tokio = { version = "1", features = ["full"] }
 
 [features]
+qa = ["stackcabin-core/qa"]
 custom-protocol = ["tauri/custom-protocol"]
 e2e = ["dep:tauri-plugin-wdio-webdriver", "dep:tauri-plugin-wdio"]

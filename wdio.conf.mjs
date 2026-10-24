@@ -5,9 +5,11 @@ await mkdir(path.join(dataDirectory, "projects"), { recursive: true });
 await mkdir(path.resolve("artifacts"), { recursive: true });
 process.env.STACKCABIN_DATA_DIR = path.join(dataDirectory, "app-data");
 process.env.STACKCABIN_E2E_PROJECTS = path.join(dataDirectory, "projects");
-const appBinaryPath = path.resolve(
-  `target/debug/stackcabin${process.platform === "win32" ? ".exe" : ""}`,
-);
+const appBinaryPath =
+  process.env.STACKCABIN_E2E_BINARY ||
+  path.resolve(
+    `target/debug/stackcabin${process.platform === "win32" ? ".exe" : ""}`,
+  );
 export const config = {
   runner: "local",
   specs: ["./e2e/desktop.e2e.mjs"],

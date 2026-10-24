@@ -1,0 +1,18 @@
+{
+  "productName": "StackCabin QA",
+  "mainBinaryName": "stackcabin-qa",
+  "identifier": "dev.stackcabin.qa",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "StackCabin QA",
+        "width": 1380,
+        "height": 900,
+        "minWidth": 1000,
+        "minHeight": 680,
+        "center": true
+      }
+    ]
+  }
+}

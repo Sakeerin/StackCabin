@@ -1,0 +1,103 @@
+name: Build Unix QA desktop installers with offline runtimes
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        type: choice
+        options: [all, linux, macos-arm64, macos-x64]
+        default: all
+permissions:
+  contents: read
+  actions: read
+jobs:
+  package:
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.target == 'linux' && '[{"os":"ubuntu-22.04","run":"40057065876","artifact":"native-qa-ubuntu-22.04-x64"}]' || inputs.target == 'macos-arm64' && '[{"os":"macos-15","run":"40057001216","artifact":"native-qa-macos-14-arm64"}]' || inputs.target == 'macos-x64' && '[{"os":"macos-15-intel","run":"40057509499","artifact":"native-qa-macos-14-x64"}]' || '[{"os":"ubuntu-22.04","run":"40057065876","artifact":"native-qa-ubuntu-22.04-x64"},{"os":"macos-15","run":"40057001216","artifact":"native-qa-macos-14-arm64"},{"os":"macos-15-intel","run":"40057509499","artifact":"native-qa-macos-14-x64"}]') }}
+    runs-on: ${{ matrix.os }}
+    env:
+      STACKCABIN_QA_KIT_DIR: ${{ runner.temp }}/desktop-runtime-kit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          run-id: ${{ matrix.run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/runtime-kit/
+      - name: Verify the immutable kit archive and extract
+        run: |
+          cd artifacts/runtime-kit
+          archives=(*.tar.gz)
+          manifests=(*.tar.gz.sha256)
+          [[ ${#archives[@]} -eq 1 && ${#manifests[@]} -eq 1 ]]
+          if [[ "$RUNNER_OS" == macOS ]]; then shasum -a 256 -c "${manifests[0]}"; else sha256sum -c "${manifests[0]}"; fi
+          mkdir "$STACKCABIN_QA_KIT_DIR"
+          tar -xzf "${archives[0]}" -C "$STACKCABIN_QA_KIT_DIR"
+      - name: Linux desktop and credential-store prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf libdbus-1-dev libsecret-1-dev xvfb dbus-x11 gnome-keyring
+      - run: npm ci
+      - run: node --test scripts/test-qa-desktop.mjs
+      - name: Verify every offline archive and prepare the matching QA catalog
+        run: node scripts/prepare-qa-desktop.mjs
+      - name: Build QA desktop for native E2E only
+        run: node node_modules/@tauri-apps/cli/tauri.js build --debug --no-bundle --features e2e,qa --config src-tauri/tauri.qa.conf.json --config src-tauri/tauri.e2e.conf.json
+      - name: Ephemeral QA E2E keychain
+        if: runner.os == 'macOS'
+        run: |
+          keychain="$RUNNER_TEMP/stackcabin-qa-e2e.keychain-db"
+          security create-keychain -p 'stackcabin-ci-only' "$keychain"
+          security unlock-keychain -p 'stackcabin-ci-only' "$keychain"
+          security default-keychain -d user -s "$keychain"
+          security list-keychains -d user -s "$keychain"
+      - name: Offline runtime, project UI and database acceptance on macOS
+        if: runner.os == 'macOS'
+        run: npm run test:desktop
+      - name: Offline runtime, project UI and database acceptance on Linux
+        if: runner.os == 'Linux'
+        run: |
+          export XDG_DATA_HOME="$RUNNER_TEMP/qa-e2e-secrets"
+          xvfb-run -a dbus-run-session -- bash -eu -c 'mkdir -p "$XDG_DATA_HOME"; printf "%s\n" "stackcabin-ci-only" | gnome-keyring-daemon --unlock --components=secrets; npm run test:desktop'
+      - name: Build installers with QA identity and without E2E plugins
+        run: |
+          if [[ "$RUNNER_OS" == macOS ]]; then bundles=app,dmg; else bundles=deb,appimage; fi
+          node node_modules/@tauri-apps/cli/tauri.js build --features qa --config src-tauri/tauri.qa.conf.json --bundles "$bundles"
+      - name: Install and start the normal QA deb
+        if: runner.os == 'Linux'
+        run: |
+          debs=(target/release/bundle/deb/*.deb)
+          [[ ${#debs[@]} -eq 1 ]]
+          [[ "$(dpkg-deb -f "${debs[0]}" Package)" != stackcabin ]]
+          sudo dpkg -i "${debs[0]}"
+          xvfb-run -a dbus-run-session -- python scripts/smoke-packaged-unix.py /usr/bin/stackcabin-qa
+      - name: Verify and start the normal QA macOS app
+        if: runner.os == 'macOS'
+        run: |
+          apps=(target/release/bundle/macos/*.app)
+          [[ ${#apps[@]} -eq 1 ]]
+          python scripts/check-macos-bundle.py "${apps[0]}"
+          python scripts/smoke-packaged-unix.py "${apps[0]}/Contents/MacOS/stackcabin-qa"
+      - run: node scripts/release-checksums.mjs
+      - name: Verify all distributed installer checksums
+        run: python scripts/verify-installer-checksums.py target/release/bundle --platform "$RUNNER_OS"
+      - run: node scripts/package-qa-desktop.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-qa-${{ matrix.os }}
+          retention-days: 7
+          path: |
+            artifacts/desktop-qa-*.tar.gz
+            artifacts/desktop-qa-*.tar.gz.sha256
+            artifacts/qa-desktop-running.png

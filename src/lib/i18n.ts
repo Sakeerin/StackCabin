@@ -41,6 +41,8 @@ const en = {
   ready: "Ready when you are",
   native: "Native desktop",
   preview: "Browser preview",
+  qaBuild:
+    "Internal test build. Install runtimes from the matching offline folder supplied with this build.",
   previewSub: "Launch the desktop app to manage files, runtimes, and services.",
   start: "Start",
   stop: "Stop",
@@ -181,6 +183,7 @@ const th: Record<Key, string> = {
   ready: "พร้อมเมื่อคุณพร้อม",
   native: "แอปบนเครื่อง",
   preview: "ตัวอย่างในเบราว์เซอร์",
+  qaBuild: "รุ่นทดสอบภายใน ใช้ชุด runtime ออฟไลน์ที่มาพร้อมกับรุ่นนี้",
   previewSub: "เปิดแอป Desktop เพื่อจัดการไฟล์ รันไทม์ และบริการ",
   start: "เริ่ม",
   stop: "หยุด",

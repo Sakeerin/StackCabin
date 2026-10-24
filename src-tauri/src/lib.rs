@@ -210,6 +210,10 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            anyhow::ensure!(
+                app.config().identifier == stackcabin_core::APPLICATION_ID,
+                "Application identity must match the compiled credential namespace"
+            );
             let handle = app.handle().clone();
             let root = std::env::var_os("STACKCABIN_DATA_DIR")
                 .map(PathBuf::from)

@@ -199,6 +199,7 @@ pub struct ServiceInfo {
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Snapshot {
+    pub qa_mode: bool,
     pub projects: Vec<Project>,
     pub statuses: Vec<ProjectStatus>,
     pub runtimes: Vec<RuntimeInfo>,

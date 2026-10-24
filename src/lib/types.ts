@@ -31,6 +31,6 @@ export type BackupInfo = { id: string, projectName: string, createdAt: string, b
 
 export type ServiceInfo = { id: string, name: string, state: ProcessState, port: number, installed: boolean, detail: string, };
 
-export type Snapshot = { projects: Array<Project>, statuses: Array<ProjectStatus>, runtimes: Array<RuntimeInfo>, services: Array<ServiceInfo>, backups: Array<BackupInfo>, settings: Settings, platform: string, arch: string, dataDirectory: string, catalogError: string | null, };
+export type Snapshot = { qaMode: boolean, projects: Array<Project>, statuses: Array<ProjectStatus>, runtimes: Array<RuntimeInfo>, services: Array<ServiceInfo>, backups: Array<BackupInfo>, settings: Settings, platform: string, arch: string, dataDirectory: string, catalogError: string | null, };
 
 export type AppEvent = { kind: string, operationId: string, subject: string, message: string, progress: number | null, timestamp: string, };

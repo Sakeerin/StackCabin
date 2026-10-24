@@ -18,6 +18,7 @@ describe("StackCabin native desktop", () => {
     await $("h1").waitForDisplayed();
     const state = await invoke("snapshot");
     assert.equal(state.catalogError, null);
+    assert.equal(state.qaMode, process.env.STACKCABIN_E2E_QA === "1");
     assert.ok(state.runtimes.length > 0);
     await browser.waitUntil(
       async () => !(await $("body").getText()).includes("Browser preview"),
@@ -80,3 +81,5 @@ describe("StackCabin native desktop", () => {
     );
   });
 });
+
+if (process.env.STACKCABIN_E2E_OFFLINE) await import("./qa.e2e.mjs");

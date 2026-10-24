@@ -6,6 +6,12 @@ pub mod project;
 pub mod runtime;
 pub mod store;
 
+pub const APPLICATION_ID: &str = if cfg!(feature = "qa") {
+    "dev.stackcabin.qa"
+} else {
+    "dev.stackcabin.desktop"
+};
+
 use anyhow::{Context, Result};
 use models::*;
 use runtime::{EventSink, RuntimeManager};
@@ -64,6 +70,7 @@ impl AppCore {
     }
     pub async fn snapshot(&self) -> Result<Snapshot> {
         Ok(Snapshot {
+            qa_mode: cfg!(feature = "qa"),
             projects: self.store.projects()?,
             statuses: self.supervisor.statuses().await,
             runtimes: self.runtimes.list(),

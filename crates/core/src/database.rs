@@ -719,7 +719,7 @@ pub fn validate_identifier(name: &str) -> Result<()> {
     Ok(())
 }
 fn credential(id: &str) -> Result<String> {
-    let entry = keyring::Entry::new("dev.stackcabin.desktop", id)
+    let entry = keyring::Entry::new(crate::APPLICATION_ID, id)
         .context("OS credential store unavailable")?;
     match entry.get_password() {
         Ok(value) => Ok(value),

@@ -444,6 +444,14 @@ export default function App() {
           </div>
         </header>
         <main>
+          {snapshot.qaMode && (
+            <div className="preview-banner" data-testid="qa-banner">
+              <ShieldCheck size={16} />
+              <span>
+                <strong>StackCabin QA</strong> · {t("qaBuild")}
+              </span>
+            </div>
+          )}
           {!desktop && (
             <div className="preview-banner">
               <Monitor size={16} />
