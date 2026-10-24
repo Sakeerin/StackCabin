@@ -24,7 +24,8 @@ Verification opens the same SQLite metadata and compares every recorded field
 and file. It reads the original/restored MariaDB and PostgreSQL rows through the
 existing OS keychain credentials, reads SQLite, starts every stored project and
 checks real HTTP content and PHP/Node version response headers. It does not
-install tools, re-provision accounts or recreate data. Database listening ports
+install tools, re-provision project accounts or repopulate the expected table.
+Missing rows or accounts fail verification. Database listening ports
 may change after a restart; database/user identity and all other manifest fields
 remain checked. Owned services stop after each verification.
 
@@ -43,6 +44,12 @@ rows through startup and process shutdown. The deeper runtime/database probe
 runs in the current core acceptance executable after each application closes.
 It supplements native UI E2E; it does not claim that the packaged UI itself was
 driven to start all databases during this upgrade test.
+
+For an existing data directory, readiness also requires an actual metadata file
+handle in the installed process: `/proc` inode/device matching on Linux or
+`lsof` process/inode matching on macOS. This proves the application opened the
+existing database before the check succeeds. Two regressions exercise a real
+SQLite open/close lifecycle and reject a handle to a different database.
 
 - Ubuntu installs the actual previous `.deb`, then uses `dpkg` to upgrade the
   same package from 0.1.0 to 0.1.1 and checks the installed version.
@@ -64,8 +71,25 @@ and catalog private keys. The candidate installers are not published.
 
 This establishes same-schema preview replacement on hosted developer machines.
 It does not establish migration from a supported public release, upgrade across
-metadata schema versions, Windows installer upgrade, AppImage replacement,
+metadata schema versions, preservation at the default OS app-data location,
+Windows installer upgrade, AppImage replacement,
 native macOS 14 Intel acceptance, or clean-machine certification. Repeat the
 [VM checklist](VM_ACCEPTANCE.md) with actual signed supported release versions
 before certifying an upgrade path. Runtime major-version migration remains an
 explicit database dump/restore operation.
+
+## Verification evidence
+
+Populated 0.1.0 → unpublished 0.1.1 checks on 24 October 2026:
+
+| Target           | Result | Evidence                                                                                                       |
+| ---------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
+| Ubuntu 22.04 x64 | Passed | [Installed deb upgrade](https://github.com/Sakeerin/StackCabin/actions/runs/40104040800/job/120901909714)      |
+| macOS 14 ARM     | Passed | [Actual DMG app replacement](https://github.com/Sakeerin/StackCabin/actions/runs/40104040800/job/120901909952) |
+| macOS 15 Intel   | Passed | [Native Intel check](https://github.com/Sakeerin/StackCabin/actions/runs/40104040800/job/120901909920)         |
+
+Each passing target retains all ten projects, their trust/settings/runtime pins, source and backup
+hashes, executable hashes and readable original/restored MariaDB/PostgreSQL/SQLite
+data. Normal packaged application startup was checked before and after replacement;
+the native core probe checked actual runtime versions and database contents.
+The installed process's metadata file handle was checked for both versions.
