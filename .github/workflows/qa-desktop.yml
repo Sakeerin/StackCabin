@@ -18,7 +18,7 @@ jobs:
         include: ${{ fromJSON(inputs.target == 'linux' && '[{"os":"ubuntu-22.04","run":"40057065876","artifact":"native-qa-ubuntu-22.04-x64"}]' || inputs.target == 'macos-arm64' && '[{"os":"macos-15","run":"40057001216","artifact":"native-qa-macos-14-arm64"}]' || inputs.target == 'macos-x64' && '[{"os":"macos-15-intel","run":"40057509499","artifact":"native-qa-macos-14-x64"}]' || '[{"os":"ubuntu-22.04","run":"40057065876","artifact":"native-qa-ubuntu-22.04-x64"},{"os":"macos-15","run":"40057001216","artifact":"native-qa-macos-14-arm64"},{"os":"macos-15-intel","run":"40057509499","artifact":"native-qa-macos-14-x64"}]') }}
     runs-on: ${{ matrix.os }}
     env:
-      STACKCABIN_QA_KIT_DIR: ${{ runner.temp }}/desktop-runtime-kit
+      STACKCABIN_QA_KIT_DIR: ${{ github.workspace }}/.local/desktop-runtime-kit
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
