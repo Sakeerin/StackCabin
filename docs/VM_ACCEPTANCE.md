@@ -85,6 +85,14 @@ its offline pack matches that harness and cannot add Unix packages to the normal
 preview UI. Test the actual desktop installer and UI separately using the checks
 below. Framework dependency installation still needs platform-specific caches.
 
+**Verify an existing Unix acceptance kit** reuses a previously built artifact on
+another supported hosted runner without invoking Cargo/npm or rebuilding it.
+On Linux it verifies the archive, enters a new network namespace containing only
+loopback, then runs the entire portable harness as the ordinary runner user with
+a fresh OS credential store. It refuses a namespace with any external interface.
+This establishes runtime installation and operation without an external network;
+it still does not replace installation on a clean desktop VM.
+
 ## Desktop checks on every target
 
 1. Start from a clean snapshot without development runtimes. Test installation

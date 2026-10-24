@@ -1,0 +1,62 @@
+name: Verify an existing Unix acceptance kit
+on:
+  workflow_dispatch:
+    inputs:
+      source_run:
+        description: Combined-stack run that produced this matching kit
+        type: string
+        required: true
+      artifact_name:
+        description: Exact QA artifact name from that run
+        type: string
+        required: true
+      runner:
+        type: choice
+        options: [ubuntu-22.04, ubuntu-24.04, macos-14, macos-15-intel]
+        default: ubuntu-24.04
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.source_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/qa/
+      - name: Verify archive checksums and extract the kit
+        run: |
+          cd artifacts/qa
+          manifests=(*.tar.gz.sha256)
+          archives=(*.tar.gz)
+          [[ ${#manifests[@]} -eq 1 && ${#archives[@]} -eq 1 && -f "${archives[0]}" ]]
+          if [[ "$RUNNER_OS" == macOS ]]; then
+            shasum -a 256 -c "${manifests[0]}"
+          else
+            sha256sum -c "${manifests[0]}"
+          fi
+          mkdir "$RUNNER_TEMP/extracted QA kit"
+          tar -xzf "${archives[0]}" -C "$RUNNER_TEMP/extracted QA kit"
+      - name: Linux OS credential-store prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev libsecret-1-dev dbus-x11 gnome-keyring iproute2
+      - name: Run without external network interfaces as an ordinary Linux user
+        if: runner.os == 'Linux'
+        run: |
+          sudo unshare --net -- env GITHUB_ACTIONS=true bash scripts/run-isolated-linux-qa.sh "$USER" "$RUNNER_TEMP/extracted QA kit" "$RUNNER_TEMP"
+      - name: Fresh macOS QA keychain
+        if: runner.os == 'macOS'
+        run: |
+          keychain="$RUNNER_TEMP/stackcabin-offline-qa.keychain-db"
+          security create-keychain -p 'stackcabin-ci-only' "$keychain"
+          security unlock-keychain -p 'stackcabin-ci-only' "$keychain"
+          security default-keychain -d user -s "$keychain"
+          security list-keychains -d user -s "$keychain"
+      - name: Run the prebuilt macOS harness without installing build tools
+        if: runner.os == 'macOS'
+        run: bash "$RUNNER_TEMP/extracted QA kit/Run-StackCabinAcceptance.sh" "$RUNNER_TEMP/portable acceptance ทดสอบ" "$RUNNER_TEMP/extracted QA kit/offline"
