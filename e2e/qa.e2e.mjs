@@ -69,6 +69,7 @@ describe("Unix QA desktop with the matching offline stack", () => {
             ),
           );
         }
+        await invoke("database_attach", { id: project.id, engine });
         await $("nav button:nth-child(2)").click();
         const start = $(`button[aria-label="Start qa-${preset}"]`);
         await start.waitForDisplayed();
@@ -92,7 +93,6 @@ describe("Unix QA desktop with the matching offline stack", () => {
             response.headers.get("X-StackCabin-Runtime"),
             "v" + runtime.artifact.version,
           );
-        await invoke("database_attach", { id: project.id, engine });
         await invoke("database_query", {
           id: project.id,
           sql: "CREATE TABLE qa_message (message VARCHAR(80)); INSERT INTO qa_message VALUES ('desktop QA');",

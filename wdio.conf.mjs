@@ -32,5 +32,5 @@ export const config = {
   framework: "mocha",
   reporters: ["spec"],
   waitforTimeout: 15000,
-  mochaOpts: { timeout: 60000 },
+  mochaOpts: { timeout: process.env.STACKCABIN_E2E_OFFLINE ? 300000 : 60000 },
 };

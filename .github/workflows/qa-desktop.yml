@@ -79,7 +79,7 @@ jobs:
         run: |
           debs=(target/release/bundle/deb/*.deb)
           [[ ${#debs[@]} -eq 1 ]]
-          [[ "$(dpkg-deb -f "${debs[0]}" Package)" != stackcabin ]]
+          [[ "$(dpkg-deb -f "${debs[0]}" Package)" == *-qa ]]
           sudo dpkg -i "${debs[0]}"
           xvfb-run -a dbus-run-session -- python scripts/smoke-packaged-unix.py /usr/bin/stackcabin-qa
       - name: Verify and start the normal QA macOS app
