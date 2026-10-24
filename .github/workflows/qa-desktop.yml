@@ -43,7 +43,7 @@ jobs:
           manifests=(*.tar.gz.sha256)
           [[ ${#archives[@]} -eq 1 && ${#manifests[@]} -eq 1 ]]
           if [[ "$RUNNER_OS" == macOS ]]; then shasum -a 256 -c "${manifests[0]}"; else sha256sum -c "${manifests[0]}"; fi
-          mkdir "$STACKCABIN_QA_KIT_DIR"
+          mkdir -p "$STACKCABIN_QA_KIT_DIR"
           tar -xzf "${archives[0]}" -C "$STACKCABIN_QA_KIT_DIR"
       - name: Linux desktop and credential-store prerequisites
         if: runner.os == 'Linux'
