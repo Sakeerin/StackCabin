@@ -14,6 +14,20 @@ to reuse the Ubuntu 22.04 packages on Ubuntu 24.04 or mount a macOS DMG on macOS
 The AppImage check uses extract-and-run without FUSE. These runners contain
 preinstalled software and do not replace clean-machine installer certification.
 
+For desktop testing of the complete Unix stack, use `Build Unix QA desktop
+installers with offline runtimes`. It verifies an existing portable runtime kit,
+embeds that kit's signed development catalog and tests installation, UI process
+controls, HTTP and database backup/restore before packaging **StackCabin QA**.
+The release build enables only `qa`; the `e2e` plugins are absent. Its separate
+binary, Tauri identity, metadata directory and credential service preserve the
+normal preview's namespace. Keep its installer and matching offline folder
+together; see [QA desktop instructions](QA_DESKTOP.md).
+
+`Verify an existing QA desktop installer on the baseline` mounts the same DMG on
+macOS 14 or installs the Ubuntu 22.04 deb/AppImage on Ubuntu 24.04. The Linux check
+also installs the normal preview first and checks its binary remains unchanged.
+These artifacts expire after seven days and are unsigned internal builds.
+
 ## 1. Complete the verified runtime matrix
 
 Use the `Build reviewed native runtime` GitHub Actions workflow for PHP 8.4/8.5,

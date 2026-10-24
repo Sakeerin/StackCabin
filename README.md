@@ -177,3 +177,9 @@ cargo run -p stackcabin-core --example native-smoke
 [Release preparation](docs/RELEASING.md) · [MIT license](LICENSE)
 
 [Clean-machine VM acceptance and portable runtime QA kits](docs/VM_ACCEPTANCE.md)
+
+[Unix QA desktop installers with matching offline runtimes](docs/QA_DESKTOP.md)
+are built by the manual `Build Unix QA desktop installers with offline runtimes`
+workflow. StackCabin QA has its own executable, metadata and credential namespace;
+its internal development catalog includes the reviewed Unix PHP/database packs.
+The normal preview catalog and production release gates remain unchanged.

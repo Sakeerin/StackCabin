@@ -105,6 +105,32 @@ Internal kit evidence from 24 October 2026 (artifacts expire after seven days):
 Use `SOURCE_COMMIT.txt` and the included checksums to identify the exact kit.
 These internal runtime tests complement the desktop/installer VM record below.
 
+## Unix QA desktop installers
+
+The manual **Build Unix QA desktop installers with offline runtimes** workflow
+builds the real **StackCabin QA** desktop application with the verified catalog
+from an existing runtime kit. Select `linux`, `macos-arm64`, `macos-x64`, or `all`.
+It verifies the catalog signature and every archive before building. A native
+WebDriver session installs all eleven target runtimes, uses the UI Start/Stop
+buttons for PHP and Node, verifies actual HTTP runtime versions, writes both
+server databases and restores each backup into a distinct project/database.
+Long IPC operations are polled without holding the driver's 30-second eval call.
+
+After acceptance, it rebuilds without E2E plugins and packages `.deb`/`.AppImage`
+or `.dmg` with the matching `offline` folder, checksums, notices and source commit
+IDs. Download the `desktop-qa-*` artifact, verify/extract the `.tar.gz` and follow
+its README, also available as [QA_DESKTOP.md](QA_DESKTOP.md). The application has
+its own binary, application ID, metadata and OS credential namespace, with a QA
+banner. Its development catalog does not change the normal preview catalog.
+
+**Verify an existing QA desktop installer on the baseline** reuses these exact
+installer files on Ubuntu 24.04 or macOS 14 without rebuilding the application.
+It checks checksums, package identity and actual normal application startup in
+an isolated data directory. On Linux it first installs the normal preview and
+confirms the QA installation preserves that executable, then starts the QA deb
+and AppImage. This startup check is separate from runtime acceptance and does
+not certify a clean desktop, offline system prerequisites or upgrades.
+
 ## Desktop checks on every target
 
 1. Start from a clean snapshot without development runtimes. Test installation

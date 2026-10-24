@@ -24,6 +24,9 @@ Windows/macOS/Ubuntu production acceptance gate.
   Microsoft WebView2/Visual C++ prerequisites. Bundled third-party notice inventory.
 - CI for Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon, Unix native
   runtime build pipeline, and a release catalog gate.
+- Internal Unix QA desktop packaging with the complete matching offline catalog,
+  separate application/binary/metadata/credential identities, and native QA
+  banner. Distributed QA installers exclude the E2E plugins.
 
 ## Verification evidence
 
@@ -37,7 +40,7 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | Core edge cases            | Corrupted archives, traversal, signed catalog tampering, interrupted installation, Unicode registration, future schema, port conflicts, secret-free SQLite backup/restore and concurrent destination reservation                                                                                                                                                                                                                                                                                                                    |
 | Native lifecycle           | Real HTTP grandchild, stop of its process tree, and cleanup after its parent exits unexpectedly                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Native Desktop E2E         | 4 cases against real Rust IPC/SQLite; screenshot `stackcabin-desktop.png`                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Cross-platform CI          | [Run 40056818097](https://github.com/Sakeerin/StackCabin/actions/runs/40056818097): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and managed toolchains, including the unreachable-proxy regression                                                                                                                                                                                                                                                             |
+| Cross-platform CI          | [Run 40073861930](https://github.com/Sakeerin/StackCabin/actions/runs/40073861930): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and managed toolchains, including the unreachable-proxy regression                                                                                                                                                                                                                                                             |
 | Normal Windows package     | [Run 40056742523](https://github.com/Sakeerin/StackCabin/actions/runs/40056742523): release NSIS includes the loopback/proxy fix and pinned Microsoft prerequisite; normal application startup initializes isolated SQLite without E2E plugins                                                                                                                                                                                                                                                                                      |
 | Installed preview packages | [Run 40047451505](https://github.com/Sakeerin/StackCabin/actions/runs/40047451505): Windows NSIS, Ubuntu 22.04 deb, and macOS ARM/Intel DMGs built successfully; normal application startup used isolated SQLite metadata. macOS bundle checks reject external non-system library paths and unsupported minimum OS versions                                                                                                                                                                                                         |
 | Windows prerequisites      | The NSIS installer embeds pinned Microsoft Visual C++ 14.51.36247 x64, verifies SHA-256/Authenticode/version, detects existing runtime versions, and elevates only Microsoft's installer when needed. Four read-only integrity tests passed. [Installed-package verification](https://github.com/Sakeerin/StackCabin/actions/runs/40048115886) confirmed the required version and application startup in a Thai/spaced installation path; that runner already had 14.51, so missing-runtime/UAC acceptance remains a clean-VM check |
@@ -76,6 +79,31 @@ as an ordinary user: all runtime installations, five concurrent web projects,
 package-manager version checks, both database dumps/restores and owned shutdown
 completed without external network interfaces. This is runtime/offline evidence,
 not clean-desktop installer certification.
+
+The real Unix QA desktop installs all eleven target runtimes through IPC, starts
+PHP and Node using UI buttons, checks their actual HTTP versions, writes both
+database servers, and restores backups into distinct project/database identities.
+Packaging only follows passing native E2E checks; the distributed application is
+rebuilt without WebDriver plugins. The signed development catalog and matching
+offline archives stay together in each internal QA pack. Five helper tests reject
+incomplete stacks, corrupted archives, altered catalog signatures and unmarked
+production catalogs. See [QA desktop usage](QA_DESKTOP.md) and
+[installer acceptance](VM_ACCEPTANCE.md#unix-qa-desktop-installers).
+
+Six desktop cases passed for the full stack on
+[Ubuntu 22.04](https://github.com/Sakeerin/StackCabin/actions/runs/40075038598)
+and [macOS ARM](https://github.com/Sakeerin/StackCabin/actions/runs/40074337734/job/120814387895),
+followed by successful installer builds, checksums and actual application startup.
+The later Ubuntu run also asserts that UI Stop reaches the exact source project
+ID and that restored database identities differ from their source databases.
+
+The Ubuntu QA deb/AppImage passed on
+[Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/40075035942),
+including installation alongside the normal preview and preservation of its
+executable. The QA DMG passed mount/copy, identity, binary dependency/minimum-OS
+checks and application startup on
+[macOS 14 ARM](https://github.com/Sakeerin/StackCabin/actions/runs/40074974206).
+These are hosted-runner startup checks; clean desktop and upgrade checks remain.
 
 Internal health checks, Caddy reloads and routed readiness now use direct
 loopback clients with finite timeouts and no redirect following. An isolated

@@ -58,6 +58,13 @@ in either manifest. SQL identifiers are generated and validated. PostgreSQL uses
 SCRAM authentication; MariaDB uses generated credentials and loopback binding.
 Database connection variables are injected into project processes only.
 
+The normal credential service is `dev.stackcabin.desktop`. Internal QA builds
+enable the core/Tauri `qa` feature and use `dev.stackcabin.qa`, with a separate
+Tauri identity, executable name and default app-data directory. Startup rejects
+an application identity that disagrees with the compiled credential namespace.
+The snapshot's native `qaMode` flag drives the QA banner. The `qa` feature does
+not enable WebDriver; only separate `e2e` test builds register those plugins.
+
 The Windows PostgreSQL distribution cannot initialize UTF-8 databases when its
 executable path contains certain non-ASCII characters. StackCabin verifies an
 ASCII NTFS junction to its own storage and uses that path for PostgreSQL tools;
