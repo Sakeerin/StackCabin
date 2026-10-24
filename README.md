@@ -31,6 +31,11 @@ npm run desktop:build     # Create local desktop installer packages
 The browser preview explicitly disables native operations. File selection,
 processes, runtimes, and databases are available in the desktop application.
 
+Windows bundling downloads and verifies a pinned Microsoft Visual C++ x64
+prerequisite and embeds it in NSIS. Setup checks the installed version and may
+request administrator approval for Microsoft's installer. Full offline bundles
+also include WebView2; see the Thai quickstart for installation steps.
+
 ## What is implemented
 
 - Create and detect nine project presets, import existing folders, and persist
@@ -170,3 +175,5 @@ cargo run -p stackcabin-core --example native-smoke
 
 [Architecture and contracts](docs/ARCHITECTURE.md) ·
 [Release preparation](docs/RELEASING.md) · [MIT license](LICENSE)
+
+[Clean-machine VM acceptance and portable Windows QA kit](docs/VM_ACCEPTANCE.md)

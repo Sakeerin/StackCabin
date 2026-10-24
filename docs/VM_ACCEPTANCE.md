@@ -19,14 +19,14 @@ prerequisites are available. Verify the kit's binary against `SHA256SUMS.txt`.
 On a clean VM with internet access, use a new dedicated workspace:
 
 ```powershell
-./Invoke-StackCabinAcceptance.ps1 -Workspace 'C:/StackCabin QA/online ทดสอบ'
+./Invoke-StackCabinAcceptance.ps1 -Workspace "$env:LOCALAPPDATA/StackCabin QA/online ทดสอบ"
 ```
 
 Restore a clean snapshot, copy the complete Windows offline bundle and test kit,
 disconnect networking, run the bundle's `Install.cmd`, then use another workspace:
 
 ```powershell
-./Invoke-StackCabinAcceptance.ps1 -Workspace 'C:/StackCabin QA/offline ทดสอบ' -OfflinePack 'D:/offline-windows-x64'
+./Invoke-StackCabinAcceptance.ps1 -Workspace "$env:LOCALAPPDATA/StackCabin QA/offline ทดสอบ" -OfflinePack 'D:/offline-windows-x64'
 ```
 
 The harness uses the compiled signed catalog, verifies archive hashes, runs PHP
