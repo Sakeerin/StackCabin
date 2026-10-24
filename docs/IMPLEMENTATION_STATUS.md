@@ -91,11 +91,15 @@ production catalogs. See [QA desktop usage](QA_DESKTOP.md) and
 [installer acceptance](VM_ACCEPTANCE.md#unix-qa-desktop-installers).
 
 Six desktop cases passed for the full stack on
-[Ubuntu 22.04](https://github.com/Sakeerin/StackCabin/actions/runs/40075038598)
-and [macOS ARM](https://github.com/Sakeerin/StackCabin/actions/runs/40074337734/job/120814387895),
+[Ubuntu 22.04](https://github.com/Sakeerin/StackCabin/actions/runs/40075038598),
+[macOS ARM](https://github.com/Sakeerin/StackCabin/actions/runs/40074337734/job/120814387895)
+and [native Intel macOS](https://github.com/Sakeerin/StackCabin/actions/runs/40075333416),
 followed by successful installer builds, checksums and actual application startup.
-The later Ubuntu run also asserts that UI Stop reaches the exact source project
-ID and that restored database identities differ from their source databases.
+The later Ubuntu and Intel runs also assert that UI Stop reaches the exact source
+project ID and that restored database identities differ from their source databases.
+The embedded driver's direct-eval endpoint has a separate 30-second deadline;
+long QA IPC calls now continue in the WebView while the test polls their result,
+preserving actual native work without extending a single driver evaluation.
 
 The Ubuntu QA deb/AppImage passed on
 [Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/40075035942),
@@ -103,6 +107,8 @@ including installation alongside the normal preview and preservation of its
 executable. The QA DMG passed mount/copy, identity, binary dependency/minimum-OS
 checks and application startup on
 [macOS 14 ARM](https://github.com/Sakeerin/StackCabin/actions/runs/40074974206).
+The same checks passed for the Intel QA DMG on
+[macOS 14 through preinstalled Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/40076438073).
 These are hosted-runner startup checks; clean desktop and upgrade checks remain.
 
 Internal health checks, Caddy reloads and routed readiness now use direct

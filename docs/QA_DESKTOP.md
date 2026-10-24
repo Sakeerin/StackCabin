@@ -6,6 +6,19 @@ application identity `dev.stackcabin.qa`, its own default metadata directory and
 its own OS credential namespace. The normal StackCabin application keeps its
 existing identity and catalog. The QA interface displays an English/Thai banner.
 
+Internal build artifacts checked on 24 October 2026 (seven-day retention):
+
+| Target                  | Build                                                                                                | Artifact                    |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------- |
+| Ubuntu 22.04/24.04 x64  | [Ubuntu QA build](https://github.com/Sakeerin/StackCabin/actions/runs/40075038598)                   | `desktop-qa-ubuntu-22.04`   |
+| macOS 14+ Apple Silicon | [ARM QA build job](https://github.com/Sakeerin/StackCabin/actions/runs/40074337734/job/120814387895) | `desktop-qa-macos-15`       |
+| macOS 14+ Intel         | [Intel QA build](https://github.com/Sakeerin/StackCabin/actions/runs/40075333416)                    | `desktop-qa-macos-15-intel` |
+
+Use the Actions run's Artifacts section to download the matching pack.
+Baseline execution evidence and remaining certification are recorded in
+[the implementation status](https://github.com/Sakeerin/StackCabin/blob/main/docs/IMPLEMENTATION_STATUS.md)
+in the source repository.
+
 1. Check the downloaded `.tar.gz` against its `.sha256`, then extract it.
 2. Verify the installer against `installers/SHA256SUMS.txt`.
 3. Install the QA `.deb` or copy **StackCabin QA.app** from the `.dmg`.
