@@ -116,10 +116,18 @@ jobs:
           mkdir -p "$kit"
           tar -xzf "artifacts/$KIT_NAME.tar.gz" -C "$kit"
           if [[ "$RUNNER_OS" == macOS ]]; then
-            security unlock-keychain -p 'stackcabin-ci-only' "$RUNNER_TEMP/stackcabin-stack.keychain-db"
+            # Debug and release executables have different ad-hoc code identities.
+            # A new test keychain avoids a GUI ACL prompt for the earlier run's
+            # service credentials; the user's normal Keychain is never changed.
+            keychain="$RUNNER_TEMP/stackcabin-packaged.keychain-db"
+            security create-keychain -p 'stackcabin-ci-only' "$keychain"
+            security unlock-keychain -p 'stackcabin-ci-only' "$keychain"
+            security default-keychain -d user -s "$keychain"
+            security list-keychains -d user -s "$keychain"
             bash "$kit/Run-StackCabinAcceptance.sh" "$RUNNER_TEMP/packaged acceptance ทดสอบ" "$kit/offline"
           else
-            dbus-run-session -- bash -eu -c 'printf "%s\n" "stackcabin-ci-only" | gnome-keyring-daemon --unlock --components=secrets; bash "$1/Run-StackCabinAcceptance.sh" "$RUNNER_TEMP/packaged acceptance ทดสอบ" "$1/offline"' bash "$kit"
+            export XDG_DATA_HOME="$RUNNER_TEMP/stackcabin-packaged-secret-service"
+            dbus-run-session -- bash -eu -c 'mkdir -p "$XDG_DATA_HOME"; printf "%s\n" "stackcabin-ci-only" | gnome-keyring-daemon --unlock --components=secrets; bash "$1/Run-StackCabinAcceptance.sh" "$RUNNER_TEMP/packaged acceptance ทดสอบ" "$1/offline"' bash "$kit"
           fi
       - uses: actions/upload-artifact@v4
         if: inputs.package_qa
