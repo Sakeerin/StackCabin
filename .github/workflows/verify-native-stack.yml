@@ -6,6 +6,10 @@ on:
         type: choice
         options: [all, linux, macos-arm64, macos-x64]
         default: all
+      package_qa:
+        description: Also build an internal VM test kit with matching offline archives
+        type: boolean
+        default: false
 permissions:
   contents: read
   actions: read
@@ -93,3 +97,19 @@ jobs:
         run: |
           export XDG_DATA_HOME="$RUNNER_TEMP/stackcabin-secret-service"
           dbus-run-session -- bash -eu -c 'mkdir -p "$XDG_DATA_HOME"; printf "%s\n" "stackcabin-ci-only" | gnome-keyring-daemon --unlock --components=secrets; cargo run -p stackcabin-core --example native-smoke'
+      - name: Verify Unix acceptance wrapper isolation
+        run: bash scripts/test-native-qa.sh
+      - name: Build a matching internal VM acceptance executable
+        if: inputs.package_qa
+        run: cargo build --release -p stackcabin-core --example native-smoke
+      - name: Package the executable with its matching offline catalog
+        if: inputs.package_qa
+        run: node scripts/package-native-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: inputs.package_qa
+        with:
+          name: native-qa-${{ matrix.os }}-${{ matrix.arch }}
+          retention-days: 7
+          path: |
+            artifacts/native-qa-*.tar.gz
+            artifacts/native-qa-*.tar.gz.sha256

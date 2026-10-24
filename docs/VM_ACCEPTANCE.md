@@ -58,6 +58,29 @@ establish clean-machine or disconnected-desktop certification. CI artifacts
 expire after seven days: update the reviewed run selections after rebuilding;
 missing/expired packages must fail rather than silently use another build.
 
+To prepare a VM kit, select the platform and enable `package_qa` on that workflow.
+After the combined tests pass, it builds the real acceptance executable in release
+mode and packages it with the matching offline archives, source commit, checksums,
+component notices and this guide. Download the `native-qa-*.tar.gz` artifact and
+its `.sha256`, verify the archive, then extract it to preserve executable modes.
+The temporary catalog's private key and CI keychain are excluded.
+
+Install the matching StackCabin preview first for system prerequisites, log in as
+an ordinary desktop user, and unlock the normal credential store (login Keychain
+on macOS or the desktop Secret Service on Linux). Disconnect the VM's network,
+then run from the extracted kit with a new workspace:
+
+```bash
+bash ./Run-StackCabinAcceptance.sh "$HOME/StackCabin QA/offline ทดสอบ" ./offline
+```
+
+The script verifies its executable hash and refuses nonempty or symlink
+workspaces. It installs no system development tools and keeps `acceptance.log`.
+This is an internal runtime harness with a development catalog compiled into it;
+its offline pack matches that harness and cannot add Unix packages to the normal
+preview UI. Test the actual desktop installer and UI separately using the checks
+below. Framework dependency installation still needs platform-specific caches.
+
 ## Desktop checks on every target
 
 1. Start from a clean snapshot without development runtimes. Test installation
