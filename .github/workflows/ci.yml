@@ -88,10 +88,8 @@ jobs:
         env:
           STACKCABIN_SMOKE_DIR: ${{ github.workspace }}/.local/native smoke ทดสอบ
           STACKCABIN_SMOKE_COMPONENTS: ${{ runner.os == 'Windows' && 'node,caddy,php,cacert,composer,pnpm,yarn' || 'node,caddy,pnpm,yarn' }}
-          HTTP_PROXY: http://127.0.0.1:1
           http_proxy: http://127.0.0.1:1
           NO_PROXY: ""
-          no_proxy: ""
         run: cargo run -p stackcabin-core --example native-smoke
       - name: Recover runtime installation after actual disk exhaustion
         if: matrix.os == 'ubuntu-24.04'
