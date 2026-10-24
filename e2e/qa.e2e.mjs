@@ -10,6 +10,48 @@ const invoke = (command, args = {}) =>
     command,
     args,
   );
+
+// The embedded driver's direct-eval endpoint has its own 30s deadline. Keep
+// long native IPC operations alive in the WebView and poll with short calls.
+const invokeLong = async (command, args) => {
+  const key = randomUUID();
+  await browser.tauri.execute(
+    (tauri, key, command, args) => {
+      const tasks = (window.__stackcabinQaTasks ??= {});
+      const task = (tasks[key] = { done: false });
+      Promise.resolve()
+        .then(() => tauri.core.invoke(command, args))
+        .then(
+          (value) => Object.assign(task, { done: true, value }),
+          (error) => Object.assign(task, { done: true, error: String(error) }),
+        );
+      return true;
+    },
+    key,
+    command,
+    args,
+  );
+  try {
+    await browser.waitUntil(
+      () => browser.execute((key) => window.__stackcabinQaTasks[key].done, key),
+      {
+        timeout: 180000,
+        interval: 500,
+        timeoutMsg: `${command} did not finish`,
+      },
+    );
+    const result = await browser.execute(
+      (key) => window.__stackcabinQaTasks[key],
+      key,
+    );
+    if (result.error) throw new Error(`${command}: ${result.error}`);
+    return result.value;
+  } finally {
+    await browser.execute((key) => {
+      delete window.__stackcabinQaTasks[key];
+    }, key);
+  }
+};
 describe("Unix QA desktop with the matching offline stack", () => {
   it("labels QA mode and installs every selected runtime through real desktop IPC", async () => {
     await browser.setTimeout({ script: 300000 });
@@ -19,7 +61,8 @@ describe("Unix QA desktop with the matching offline stack", () => {
     for (const component of ["php", "node", "mariadb", "postgres", "caddy"])
       assert.ok(state.runtimes.some((r) => r.artifact.component === component));
     for (const runtime of state.runtimes) {
-      await invoke("runtime_install", {
+      console.log(`Installing offline runtime ${runtime.artifact.id}`);
+      await invokeLong("runtime_install", {
         id: runtime.artifact.id,
         operationId: randomUUID(),
         offlineFolder: process.env.STACKCABIN_E2E_OFFLINE,
@@ -69,7 +112,10 @@ describe("Unix QA desktop with the matching offline stack", () => {
             ),
           );
         }
-        project = await invoke("database_attach", { id: project.id, engine });
+        project = await invokeLong("database_attach", {
+          id: project.id,
+          engine,
+        });
         await $("nav button:nth-child(2)").click();
         const start = $(`button[aria-label="Start qa-${preset}"]`);
         await start.waitForDisplayed();
@@ -97,11 +143,11 @@ describe("Unix QA desktop with the matching offline stack", () => {
           id: project.id,
           sql: "CREATE TABLE qa_message (message VARCHAR(80)); INSERT INTO qa_message VALUES ('desktop QA');",
         });
-        const backup = await invoke("backup_create", {
+        const backup = await invokeLong("backup_create", {
           id: project.id,
           operationId: randomUUID(),
         });
-        const restored = await invoke("backup_restore", {
+        const restored = await invokeLong("backup_restore", {
           archive: backup.path,
           destination: path.join(
             process.env.STACKCABIN_E2E_PROJECTS,
