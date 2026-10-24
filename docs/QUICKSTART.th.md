@@ -39,6 +39,27 @@ macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel โด�
 Node.js และเว็บ Static ใช้ catalog ปัจจุบันได้
 ส่วน PHP/ฐานข้อมูลบน Unix จะเพิ่มเข้า catalog หลังแพ็กเกจผ่านการตรวจและมีแหล่งดาวน์โหลดจริง
 
+## ทดสอบ PHP และฐานข้อมูลบน Linux/macOS ด้วย StackCabin QA
+
+ใช้ workflow **Build Unix QA desktop installers with offline runtimes** เพื่อสร้าง
+**StackCabin QA** พร้อม PHP 8.4/8.5, Node.js 22/24, MariaDB, PostgreSQL และเครื่องมือที่ตรงกัน
+เลือก `linux`, `macos-arm64` หรือ `macos-x64` ให้ตรงกับเครื่อง ไฟล์อยู่ใน Artifact
+ชื่อ `desktop-qa-*` และเก็บไว้ 7 วัน
+
+1. ดาวน์โหลด `.tar.gz` พร้อม `.sha256` ตรวจ checksum แล้วแตกไฟล์
+2. ตรวจไฟล์ติดตั้งตาม `installers/SHA256SUMS.txt` จากนั้นติดตั้ง `.deb`/เปิด AppImage
+   หรือคัดลอก **StackCabin QA.app** จาก `.dmg`
+3. เปิดแอปด้วยบัญชีผู้ใช้ปกติ และปลดล็อก Keychain/Secret Service ของระบบ
+4. เปิด Runtimes → Install from offline pack เลือกโฟลเดอร์ `offline` จากชุดเดียวกัน
+   แล้วติดตั้งภาษาและเครื่องมือที่ต้องการก่อนสร้างหรือตั้งค่าโปรเจกต์
+5. สร้าง/นำเข้าโปรเจกต์ ตรวจโค้ดก่อนให้ Trust แล้วทดสอบ Start, SQL และ backup/restore
+
+รุ่น QA มีป้ายบอกในหน้าจอ และใช้ executable, โฟลเดอร์ข้อมูล และพื้นที่เก็บ credentials
+แยกจากแอปปกติ ต้องเก็บตัวติดตั้งกับโฟลเดอร์ออฟไลน์ที่มาคู่กันไว้เสมอ
+ชุดนี้ยังไม่ได้ลงลายเซ็นเพื่อเผยแพร่สาธารณะหรือ notarize บน macOS และไม่รวม
+dependencies ของ npm/Composer หรือ prerequisite ของ Linux ทุกแพ็กเกจ
+ดู [รายละเอียดชุด QA](QA_DESKTOP.md) และผลทดสอบแต่ละระบบในรายงานสถานะ
+
 สำหรับผู้ทดสอบ VM มี [คู่มือรับรองเครื่องสะอาด](VM_ACCEPTANCE.md) และ workflow
 สร้างชุดทดสอบ Windows แบบพกพาที่ใช้ runtime ของ StackCabin โดยไม่ต้องติดตั้ง Rust/Node/PHP ของระบบ
 
@@ -59,7 +80,8 @@ Node.js และเว็บ Static ใช้ catalog ปัจจุบัน�
 
 ในแท็บ Database เลือก SQLite, MariaDB หรือ PostgreSQL สำหรับ MariaDB/PostgreSQL
 ให้ติดตั้ง runtime ของฐานข้อมูลจาก Runtimes ก่อน แอปสร้าง database/user แยกให้แต่ละโปรเจกต์
-และเก็บรหัสผ่านใน Windows Credential Manager โดยส่งค่าการเชื่อมต่อให้ process ผ่าน environment
+และเก็บรหัสผ่านใน Windows Credential Manager, macOS Keychain หรือ Linux Secret Service
+โดยส่งค่าการเชื่อมต่อให้ process ผ่าน environment
 สามารถใช้ช่อง SQL ทดสอบการสร้างตารางและอ่านข้อมูลได้
 
 เลือก Create backup เพื่อสำรอง source และข้อมูลฐานข้อมูล แอปหยุดโปรเจกต์ชั่วคราว

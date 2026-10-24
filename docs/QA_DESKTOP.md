@@ -18,6 +18,15 @@ existing identity and catalog. The QA interface displays an English/Thai banner.
    then Start. Test database creation, SQL, backup/restore and tray/Quit using
    `docs/VM_ACCEPTANCE.md` in the source repository as the acceptance checklist.
 
+From the extracted folder, verify installer paths relative to `installers`:
+
+```bash
+# Ubuntu
+(cd installers && sha256sum -c SHA256SUMS.txt)
+# macOS
+(cd installers && shasum -a 256 -c SHA256SUMS.txt)
+```
+
 The offline folder installs runtimes; arbitrary npm/Composer dependencies need
 internet access or a cache prepared for that platform. Native Unix package URLs
 in this development catalog are not public download endpoints. Keep this
