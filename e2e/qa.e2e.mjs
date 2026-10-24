@@ -69,7 +69,7 @@ describe("Unix QA desktop with the matching offline stack", () => {
             ),
           );
         }
-        await invoke("database_attach", { id: project.id, engine });
+        project = await invoke("database_attach", { id: project.id, engine });
         await $("nav button:nth-child(2)").click();
         const start = $(`button[aria-label="Start qa-${preset}"]`);
         await start.waitForDisplayed();
@@ -109,6 +109,11 @@ describe("Unix QA desktop with the matching offline stack", () => {
           ),
           trusted: true,
         });
+        assert.notEqual(restored.id, project.id);
+        assert.notEqual(
+          restored.spec.database.name,
+          project.spec.database.name,
+        );
         const result = await invoke("database_query", {
           id: restored.id,
           sql: "SELECT message FROM qa_message;",
@@ -118,10 +123,17 @@ describe("Unix QA desktop with the matching offline stack", () => {
       await browser.saveScreenshot(
         path.resolve("artifacts/qa-desktop-running.png"),
       );
-      for (const preset of ["php", "node"]) {
+      for (const [index, preset] of ["php", "node"].entries()) {
         await $(`button[aria-label="Stop qa-${preset}"]`).waitForClickable();
         await $(`button[aria-label="Stop qa-${preset}"]`).click();
-        await $(`button[aria-label="Start qa-${preset}"]`).waitForDisplayed();
+        await browser.waitUntil(async () => {
+          const status = (await invoke("snapshot")).statuses.find(
+            (s) => s.projectId === created[index],
+          );
+          return (
+            !status || status.processes.every((p) => p.state === "stopped")
+          );
+        });
       }
     } finally {
       for (const id of created) await invoke("project_stop", { id });
