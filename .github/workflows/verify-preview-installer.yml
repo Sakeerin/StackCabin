@@ -79,4 +79,5 @@ jobs:
           ditto "${apps[0]}" "$destination/StackCabin.app"
           hdiutil detach "$mount"
           trap - EXIT
+          python scripts/check-macos-bundle.py "$destination/StackCabin.app"
           python scripts/smoke-packaged-unix.py "$destination/StackCabin.app/Contents/MacOS/stackcabin"

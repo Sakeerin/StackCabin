@@ -90,6 +90,10 @@ for (const artifact of catalog.artifacts) {
   );
 }
 await mkdir(path.join(root, "resources"), { recursive: true });
+const prerequisites = JSON.parse(await readFile(path.join(root, "runtime-catalog", "windows-prerequisites.json"), "utf8"));
+sections.push(
+  `\n========== Microsoft Visual C++ x64 prerequisite ==========\nVersion: ${prerequisites.visualCpp.version}\nPublisher: ${prerequisites.visualCpp.publisher}\nPackage: ${prerequisites.visualCpp.url}\nSHA-256: ${prerequisites.visualCpp.sha256}\nDocumentation and redistribution terms: ${prerequisites.visualCpp.documentation}\nMicrosoft's license terms apply to this redistributable; StackCabin's MIT license does not replace them.\n`,
+);
 await writeFile(
   path.join(root, "resources", "THIRD_PARTY_NOTICES.txt"),
   sections.join("\n"),

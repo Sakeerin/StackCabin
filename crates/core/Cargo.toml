@@ -28,7 +28,7 @@ tokio-util = "0.7"
 ts-rs = { version = "10", features = ["serde-compat"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 walkdir = "2"
-xz2 = "0.1"
+xz2 = { version = "0.1", features = ["static"] }
 zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [target.'cfg(windows)'.dependencies]

@@ -47,6 +47,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          node --test scripts/test-windows-prerequisites.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Prerequisite integrity tests failed' }
           $installer = @(Get-ChildItem target/release/bundle/nsis/*-setup.exe)
           if ($installer.Count -ne 1) { throw 'Expected one NSIS installer' }
           $destination = Join-Path $env:RUNNER_TEMP 'StackCabin-preview'
@@ -67,6 +69,7 @@ jobs:
         run: |
           binary=$(find target/release/bundle/macos -path '*/Contents/MacOS/stackcabin' -type f)
           test -n "$binary"
+          python scripts/check-macos-bundle.py "$(dirname "$(dirname "$(dirname "$binary")")")"
           python scripts/smoke-packaged-unix.py "$binary"
       - name: Installer checksums
         if: always() && !cancelled()

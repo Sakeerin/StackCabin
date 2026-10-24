@@ -7,6 +7,7 @@
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://127.0.0.1:1420",
     "beforeBuildCommand": "npm run build",
+    "beforeBundleCommand": "node scripts/prepare-windows-prerequisites.mjs",
     "frontendDist": "../dist"
   },
   "app": {
@@ -37,7 +38,7 @@
       "../LICENSE"
     ],
     "windows": {
-      "nsis": { "installMode": "currentUser" },
+      "nsis": { "installMode": "currentUser", "installerHooks": "windows/hooks.nsh" },
       "webviewInstallMode": { "type": "downloadBootstrapper" }
     },
     "macOS": { "minimumSystemVersion": "14.0" },
