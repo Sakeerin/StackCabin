@@ -22,6 +22,7 @@ jobs:
           Copy-Item scripts/Invoke-StackCabinAcceptance.ps1 $directory
           Copy-Item docs/VM_ACCEPTANCE.md $directory
           Copy-Item LICENSE $directory
+          Copy-Item resources/THIRD_PARTY_NOTICES.txt $directory
           $hash = (Get-FileHash "$directory/native-smoke.exe" -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  native-smoke.exe" | Set-Content "$directory/SHA256SUMS.txt" -Encoding utf8
           git rev-parse HEAD | Set-Content "$directory/SOURCE_COMMIT.txt" -Encoding utf8
