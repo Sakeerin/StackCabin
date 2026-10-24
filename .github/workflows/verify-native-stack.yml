@@ -1,0 +1,95 @@
+name: Verify the combined native stack
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        type: choice
+        options: [all, linux, macos-arm64, macos-x64]
+        default: all
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.target == 'linux' && '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"},{"os":"ubuntu-24.04","platform":"linux","arch":"x64"}]' || inputs.target == 'macos-arm64' && '[{"os":"macos-14","platform":"macos","arch":"arm64"}]' || inputs.target == 'macos-x64' && '[{"os":"macos-14","platform":"macos","arch":"x64"},{"os":"macos-15-intel","platform":"macos","arch":"x64"}]' || '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"},{"os":"ubuntu-24.04","platform":"linux","arch":"x64"},{"os":"macos-14","platform":"macos","arch":"arm64"},{"os":"macos-14","platform":"macos","arch":"x64"},{"os":"macos-15-intel","platform":"macos","arch":"x64"}]') }}
+    runs-on: ${{ matrix.os }}
+    env:
+      STACKCABIN_TEST_ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Resolve the reviewed build selections
+        id: packs
+        env:
+          STACKCABIN_TARGET: ${{ matrix.platform }}-${{ matrix.arch }}
+        run: |
+          node --input-type=module <<'JS'
+          import { readFile, appendFile } from 'node:fs/promises';
+          const selection = JSON.parse(await readFile('runtime-catalog/native-test-builds.json', 'utf8')).targets[process.env.STACKCABIN_TARGET];
+          if (selection.length !== 4) throw new Error('Expected four reviewed native packages');
+          for (let i = 0; i < selection.length; i++) {
+            const pack = selection[i];
+            await appendFile(process.env.GITHUB_OUTPUT, `run${i}=${pack.run}\nname${i}=${pack.artifact}\n`);
+          }
+          JS
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ steps.packs.outputs.run0 }}
+          name: ${{ steps.packs.outputs.name0 }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/runtimes/
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ steps.packs.outputs.run1 }}
+          name: ${{ steps.packs.outputs.name1 }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/runtimes/
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ steps.packs.outputs.run2 }}
+          name: ${{ steps.packs.outputs.name2 }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/runtimes/
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ steps.packs.outputs.run3 }}
+          name: ${{ steps.packs.outputs.name3 }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/runtimes/
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Select x64 compatibility on macOS 14
+        if: matrix.os == 'macos-14' && matrix.arch == 'x64'
+        run: |
+          arch -x86_64 /usr/bin/true
+          rustup target add x86_64-apple-darwin
+          echo "CARGO_BUILD_TARGET=x86_64-apple-darwin" >> "$GITHUB_ENV"
+      - uses: Swatinem/rust-cache@v2
+      - name: Linux keychain dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev libsecret-1-dev dbus-x11 gnome-keyring
+      - name: Validate all archives and sign a temporary combined catalog
+        run: node scripts/prepare-native-stack.mjs
+      - name: Assemble matching offline archives
+        run: node scripts/offline-pack.mjs --dev --platform=${{ matrix.platform }} --arch=${{ matrix.arch }}
+      - name: Ephemeral macOS test keychain
+        if: runner.os == 'macOS'
+        run: |
+          keychain="$RUNNER_TEMP/stackcabin-stack.keychain-db"
+          security create-keychain -p 'stackcabin-ci-only' "$keychain"
+          security unlock-keychain -p 'stackcabin-ci-only' "$keychain"
+          security default-keychain -d user -s "$keychain"
+          security list-keychains -d user -s "$keychain"
+      - name: Concurrent projects and real databases on macOS
+        if: runner.os == 'macOS'
+        run: cargo run -p stackcabin-core --example native-smoke
+      - name: Concurrent projects and real databases on Linux
+        if: runner.os == 'Linux'
+        run: |
+          export XDG_DATA_HOME="$RUNNER_TEMP/stackcabin-secret-service"
+          dbus-run-session -- bash -eu -c 'mkdir -p "$XDG_DATA_HOME"; printf "%s\n" "stackcabin-ci-only" | gnome-keyring-daemon --unlock --components=secrets; cargo run -p stackcabin-core --example native-smoke'

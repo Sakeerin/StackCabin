@@ -1,0 +1,83 @@
+{
+  "purpose": "Internal integration tests only. These CI artifacts are not published runtime URLs.",
+  "targets": {
+    "linux-x64": [
+      {
+        "component": "php",
+        "version": "8.4.27",
+        "run": "39928079743",
+        "artifact": "php-8.4.27-ubuntu-22.04"
+      },
+      {
+        "component": "php",
+        "version": "8.5.12",
+        "run": "39926943793",
+        "artifact": "php-8.5.12-ubuntu-22.04"
+      },
+      {
+        "component": "mariadb",
+        "version": "12.3.3",
+        "run": "39924301076",
+        "artifact": "mariadb-12.3.3-ubuntu-22.04"
+      },
+      {
+        "component": "postgres",
+        "version": "18.6",
+        "run": "39920049255",
+        "artifact": "postgres-18.6-ubuntu-22.04"
+      }
+    ],
+    "macos-arm64": [
+      {
+        "component": "php",
+        "version": "8.4.27",
+        "run": "39960104209",
+        "artifact": "php-8.4.27-macos-15"
+      },
+      {
+        "component": "php",
+        "version": "8.5.12",
+        "run": "39960117212",
+        "artifact": "php-8.5.12-macos-15"
+      },
+      {
+        "component": "mariadb",
+        "version": "12.3.3",
+        "run": "39928392371",
+        "artifact": "mariadb-12.3.3-macos-15"
+      },
+      {
+        "component": "postgres",
+        "version": "18.6",
+        "run": "39920049255",
+        "artifact": "postgres-18.6-macos-15"
+      }
+    ],
+    "macos-x64": [
+      {
+        "component": "php",
+        "version": "8.4.27",
+        "run": "39961891973",
+        "artifact": "php-8.4.27-macos-15-intel"
+      },
+      {
+        "component": "php",
+        "version": "8.5.12",
+        "run": "39960124131",
+        "artifact": "php-8.5.12-macos-15-intel"
+      },
+      {
+        "component": "mariadb",
+        "version": "12.3.3",
+        "run": "39928396223",
+        "artifact": "mariadb-12.3.3-macos-15-intel"
+      },
+      {
+        "component": "postgres",
+        "version": "18.6",
+        "run": "39920049255",
+        "artifact": "postgres-18.6-macos-15-intel"
+      }
+    ]
+  }
+}

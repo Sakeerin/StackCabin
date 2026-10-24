@@ -6,7 +6,35 @@ use stackcabin_core::{
     runtime::{ARCH, PLATFORM},
     AppCore,
 };
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, time::Duration};
+
+// Re-check every project after the other runtimes and databases have started.
+// A successful first request alone cannot detect shared FPM configuration or
+// environment changes that accidentally redirect a previously running project.
+async fn assert_project_response(url: &str, host: &str, runtime: Option<&str>) -> Result<()> {
+    let response = reqwest::Client::new()
+        .get(url)
+        .header("Host", host)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await?
+        .error_for_status()?;
+    if let Some(runtime) = runtime {
+        anyhow::ensure!(
+            response
+                .headers()
+                .get("X-StackCabin-Runtime")
+                .and_then(|v| v.to_str().ok())
+                == Some(runtime),
+            "Server at {url} used a different runtime than {runtime}"
+        );
+    }
+    anyhow::ensure!(
+        response.text().await?.contains("ready to build"),
+        "Server at {url} returned a different project"
+    );
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -85,6 +113,7 @@ async fn main() -> Result<()> {
     let projects_dir = root.join("projects");
     std::fs::create_dir_all(&projects_dir)?;
     let mut ids = vec![];
+    let mut observations = vec![];
     let branches = std::env::var("STACKCABIN_SMOKE_BRANCHES").ok();
     for (preset, branch) in [
         (Preset::Static, None),
@@ -157,6 +186,14 @@ async fn main() -> Result<()> {
                 }
             }
         }
+        if project.spec.preset == Preset::Php {
+            let index = PathBuf::from(&project.path).join("index.php");
+            let source = std::fs::read_to_string(&index)?;
+            std::fs::write(
+                index,
+                format!("<?php header('X-StackCabin-Runtime: '.PHP_VERSION); ?>{source}"),
+            )?;
+        }
         let status = core.start_project(&project.id).await?;
         let info = status
             .processes
@@ -164,38 +201,18 @@ async fn main() -> Result<()> {
             .find(|p| p.port.is_some())
             .context("No listening process")?;
         let fallback = status.fallback_url.context("No loopback fallback")?;
-        let fallback_body = reqwest::get(&fallback)
-            .await?
-            .error_for_status()?
-            .text()
-            .await?;
-        anyhow::ensure!(
-            fallback_body.contains("ready to build"),
-            "Loopback route returned a different project"
-        );
         let url = status.url.context("No routed URL")?;
         let proxy_port = url.rsplit(':').next().context("No proxy port")?;
-        let response = reqwest::Client::new()
-            .get(format!("http://127.0.0.1:{proxy_port}/"))
-            .header("Host", format!("{}.localhost", project.id))
-            .send()
-            .await?
-            .error_for_status()?;
-        if project.spec.preset == Preset::Node {
-            anyhow::ensure!(
-                response
-                    .headers()
-                    .get("X-StackCabin-Runtime")
-                    .and_then(|v| v.to_str().ok())
-                    == Some(format!("v{}", project.spec.runtimes[0].version).as_str()),
-                "The running Node server used a different runtime than its project selection"
-            );
-        }
-        let text = response.text().await?;
-        anyhow::ensure!(
-            text.contains("ready to build"),
-            "Unexpected starter response: {text}"
-        );
+        let runtime = match project.spec.preset {
+            Preset::Node => Some(format!("v{}", project.spec.runtimes[0].version)),
+            Preset::Php => Some(project.spec.runtimes[0].version.clone()),
+            _ => None,
+        };
+        let routed = format!("http://127.0.0.1:{proxy_port}/");
+        let host = format!("{}.localhost", project.id);
+        assert_project_response(&routed, &host, runtime.as_deref()).await?;
+        assert_project_response(&fallback, "127.0.0.1", runtime.as_deref()).await?;
+        observations.push((routed, host, fallback, runtime));
         println!("PASS {} {:?} {}", project.spec.name, info.state, url);
         ids.push(project.id);
     }
@@ -245,6 +262,14 @@ async fn main() -> Result<()> {
             println!("PASS {component} provision / read / write / dump / restore");
         }
     }
+    for (routed, host, fallback, runtime) in observations {
+        assert_project_response(&routed, &host, runtime.as_deref()).await?;
+        assert_project_response(&fallback, "127.0.0.1", runtime.as_deref()).await?;
+    }
+    println!(
+        "PASS all {} projects remain reachable with their selected runtime",
+        ids.len()
+    );
     for id in ids {
         core.supervisor.stop(&id).await?;
         anyhow::ensure!(
