@@ -8,6 +8,9 @@ use stackcabin_core::{
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
+#[path = "support/persistence.rs"]
+mod persistence;
+
 // Re-check every project after the other runtimes and databases have started.
 // A successful first request alone cannot detect shared FPM configuration or
 // environment changes that accidentally redirect a previously running project.
@@ -41,6 +44,12 @@ async fn assert_project_response(url: &str, host: &str, runtime: Option<&str>) -
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    match std::env::args().nth(1).as_deref() {
+        None => {}
+        Some("record-persistence") => return persistence::run("record").await,
+        Some("verify-persistence") => return persistence::run("verify").await,
+        Some(_) => anyhow::bail!("Use no argument, record-persistence or verify-persistence"),
+    }
     let root = PathBuf::from(
         std::env::var("STACKCABIN_SMOKE_DIR")
             .context("Set STACKCABIN_SMOKE_DIR to an explicit disposable test workspace")?,

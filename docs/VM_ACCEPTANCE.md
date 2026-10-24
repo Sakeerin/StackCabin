@@ -133,6 +133,11 @@ not certify a clean desktop, offline system prerequisites or upgrades.
 
 ## Desktop checks on every target
 
+The [packaged preservation workflow](UPGRADE_ACCEPTANCE.md) provides automated
+same-schema QA 0.1.0 → unpublished 0.1.1 replacement checks with real project,
+runtime, credential, database and backup data. It complements the supported-release
+and clean-desktop upgrade checks below.
+
 1. Start from a clean snapshot without development runtimes. Test installation
    online, then repeat from a fresh snapshot with the complete offline payload
    while disconnected. Record prerequisite prompts and reboot requests.

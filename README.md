@@ -183,3 +183,6 @@ are built by the manual `Build Unix QA desktop installers with offline runtimes`
 workflow. StackCabin QA has its own executable, metadata and credential namespace;
 its internal development catalog includes the reviewed Unix PHP/database packs.
 The normal preview catalog and production release gates remain unchanged.
+
+[Packaged upgrade acceptance](docs/UPGRADE_ACCEPTANCE.md) checks existing project,
+runtime, database, settings and backup preservation with an unpublished QA candidate.

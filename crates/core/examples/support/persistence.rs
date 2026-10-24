@@ -169,13 +169,8 @@ async fn assert_live_data(core: &AppCore, expected: &Baseline) -> Result<()> {
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    let mode = std::env::args().nth(1).context("Use record or verify")?;
-    anyhow::ensure!(
-        ["record", "verify"].contains(&mode.as_str()),
-        "Use record or verify"
-    );
+pub async fn run(mode: &str) -> Result<()> {
+    anyhow::ensure!(["record", "verify"].contains(&mode), "Use record or verify");
     let workspace = dunce::canonicalize(
         std::env::var("STACKCABIN_SMOKE_DIR")
             .context("Set an explicit native-smoke fixture workspace")?,

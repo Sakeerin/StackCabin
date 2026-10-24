@@ -32,6 +32,8 @@ jobs:
           python-version: "3.12"
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
       - uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.artifact }}
@@ -55,7 +57,7 @@ jobs:
       - run: npm ci
       - run: node scripts/prepare-qa-desktop.mjs
       - name: Build acceptance tools with the same QA credential namespace
-        run: cargo build -p stackcabin-core --features qa --example native-smoke --example persistence-smoke
+        run: cargo build -p stackcabin-core --features qa --example native-smoke
       - name: Private QA keychain
         if: runner.os == 'macOS'
         run: |
@@ -71,6 +73,7 @@ jobs:
           node node_modules/@tauri-apps/cli/tauri.js build --features qa --config src-tauri/tauri.qa.conf.json --config '{"version":"0.1.1"}' --bundles "$bundles"
       - name: Actual install, populated restart and upgrade on Linux
         if: runner.os == 'Linux'
+        timeout-minutes: 10
         shell: bash
         run: |
           export STACKCABIN_OFFLINE_DIR="$STACKCABIN_QA_KIT_DIR/offline"
@@ -78,6 +81,7 @@ jobs:
           xvfb-run -a dbus-run-session -- bash scripts/verify-qa-upgrade.sh
       - name: Actual app replacement with existing data on macOS
         if: runner.os == 'macOS'
+        timeout-minutes: 10
         shell: bash
         run: |
           export STACKCABIN_OFFLINE_DIR="$STACKCABIN_QA_KIT_DIR/offline"
