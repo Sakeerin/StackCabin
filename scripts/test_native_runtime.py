@@ -10,6 +10,7 @@ import threading
 import unittest
 from unittest.mock import patch
 import hashlib
+import os
 import sqlite3
 import sys
 import urllib.error
@@ -67,6 +68,22 @@ class PackagedMetadataTests(unittest.TestCase):
                     packaged_smoke.verify(sys.executable, directory)
                 launch.assert_not_called()
             self.assertEqual(database.read_bytes(), before)
+
+    @unittest.skipIf(os.name == "nt", "Unix packaged process inspection")
+    def test_a_real_open_database_handle_is_required(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = self.fixture(Path(directory))
+            self.assertFalse(packaged_smoke.has_metadata_handle(os.getpid(), database))
+            with closing(sqlite3.connect(database)):
+                self.assertTrue(packaged_smoke.has_metadata_handle(os.getpid(), database))
+            self.assertFalse(packaged_smoke.has_metadata_handle(os.getpid(), database))
+
+    @unittest.skipIf(os.name == "nt", "Unix packaged process inspection")
+    def test_a_different_database_handle_does_not_prove_readiness(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = self.fixture(Path(directory))
+            with closing(sqlite3.connect(Path(directory) / "different.sqlite")):
+                self.assertFalse(packaged_smoke.has_metadata_handle(os.getpid(), database))
 
 
 class InstallerChecksumTests(unittest.TestCase):

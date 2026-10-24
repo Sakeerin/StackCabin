@@ -30,6 +30,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Packaging and existing-process readiness regressions
+        run: python -m unittest discover -s scripts -p test_native_runtime.py -v
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
@@ -83,7 +85,7 @@ jobs:
           xvfb-run -a dbus-run-session -- bash scripts/verify-qa-upgrade.sh
       - name: Actual app replacement with existing data on macOS
         if: runner.os == 'macOS'
-        timeout-minutes: 10
+        timeout-minutes: 15
         shell: bash
         run: |
           export STACKCABIN_OFFLINE_DIR="$STACKCABIN_QA_KIT_DIR/offline"

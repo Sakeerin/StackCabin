@@ -6,6 +6,7 @@ from pathlib import Path
 import signal
 import sqlite3
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -17,6 +18,26 @@ def metadata(path):
             "projects": connection.execute("SELECT id,path,payload FROM projects ORDER BY id").fetchall(),
             "settings": connection.execute("SELECT id,payload FROM settings ORDER BY id").fetchall(),
         }
+
+
+def has_metadata_handle(pid, database):
+    """Confirm the installed process opened this existing database inode."""
+    expected = database.stat()
+    if sys.platform == "darwin":
+        result = subprocess.run(
+            ["/usr/sbin/lsof", "-a", "-p", str(pid), "-Fpi", "--", str(database)],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+        fields = result.stdout.splitlines()
+        return result.returncode == 0 and f"p{pid}" in fields and f"i{expected.st_ino}" in fields
+    for descriptor in Path(f"/proc/{pid}/fd").iterdir():
+        try:
+            actual = descriptor.stat()
+        except OSError:
+            continue  # A transient descriptor may close during enumeration.
+        if (actual.st_dev, actual.st_ino) == (expected.st_dev, expected.st_ino):
+            return True
+    return False
 
 
 def verify(application, data_directory=None):
@@ -48,6 +69,8 @@ def verify(application, data_directory=None):
                         ready = actual == expected if expected else actual["schema"] == 1 and not actual["projects"]
                         if expected and not ready:
                             raise RuntimeError("Packaged application changed existing metadata during startup")
+                        if expected and ready:
+                            ready = has_metadata_handle(child.pid, database)
                     except sqlite3.Error:
                         pass  # The process may still be committing its initial migration.
                 if ready:
@@ -60,8 +83,12 @@ def verify(application, data_directory=None):
                 raise RuntimeError("Packaged application exited after initialization")
             if expected and metadata(database) != expected:
                 raise RuntimeError("Packaged application changed preserved metadata")
+            if expected and not has_metadata_handle(child.pid, database):
+                raise RuntimeError("Packaged application released the preserved metadata connection")
             print("PASS normal packaged application remains alive with "
                   + ("all existing project metadata and settings unchanged" if expected else "real SQLite metadata in a Unicode/spaced directory"))
+            if expected:
+                print("PASS installed application process holds the existing metadata database open")
         finally:
             if child.poll() is None:
                 os.killpg(child.pid, signal.SIGTERM)
