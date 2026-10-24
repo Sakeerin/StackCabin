@@ -17,6 +17,69 @@ import native_runtime_smoke as smoke
 spec = importlib.util.spec_from_file_location("native_builder", Path(__file__).with_name("build-native-runtime.py"))
 builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
+installer_spec = importlib.util.spec_from_file_location("installer_checksums", Path(__file__).with_name("verify-installer-checksums.py"))
+installer_checksums = importlib.util.module_from_spec(installer_spec)
+installer_spec.loader.exec_module(installer_checksums)
+
+
+class InstallerChecksumTests(unittest.TestCase):
+    def fixtures(self, root):
+        records = []
+        for name in ["deb/StackCabin.deb", "appimage/StackCabin.AppImage"]:
+            target = root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(name.encode())
+            records.append(f"{hashlib.sha256(target.read_bytes()).hexdigest()}  {name}")
+        return records
+
+    def test_legacy_staging_records_do_not_hide_required_installer_checks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            records = self.fixtures(root)
+            records += ["0" * 64 + "  deb/StackCabin/control.tar.gz", "0" * 64 + "  deb/StackCabin/data.tar.gz"]
+            (root / "SHA256SUMS.txt").write_text("\n".join(records))
+            installer_checksums.verify(root, "linux")
+
+    def test_a_missing_distributed_installer_is_never_ignored(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            records = self.fixtures(root)
+            (root / "deb/StackCabin.deb").unlink()
+            (root / "SHA256SUMS.txt").write_text("\n".join(records))
+            with self.assertRaisesRegex(RuntimeError, "Missing"):
+                installer_checksums.verify(root, "linux")
+
+    def test_staging_only_manifests_cannot_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "SHA256SUMS.txt").write_text("0" * 64 + "  deb/StackCabin/data.tar.gz")
+            with self.assertRaisesRegex(RuntimeError, "Expected exactly"):
+                installer_checksums.verify(root, "linux")
+
+    def test_a_changed_installer_fails_its_hash(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            records = self.fixtures(root)
+            (root / "deb/StackCabin.deb").write_bytes(b"modified")
+            (root / "SHA256SUMS.txt").write_text("\n".join(records))
+            with self.assertRaisesRegex(RuntimeError, "checksum mismatch"):
+                installer_checksums.verify(root, "linux")
+
+    def test_checksum_paths_cannot_escape_the_artifact(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in ["../outside.exe", "deb/../data.tar.gz", "C:/outside.exe", "deb\\outside.deb"]:
+                (root / "SHA256SUMS.txt").write_text("0" * 64 + "  " + name)
+                with self.assertRaisesRegex(RuntimeError, "Unsafe"):
+                    installer_checksums.verify(root, "linux")
+
+    def test_duplicate_installer_records_are_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            records = self.fixtures(root)
+            (root / "SHA256SUMS.txt").write_text("\n".join([*records, records[0]]))
+            with self.assertRaisesRegex(RuntimeError, "Duplicate"):
+                installer_checksums.verify(root, "linux")
 
 
 class NativePackagingTests(unittest.TestCase):

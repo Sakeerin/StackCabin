@@ -10,10 +10,7 @@ async function find(folder) {
   for (const entry of await readdir(folder, { withFileTypes: true })) {
     const full = path.join(folder, entry.name);
     if (entry.isDirectory()) files.push(...(await find(full)));
-    else if (
-      entry.isFile() &&
-      /\.(exe|msi|dmg|deb|AppImage|tar\.gz)$/i.test(entry.name)
-    )
+    else if (entry.isFile() && /^(?:nsis\/[^/]+\.exe|dmg\/[^/]+\.dmg|deb\/[^/]+\.deb|appimage\/[^/]+\.AppImage)$/i.test(path.relative(directory, full).replaceAll("\\", "/")))
       files.push(full);
   }
   return files;
