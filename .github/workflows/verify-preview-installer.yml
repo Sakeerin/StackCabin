@@ -8,7 +8,7 @@ on:
         required: true
       runner:
         type: choice
-        options: [ubuntu-24.04, macos-14]
+        options: [windows-latest, ubuntu-24.04, macos-14]
         required: true
       arch:
         description: macOS package architecture; x64 requires preinstalled Rosetta
@@ -30,7 +30,7 @@ jobs:
           python-version: "3.12"
       - uses: actions/download-artifact@v4
         with:
-          name: development-installers-${{ startsWith(inputs.runner, 'ubuntu') && 'ubuntu-22.04' || inputs.arch == 'x64' && 'macos-15-intel' || 'macos-15' }}
+          name: development-installers-${{ startsWith(inputs.runner, 'windows') && 'windows-latest' || startsWith(inputs.runner, 'ubuntu') && 'ubuntu-22.04' || inputs.arch == 'x64' && 'macos-15-intel' || 'macos-15' }}
           run-id: ${{ inputs.source_run }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: artifacts/installers/
@@ -43,6 +43,27 @@ jobs:
           else
             shasum -a 256 -c SHA256SUMS.txt
           fi
+      - uses: actions/setup-node@v4
+        if: runner.os == 'Windows'
+        with:
+          node-version: "24"
+      - name: Install and verify the Windows prerequisite and application
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          node scripts/prepare-windows-prerequisites.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Prerequisite preparation failed' }
+          $before = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./src-tauri/windows/install-vc-runtime.ps1 -PayloadDirectory ./artifacts/windows-prerequisites -Manifest ./runtime-catalog/windows-prerequisites.json -CheckOnly | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Prerequisite inspection failed' }
+          $installers = @(Get-ChildItem artifacts/installers/nsis/*-setup.exe)
+          if ($installers.Count -ne 1) { throw 'Expected one NSIS installer' }
+          $destination = Join-Path $env:RUNNER_TEMP 'installed preview ทดสอบ'
+          $process = Start-Process -FilePath $installers[0].FullName -ArgumentList '/S', "/D=$destination" -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
+          $after = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./src-tauri/windows/install-vc-runtime.ps1 -PayloadDirectory ./artifacts/windows-prerequisites -Manifest ./runtime-catalog/windows-prerequisites.json -CheckOnly | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or $after.installationNeeded) { throw 'Installer did not provide the required Visual C++ version' }
+          Write-Output "PASS Visual C++ before=$($before.installedVersion), needed=$($before.installationNeeded), after=$($after.installedVersion)"
+          ./scripts/smoke-packaged-windows.ps1 -Application (Join-Path $destination 'stackcabin.exe') -Python (Get-Command python).Source
       - name: Install the Ubuntu 22.04 deb on Ubuntu 24.04
         if: runner.os == 'Linux'
         shell: bash
