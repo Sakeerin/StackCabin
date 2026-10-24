@@ -1,0 +1,96 @@
+name: Verify an existing QA desktop installer on the baseline
+on:
+  workflow_dispatch:
+    inputs:
+      source_run:
+        description: Unix QA desktop installer build run
+        type: string
+        required: true
+      runner:
+        type: choice
+        options: [ubuntu-24.04, macos-14]
+        required: true
+      arch:
+        type: choice
+        options: [arm64, x64]
+        default: arm64
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop-qa-${{ startsWith(inputs.runner, 'ubuntu') && 'ubuntu-22.04' || inputs.arch == 'x64' && 'macos-15-intel' || 'macos-15' }}
+          run-id: ${{ inputs.source_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/qa-desktop/
+      - name: Verify and extract the matching desktop pack
+        run: |
+          cd artifacts/qa-desktop
+          archives=(*.tar.gz)
+          manifests=(*.tar.gz.sha256)
+          [[ ${#archives[@]} -eq 1 && ${#manifests[@]} -eq 1 ]]
+          if [[ "$RUNNER_OS" == macOS ]]; then shasum -a 256 -c "${manifests[0]}"; else sha256sum -c "${manifests[0]}"; fi
+          mkdir "$RUNNER_TEMP/desktop QA pack"
+          tar -xzf "${archives[0]}" -C "$RUNNER_TEMP/desktop QA pack"
+          python "$GITHUB_WORKSPACE/scripts/verify-installer-checksums.py" "$RUNNER_TEMP/desktop QA pack/installers" --platform "$RUNNER_OS"
+      - uses: actions/download-artifact@v4
+        if: runner.os == 'Linux'
+        with:
+          name: development-installers-ubuntu-22.04
+          run-id: "40047451505"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/normal/
+      - name: Install the normal preview before QA to verify coexistence
+        if: runner.os == 'Linux'
+        run: |
+          python scripts/verify-installer-checksums.py artifacts/normal --platform Linux
+          normal=(artifacts/normal/deb/*.deb)
+          [[ ${#normal[@]} -eq 1 ]]
+          sudo apt-get update
+          sudo apt-get install -y xvfb dbus-x11 "./${normal[0]}"
+          sha256sum /usr/bin/stackcabin > "$RUNNER_TEMP/normal-binary.sha256"
+          xvfb-run -a dbus-run-session -- python scripts/smoke-packaged-unix.py /usr/bin/stackcabin
+      - name: Install QA and confirm that the normal executable is unchanged
+        if: runner.os == 'Linux'
+        run: |
+          debs=("$RUNNER_TEMP/desktop QA pack/installers/deb/"*.deb)
+          [[ ${#debs[@]} -eq 1 ]]
+          [[ "$(dpkg-deb -f "${debs[0]}" Package)" == *-qa ]]
+          sudo dpkg -i "${debs[0]}"
+          sha256sum -c "$RUNNER_TEMP/normal-binary.sha256"
+          xvfb-run -a dbus-run-session -- python scripts/smoke-packaged-unix.py /usr/bin/stackcabin-qa
+          images=("$RUNNER_TEMP/desktop QA pack/installers/appimage/"*.AppImage)
+          [[ ${#images[@]} -eq 1 ]]
+          chmod +x "${images[0]}"
+          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a dbus-run-session -- python scripts/smoke-packaged-unix.py "${images[0]}"
+      - name: Check preinstalled x64 compatibility
+        if: runner.os == 'macOS' && inputs.arch == 'x64'
+        run: arch -x86_64 /usr/bin/true
+      - name: Mount and verify the QA app on macOS 14
+        if: runner.os == 'macOS'
+        run: |
+          images=("$RUNNER_TEMP/desktop QA pack/installers/dmg/"*.dmg)
+          [[ ${#images[@]} -eq 1 ]]
+          mount="$RUNNER_TEMP/qa-mount"
+          destination="$RUNNER_TEMP/installed QA ทดสอบ/StackCabin QA.app"
+          mkdir "$mount"
+          mkdir -p "$(dirname "$destination")"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount" "${images[0]}"
+          trap 'hdiutil detach "$mount"' EXIT
+          apps=("$mount/"*.app)
+          [[ ${#apps[@]} -eq 1 ]]
+          ditto "${apps[0]}" "$destination"
+          hdiutil detach "$mount"
+          trap - EXIT
+          [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$destination/Contents/Info.plist")" == dev.stackcabin.qa ]]
+          python scripts/check-macos-bundle.py "$destination"
+          python scripts/smoke-packaged-unix.py "$destination/Contents/MacOS/stackcabin-qa"
