@@ -58,19 +58,21 @@ jobs:
       - run: node scripts/prepare-qa-desktop.mjs
       - name: Build acceptance tools with the same QA credential namespace
         run: cargo build -p stackcabin-core --features qa --example native-smoke
-      - name: Private QA keychain
-        if: runner.os == 'macOS'
-        run: |
-          keychain="$RUNNER_TEMP/upgrade-qa.keychain-db"
-          security create-keychain -p 'stackcabin-ci-only' "$keychain"
-          security unlock-keychain -p 'stackcabin-ci-only' "$keychain"
-          security default-keychain -d user -s "$keychain"
-          security list-keychains -d user -s "$keychain"
       - name: Build the unpublished 0.1.1 QA upgrade candidate without E2E
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == macOS ]]; then bundles=app,dmg; else bundles=deb; fi
           node node_modules/@tauri-apps/cli/tauri.js build --features qa --config src-tauri/tauri.qa.conf.json --config '{"version":"0.1.1"}' --bundles "$bundles"
+      - name: Private QA keychain immediately before credential acceptance
+        if: runner.os == 'macOS'
+        run: |
+          keychain="$RUNNER_TEMP/upgrade-qa.keychain-db"
+          security create-keychain -p 'stackcabin-ci-only' "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p 'stackcabin-ci-only' "$keychain"
+          security default-keychain -d user -s "$keychain"
+          security list-keychains -d user -s "$keychain"
+          security show-keychain-info "$keychain"
       - name: Actual install, populated restart and upgrade on Linux
         if: runner.os == 'Linux'
         timeout-minutes: 10
@@ -94,3 +96,8 @@ jobs:
           path: |
             artifacts/upgrade-acceptance.log
             artifacts/preservation-baseline.json
+      - name: Remove only the ephemeral QA keychain
+        if: always() && runner.os == 'macOS'
+        run: |
+          keychain="$RUNNER_TEMP/upgrade-qa.keychain-db"
+          if [[ -f "$keychain" ]]; then security delete-keychain "$keychain"; fi

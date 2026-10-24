@@ -31,6 +31,9 @@ remain checked. Owned services stop after each verification.
 Preparation and verification use the same executable, avoiding cross-program
 Keychain access in the unsigned macOS CI harness. This does not relax credential
 access controls or establish signed-application trust migration across updates.
+The workflow creates/unlocks its private keychain after compilation, sets a
+one-hour lock timeout for the bounded acceptance step, and deletes that keychain
+after evidence collection. It does not alter the user's login keychain settings.
 
 ## Installer replacement
 
