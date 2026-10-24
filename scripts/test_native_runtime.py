@@ -1,4 +1,5 @@
 import importlib.util
+from contextlib import closing
 import io
 from pathlib import Path
 import socket
@@ -9,6 +10,8 @@ import threading
 import unittest
 from unittest.mock import patch
 import hashlib
+import sqlite3
+import sys
 import urllib.error
 from source_download import download_verified
 
@@ -20,6 +23,50 @@ spec.loader.exec_module(builder)
 installer_spec = importlib.util.spec_from_file_location("installer_checksums", Path(__file__).with_name("verify-installer-checksums.py"))
 installer_checksums = importlib.util.module_from_spec(installer_spec)
 installer_spec.loader.exec_module(installer_checksums)
+packaged_spec = importlib.util.spec_from_file_location("packaged_smoke", Path(__file__).with_name("smoke-packaged-unix.py"))
+packaged_smoke = importlib.util.module_from_spec(packaged_spec)
+packaged_spec.loader.exec_module(packaged_smoke)
+
+
+class PackagedMetadataTests(unittest.TestCase):
+    def fixture(self, root, schema=1, count=10):
+        database = root / "stackcabin.sqlite"
+        with closing(sqlite3.connect(database)) as connection:
+            connection.executescript(f"PRAGMA user_version={schema}; CREATE TABLE projects(id,path,payload); CREATE TABLE settings(id,payload);")
+            connection.executemany("INSERT INTO projects VALUES(?,?,?)", [(str(i), str(root / f"โปรเจกต์ {i}"), '{"trusted":true}') for i in range(count)])
+            connection.execute("INSERT INTO settings VALUES(1,?)", ['{"language":"th","theme":"dark"}'])
+            connection.commit()
+        return database
+
+    def test_existing_metadata_is_read_without_changing_unicode_paths_or_settings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = self.fixture(Path(directory))
+            before = database.read_bytes()
+            state = packaged_smoke.metadata(database)
+            self.assertEqual(len(state["projects"]), 10)
+            self.assertIn("โปรเจกต์", state["projects"][0][1])
+            self.assertIn('"language":"th"', state["settings"][0][1])
+            self.assertEqual(database.read_bytes(), before)
+
+    def test_future_schema_is_never_launched_or_deleted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = self.fixture(Path(directory), schema=99)
+            before = database.read_bytes()
+            with patch.object(packaged_smoke.subprocess, "Popen") as launch:
+                with self.assertRaisesRegex(RuntimeError, "preservation fixture"):
+                    packaged_smoke.verify(sys.executable, directory)
+                launch.assert_not_called()
+            self.assertEqual(database.read_bytes(), before)
+
+    def test_incomplete_existing_fixture_is_never_reinitialized(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = self.fixture(Path(directory), count=9)
+            before = database.read_bytes()
+            with patch.object(packaged_smoke.subprocess, "Popen") as launch:
+                with self.assertRaisesRegex(RuntimeError, "preservation fixture"):
+                    packaged_smoke.verify(sys.executable, directory)
+                launch.assert_not_called()
+            self.assertEqual(database.read_bytes(), before)
 
 
 class InstallerChecksumTests(unittest.TestCase):

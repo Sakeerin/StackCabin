@@ -1,0 +1,92 @@
+name: Verify QA installer upgrade preserves real data
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        type: choice
+        options: [all, linux, macos-arm64, macos-x64]
+        default: all
+permissions:
+  contents: read
+  actions: read
+jobs:
+  upgrade:
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.target == 'linux' && '[{"os":"ubuntu-22.04","run":"40075038598","artifact":"desktop-qa-ubuntu-22.04"}]' || inputs.target == 'macos-arm64' && '[{"os":"macos-14","run":"40074337734","artifact":"desktop-qa-macos-15"}]' || inputs.target == 'macos-x64' && '[{"os":"macos-15-intel","run":"40075333416","artifact":"desktop-qa-macos-15-intel"}]' || '[{"os":"ubuntu-22.04","run":"40075038598","artifact":"desktop-qa-ubuntu-22.04"},{"os":"macos-14","run":"40074337734","artifact":"desktop-qa-macos-15"},{"os":"macos-15-intel","run":"40075333416","artifact":"desktop-qa-macos-15-intel"}]') }}
+    runs-on: ${{ matrix.os }}
+    env:
+      STACKCABIN_QA_KIT_DIR: ${{ github.workspace }}/.local/previous-qa
+      STACKCABIN_SMOKE_DIR: ${{ github.workspace }}/.local/upgrade data ทดสอบ
+      STACKCABIN_SMOKE_COMPONENTS: node,caddy,php,cacert,composer,pnpm,yarn,mariadb,postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          run-id: ${{ matrix.run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/previous-qa/
+      - name: Verify and extract the previous immutable QA pack
+        shell: bash
+        run: |
+          cd artifacts/previous-qa
+          archives=(*.tar.gz)
+          manifests=(*.tar.gz.sha256)
+          [[ ${#archives[@]} -eq 1 && ${#manifests[@]} -eq 1 ]]
+          if [[ "$RUNNER_OS" == macOS ]]; then shasum -a 256 -c "${manifests[0]}"; else sha256sum -c "${manifests[0]}"; fi
+          mkdir -p "$STACKCABIN_QA_KIT_DIR"
+          tar -xzf "${archives[0]}" -C "$STACKCABIN_QA_KIT_DIR"
+          python "$GITHUB_WORKSPACE/scripts/verify-installer-checksums.py" "$STACKCABIN_QA_KIT_DIR/installers" --platform "$RUNNER_OS"
+      - name: Linux desktop and credential prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf libdbus-1-dev libsecret-1-dev xvfb dbus-x11 gnome-keyring
+      - run: npm ci
+      - run: node scripts/prepare-qa-desktop.mjs
+      - name: Build acceptance tools with the same QA credential namespace
+        run: cargo build -p stackcabin-core --features qa --example native-smoke --example persistence-smoke
+      - name: Private QA keychain
+        if: runner.os == 'macOS'
+        run: |
+          keychain="$RUNNER_TEMP/upgrade-qa.keychain-db"
+          security create-keychain -p 'stackcabin-ci-only' "$keychain"
+          security unlock-keychain -p 'stackcabin-ci-only' "$keychain"
+          security default-keychain -d user -s "$keychain"
+          security list-keychains -d user -s "$keychain"
+      - name: Build the unpublished 0.1.1 QA upgrade candidate without E2E
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == macOS ]]; then bundles=app,dmg; else bundles=deb; fi
+          node node_modules/@tauri-apps/cli/tauri.js build --features qa --config src-tauri/tauri.qa.conf.json --config '{"version":"0.1.1"}' --bundles "$bundles"
+      - name: Actual install, populated restart and upgrade on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          export STACKCABIN_OFFLINE_DIR="$STACKCABIN_QA_KIT_DIR/offline"
+          export XDG_DATA_HOME="$RUNNER_TEMP/upgrade-secrets"
+          xvfb-run -a dbus-run-session -- bash scripts/verify-qa-upgrade.sh
+      - name: Actual app replacement with existing data on macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          export STACKCABIN_OFFLINE_DIR="$STACKCABIN_QA_KIT_DIR/offline"
+          bash scripts/verify-qa-upgrade.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: upgrade-evidence-${{ matrix.os }}
+          retention-days: 7
+          path: |
+            artifacts/upgrade-acceptance.log
+            artifacts/preservation-baseline.json
