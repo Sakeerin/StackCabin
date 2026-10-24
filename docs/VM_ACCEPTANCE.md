@@ -15,6 +15,8 @@ Rust `native-smoke` acceptance executable with a PowerShell wrapper. This is an
 internal QA harness, separate from the product UI. It needs no system Rust, npm,
 PHP, Node or database installation. Install StackCabin first so its Microsoft
 prerequisites are available. Verify the kit's binary against `SHA256SUMS.txt`.
+The wrapper also checks that hash automatically and rejects file, junction and
+symlink workspaces before creating acceptance data.
 
 On a clean VM with internet access, use a new dedicated workspace:
 

@@ -9,6 +9,11 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify wrapper integrity and workspace safeguards
+        run: node --test scripts/test-windows-acceptance.mjs
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build the existing real-runtime acceptance harness

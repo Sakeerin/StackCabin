@@ -38,6 +38,9 @@ jobs:
       - name: Unix acceptance wrapper isolation
         if: runner.os != 'Windows'
         run: bash scripts/test-native-qa.sh
+      - name: Windows acceptance wrapper integrity and isolation
+        if: runner.os == 'Windows'
+        run: node --test scripts/test-windows-acceptance.mjs
       - run: npm run build
       - run: npm test
       - run: cargo fmt --all -- --check
