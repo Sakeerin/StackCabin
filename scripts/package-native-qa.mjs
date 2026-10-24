@@ -5,6 +5,7 @@ import {
   writeFile,
   chmod,
   readFile,
+  readdir,
   cp,
 } from "node:fs/promises";
 import path from "node:path";
@@ -44,6 +45,33 @@ await chmod(path.join(directory, "Run-StackCabinAcceptance.sh"), 0o755);
 await cp(process.env.STACKCABIN_OFFLINE_DIR, path.join(directory, "offline"), {
   recursive: true,
 });
+const provenance = path.join(directory, "native-provenance");
+await mkdir(provenance);
+for (const name of await readdir(path.join(root, "artifacts/runtimes"))) {
+  if (/^[a-z0-9.-]+\.json$/.test(name))
+    await copyFile(
+      path.join(root, "artifacts/runtimes", name),
+      path.join(provenance, name),
+    );
+}
+const selection = JSON.parse(
+  await readFile(
+    path.join(root, "runtime-catalog/native-test-builds.json"),
+    "utf8",
+  ),
+);
+await writeFile(
+  path.join(directory, "NATIVE_SOURCES.txt"),
+  "Corresponding native publisher sources and dependency source archives are retained in each original build artifact below.\nBuild configuration and scripts: https://github.com/Sakeerin/StackCabin/tree/" +
+    process.env.GITHUB_SHA +
+    "/scripts\n\n" +
+    selection.targets[`${platform}-${arch}`]
+      .map(
+        (b) =>
+          `https://github.com/Sakeerin/StackCabin/actions/runs/${b.run}\nArtifact: ${b.artifact}\n`,
+      )
+      .join("\n"),
+);
 const hash = sha256(await readFile(binary));
 await writeFile(
   path.join(directory, "SHA256SUMS.txt"),

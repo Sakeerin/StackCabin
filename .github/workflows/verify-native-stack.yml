@@ -104,7 +104,23 @@ jobs:
         run: cargo build --release -p stackcabin-core --example native-smoke
       - name: Package the executable with its matching offline catalog
         if: inputs.package_qa
-        run: node scripts/package-native-qa.mjs
+        run: |
+          node scripts/third-party-notices.mjs
+          node scripts/package-native-qa.mjs
+      - name: Run the packaged release harness from a fresh workspace
+        if: inputs.package_qa
+        env:
+          KIT_NAME: native-qa-${{ matrix.platform }}-${{ matrix.arch }}
+        run: |
+          kit="$RUNNER_TEMP/extracted acceptance kit"
+          mkdir -p "$kit"
+          tar -xzf "artifacts/$KIT_NAME.tar.gz" -C "$kit"
+          if [[ "$RUNNER_OS" == macOS ]]; then
+            security unlock-keychain -p 'stackcabin-ci-only' "$RUNNER_TEMP/stackcabin-stack.keychain-db"
+            bash "$kit/Run-StackCabinAcceptance.sh" "$RUNNER_TEMP/packaged acceptance ทดสอบ" "$kit/offline"
+          else
+            dbus-run-session -- bash -eu -c 'printf "%s\n" "stackcabin-ci-only" | gnome-keyring-daemon --unlock --components=secrets; bash "$1/Run-StackCabinAcceptance.sh" "$RUNNER_TEMP/packaged acceptance ทดสอบ" "$1/offline"' bash "$kit"
+          fi
       - uses: actions/upload-artifact@v4
         if: inputs.package_qa
         with:
