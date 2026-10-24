@@ -47,6 +47,8 @@ async fn main() -> Result<()> {
                 .context("No proxy port")?
                 .to_string();
             let client = reqwest::Client::builder()
+                .no_proxy()
+                .redirect(reqwest::redirect::Policy::none())
                 .timeout(std::time::Duration::from_secs(90))
                 .build()?;
             let response = client

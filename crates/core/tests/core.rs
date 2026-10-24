@@ -343,9 +343,71 @@ fn http_worker() {
         let mut stream = connection.unwrap();
         let mut request = [0u8; 1024];
         let _ = stream.read(&mut request);
-        let _ = stream
-            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK");
+        let response = if let Ok(location) = std::env::var("STACKCABIN_TEST_REDIRECT_TO") {
+            format!("HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+        } else {
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK".into()
+        };
+        let _ = stream.write_all(response.as_bytes());
     }
+}
+
+#[tokio::test]
+async fn loopback_health_ignores_machine_proxy_and_does_not_follow_redirects() {
+    // Isolate the proxy environment in another test process; no global env
+    // mutation can interfere with tests running concurrently in this process.
+    if std::env::var_os("STACKCABIN_PROXY_PROBE_CHILD").is_none() {
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "loopback_health_ignores_machine_proxy_and_does_not_follow_redirects",
+                "--nocapture",
+            ])
+            .env("STACKCABIN_PROXY_PROBE_CHILD", "1")
+            .env("HTTP_PROXY", "http://127.0.0.1:1")
+            .env("http_proxy", "http://127.0.0.1:1")
+            .env("NO_PROXY", "")
+            .env("no_proxy", "")
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return;
+    }
+    let temp = TempDir::new().unwrap();
+    let port = stackcabin_core::process::available_port(0).await.unwrap();
+    let mut process = stackcabin_core::process::OwnedProcess::spawn(
+        &std::env::current_exe().unwrap(),
+        &[
+            "--ignored".into(),
+            "--exact".into(),
+            "http_worker".into(),
+            "--nocapture".into(),
+        ],
+        temp.path(),
+        &BTreeMap::from([
+            ("STACKCABIN_TEST_PORT".into(), port.to_string()),
+            (
+                "STACKCABIN_TEST_REDIRECT_TO".into(),
+                "http://127.0.0.1:1/unreachable-login".into(),
+            ),
+        ]),
+        "redirect-worker",
+        "test",
+        Arc::new(|_| {}),
+    )
+    .await
+    .unwrap();
+    let result =
+        tokio::time::timeout(std::time::Duration::from_secs(5), process.ready(port, true)).await;
+    process.stop().await;
+    result
+        .expect("Loopback readiness used a proxy or followed the project's redirect")
+        .unwrap();
 }
 #[tokio::test]
 async fn owned_native_process_health_and_shutdown_are_real() {

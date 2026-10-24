@@ -12,7 +12,10 @@ use std::{path::PathBuf, sync::Arc, time::Duration};
 // A successful first request alone cannot detect shared FPM configuration or
 // environment changes that accidentally redirect a previously running project.
 async fn assert_project_response(url: &str, host: &str, runtime: Option<&str>) -> Result<()> {
-    let response = reqwest::Client::new()
+    let response = reqwest::Client::builder()
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()?
         .get(url)
         .header("Host", host)
         .timeout(Duration::from_secs(15))

@@ -18,6 +18,16 @@ use tokio::{
     sync::Mutex,
 };
 
+// These requests control owned loopback services. A machine-wide proxy or a
+// project's login redirect must never change their destination or readiness.
+fn local_http_client(timeout: Duration) -> Result<reqwest::Client> {
+    Ok(reqwest::Client::builder()
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(timeout)
+        .build()?)
+}
+
 pub struct OwnedProcess {
     child: Child,
     pub info: ProcessInfo,
@@ -161,9 +171,7 @@ impl OwnedProcess {
         self.ready_path(port, http, "/").await
     }
     pub async fn ready_path(&mut self, port: u16, http: bool, path: &str) -> Result<()> {
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(2))
-            .build()?;
+        let client = local_http_client(Duration::from_secs(2))?;
         let deadline = tokio::time::Instant::now() + Duration::from_secs(60);
         while tokio::time::Instant::now() < deadline {
             self.poll();
@@ -618,7 +626,7 @@ impl Supervisor {
             let port=self.update_proxy(&caddy,proxy_port).await?;
             let url=format!("http://{host}:{port}");
             // Check the routed request, not a timer, before publishing Running.
-            let response=reqwest::Client::new().get(format!("http://127.0.0.1:{port}/")).header("Host",format!("{}.localhost",project.id)).send().await?;
+            let response=local_http_client(Duration::from_secs(5))?.get(format!("http://127.0.0.1:{port}/")).header("Host",format!("{}.localhost",project.id)).send().await?;
             anyhow::ensure!(response.status().as_u16()<500,"Web route returned {}. See Logs.",response.status());
             if let Some(info)=&mut run.static_info{info.state=ProcessState::Running;info.port=Some(port);info.url=Some(url.clone());}
             run.url=Some(url);run.fallback_url=Some(format!("http://127.0.0.1:{fallback_port}"));Ok(())
@@ -674,7 +682,7 @@ impl Supervisor {
         let path = self.root.join("services/caddy.json");
         atomic_write(&path, &serde_json::to_vec_pretty(&config)?)?;
         if proxy.is_some() {
-            reqwest::Client::new()
+            local_http_client(Duration::from_secs(5))?
                 .post(format!("http://127.0.0.1:{admin}/load"))
                 .json(&config)
                 .send()
