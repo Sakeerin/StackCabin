@@ -30,11 +30,33 @@ disconnect networking, run the bundle's `Install.cmd`, then use another workspac
 ```
 
 The harness uses the compiled signed catalog, verifies archive hashes, runs PHP
-8.4/8.5 and Node 22/24 concurrently through Caddy, checks the Node version reported
+8.4/8.5 and Node 22/24 concurrently through Caddy, checks the PHP/Node version reported
 by each server, executes npm/pnpm/Yarn, provisions project databases, reads/writes,
 backs up and restores MariaDB/PostgreSQL, and stops its owned servers. It retains
 the disposable project/data folders and `acceptance.log` for inspection. It does
 not delete an existing workspace or install system development tools.
+
+## Combined Unix runtime verification
+
+The manual **Verify the combined native stack** workflow downloads the four
+reviewed native packages listed in `runtime-catalog/native-test-builds.json`.
+It verifies component/version/platform/architecture/source identity, archive size
+and SHA-256, and the macOS 14.0 minimum before signing a temporary test catalog.
+Both Ubuntu versions use the same Ubuntu 22.04 packages. macOS checks run on
+14 ARM, 14 x64 through preinstalled Rosetta, and native Intel 15.
+
+In an ephemeral checkout, it assembles matching offline runtime archives and
+runs the real core with those archives in a new Thai/spaced workspace. Static,
+Node 22/24 and PHP 8.4/8.5 projects stay running while both databases are
+provisioned and backed up/restored. Afterward every readable-host and loopback
+route is checked again, including the actual runtime reported by the server.
+This catches changes that redirect an already-running project to another runtime.
+
+This workflow does not publish a catalog or change the shipping application's
+trusted key. It downloads dependencies during pack preparation and does not
+establish clean-machine or disconnected-desktop certification. CI artifacts
+expire after seven days: update the reviewed run selections after rebuilding;
+missing/expired packages must fail rather than silently use another build.
 
 ## Desktop checks on every target
 

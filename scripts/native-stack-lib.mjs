@@ -31,6 +31,11 @@ export async function verifyNativeStack(
     const source = sources.find(
       (s) => s.component === component && s.version === version,
     );
+    const minimum = String(metadata.minimumOsVersion || "");
+    const [major, minor = 0, patch = 0] = minimum.split(".").map(Number);
+    const supportedMac =
+      /^\d+\.\d+(?:\.\d+)?$/.test(minimum) &&
+      (major < 14 || (major === 14 && minor === 0 && patch === 0));
     if (
       !source ||
       metadata.id !== id ||
@@ -41,7 +46,7 @@ export async function verifyNativeStack(
       metadata.sourceUrl !== source.sourceUrl ||
       metadata.archive !== "tar.gz" ||
       !/^[a-f0-9]{64}$/.test(metadata.sha256) ||
-      (platform === "macos" && metadata.minimumOsVersion !== "14.0")
+      (platform === "macos" && !supportedMac)
     )
       throw new Error(
         `Native metadata does not match reviewed selection: ${id}`,

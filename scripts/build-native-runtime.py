@@ -135,13 +135,23 @@ def bundle_libraries(prefix, system):
             run(["patchelf", "--set-rpath", f"$ORIGIN/{relative}:$ORIGIN", binary])
 
 
-def minimum_macos(prefix):
+def minimum_macos(prefix, maximum=None):
     versions = []
+    unsupported = []
+    ceiling = tuple(map(int, (maximum or "0").split(".")))
+    ceiling += (0,) * (3 - len(ceiling))
     for binary in binary_files(prefix):
         commands = output(["otool", "-l", binary])
         values = re.findall(r"\bminos (\d+(?:\.\d+)+)", commands)
         values += re.findall(r"cmd LC_VERSION_MIN_MACOSX\s+cmdsize \d+\s+version (\d+(?:\.\d+)+)", commands)
-        versions.extend(tuple(map(int, value.split("."))) for value in values)
+        for value in values:
+            version = tuple(map(int, value.split(".")))
+            versions.append(version)
+            normalized = version + (0,) * (3 - len(version))
+            if maximum and normalized > ceiling:
+                unsupported.append(f"{binary.relative_to(prefix)} requires {value}")
+    if unsupported:
+        raise RuntimeError(f"Native package exceeds macOS {maximum} baseline:\n" + "\n".join(unsupported))
     return ".".join(map(str, max(versions))) if versions else None
 
 
@@ -264,7 +274,7 @@ def main():
     digest = hashlib.file_digest(package.open("rb"), "sha256").hexdigest()
     metadata = {"id": identifier, "component": args.component, "version": args.version, "platform": system, "arch": arch, "url": f"{args.release_base_url.rstrip('/')}/{package.name}", "sha256": digest, "archive": "tar.gz", "stripComponents": 1, "executables": executables, "license": license_name, "sourceUrl": args.source_url, "size": package.stat().st_size}
     if system == "macos":
-        metadata["minimumOsVersion"] = minimum_macos(relocated_prefix)
+        metadata["minimumOsVersion"] = minimum_macos(relocated_prefix, maximum="14.0")
     (output_dir / f"{identifier}.json").write_text(json.dumps(metadata, indent=2) + "\n")
     (output_dir / f"{identifier}-provenance.json").write_text(json.dumps({"sourceUrl": args.source_url, "sourceSha256": args.source_sha256, "platform": platform.platform(), "verification": verification, "minimumOsVersion": metadata.get("minimumOsVersion"), "dependencies": dependencies}, indent=2) + "\n")
     print(package)

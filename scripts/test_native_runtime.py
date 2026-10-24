@@ -237,6 +237,20 @@ class NativePackagingTests(unittest.TestCase):
             binary.write_bytes(b"\x7fELFexample")
             self.assertEqual(list(builder.binary_files(root)), [binary])
 
+    def test_native_package_rejects_a_library_above_macos_baseline(self):
+        root = Path('/package')
+        library = root / 'lib/newer.dylib'
+        with patch.object(builder, 'binary_files', return_value=[library]), patch.object(builder, 'output', return_value='cmd LC_BUILD_VERSION\ncmdsize 32\nminos 15.0\n'):
+            with self.assertRaisesRegex(RuntimeError, r'lib[/\\]newer.dylib requires 15.0'):
+                builder.minimum_macos(root, maximum='14.0')
+
+    def test_native_package_accepts_equivalent_and_older_macos_minimums(self):
+        root = Path('/package')
+        binaries = [root / 'bin/server', root / 'lib/older.dylib']
+        commands = ['cmd LC_BUILD_VERSION\ncmdsize 32\nminos 14.0.0\n', 'cmd LC_VERSION_MIN_MACOSX\ncmdsize 16\nversion 13.0\n']
+        with patch.object(builder, 'binary_files', return_value=binaries), patch.object(builder, 'output', side_effect=commands):
+            self.assertEqual(builder.minimum_macos(root, maximum='14.0'), '14.0.0')
+
     def test_fastcgi_reads_fragmented_unicode_responses(self):
         errors = []
         script = Path("/project") / ("ทดสอบ" * 40) / "index.php"

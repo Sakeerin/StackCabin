@@ -46,6 +46,26 @@ jobs:
           run-id: ${{ inputs.source_run }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: artifacts/runtimes/
+      - name: Check the complete macOS package baseline before execution
+        if: runner.os == 'macOS' && !inputs.failed_candidate
+        env:
+          COMPONENT: ${{ inputs.component }}
+          VERSION: ${{ inputs.version }}
+          PACKAGE_ARCH: ${{ inputs.runner == 'macos-15-intel' && 'x64' || inputs.arch }}
+        run: |
+          python3 - <<'PY'
+          import importlib.util, os, re, tempfile
+          from pathlib import Path
+          spec = importlib.util.spec_from_file_location('native_builder', 'scripts/build-native-runtime.py')
+          builder = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(builder)
+          identifier = f"{os.environ['COMPONENT']}-{os.environ['VERSION']}-macos-{os.environ['PACKAGE_ARCH']}"
+          if not re.fullmatch(r'[a-z0-9.-]+', identifier):
+              raise RuntimeError('Invalid native package identifier')
+          with tempfile.TemporaryDirectory(prefix='stackcabin-baseline-') as directory:
+              prefix = builder.unpack(Path('artifacts/runtimes') / (identifier + '.tar.gz'), Path(directory))
+              print('Complete package minimum macOS:', builder.minimum_macos(prefix, maximum='14.0'))
+          PY
       - uses: actions/setup-node@v4
         with:
           node-version: "24"

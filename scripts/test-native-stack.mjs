@@ -63,6 +63,13 @@ test("rejects packages requiring a later macOS than the baseline", async () => {
     /reviewed selection/,
   );
 });
+test("accepts equivalent and older macOS baseline versions", async () => {
+  for (const minimum of ["14.0.0", "13.0"])
+    assert.equal(
+      (await check((m) => (m.minimumOsVersion = minimum))).length,
+      1,
+    );
+});
 test("rejects a truncated archive", async () => {
   await assert.rejects(
     check(undefined, (b) => b.subarray(1)),
