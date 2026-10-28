@@ -3,6 +3,7 @@
 The manual **Verify QA installer upgrade preserves real data** workflow checks
 an existing QA 0.1.0 installer against an unpublished 0.1.1 test candidate.
 Select Ubuntu 22.04 x64, macOS 14 ARM, native Intel macOS 15, or all three.
+The `data_location` input selects `default` (the default) or `custom`.
 The repository's product version stays 0.1.0; this workflow does not publish a
 release or enable application self-update.
 
@@ -64,11 +65,20 @@ SQLite open/close lifecycle and reject a different database or a different proce
   Mach-O dependency/minimum OS, and replaces the app at the same Thai/spaced
   destination. The old bundle is retained beside the candidate for inspection.
 
-Both applications use the same dedicated existing data directory. Their startup
+Both applications use the same existing data directory. Their startup
 helper reads metadata in SQLite read-only mode, refuses unknown/incomplete
 fixtures, and never deletes an existing data directory. Three helper regressions
 check Unicode/settings preservation, future-schema refusal and incomplete-fixture
 refusal before launching a process.
+
+Unix default mode uses `~/Library/Application Support/dev.stackcabin.qa` on macOS
+or `${XDG_DATA_HOME:-$HOME/.local/share}/dev.stackcabin.qa` on Linux (relative XDG
+values fall back to the home directory). It refuses any existing target, creates
+the physical default folder and links only the native fixture's `app-data` path
+to it. Both installed applications start without `STACKCABIN_DATA_DIR`; the
+expected database and its actual process file handle must still match. Custom
+mode retains the earlier dedicated directory. Both installer scripts refuse local
+and self-hosted execution before preparing data or installing packages.
 
 `upgrade-evidence-*` artifacts contain the acceptance log and baseline hashes
 for seven days. They exclude installed runtime archives, databases, OS keychains

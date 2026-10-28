@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source_script="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/Run-StackCabinAcceptance.sh"
+upgrade_script="$(dirname -- "$source_script")/verify-qa-upgrade.sh"
 fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
 mkdir -p "$fixture/kit" "$fixture/offline"
@@ -28,3 +29,15 @@ echo '# corrupted' >> "$fixture/kit/native-smoke"
 if run "$fixture/unreached"; then echo 'Corrupted binary was executed' >&2; exit 1; fi
 [[ ! -e "$fixture/unreached" ]]
 echo 'PASS Unix acceptance wrapper: isolation, hidden data, symlink and checksum checks'
+
+for location in custom default; do
+  if output="$(GITHUB_ACTIONS=false RUNNER_ENVIRONMENT=github-hosted STACKCABIN_UPGRADE_DATA_LOCATION="$location" bash "$upgrade_script" 2>&1)"; then
+    echo 'Local installer upgrade execution was accepted' >&2; exit 1
+  fi
+  [[ "$output" == *'requires a disposable GitHub-hosted runner'* ]]
+  if output="$(GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=self-hosted STACKCABIN_UPGRADE_DATA_LOCATION="$location" bash "$upgrade_script" 2>&1)"; then
+    echo 'Self-hosted installer upgrade execution was accepted' >&2; exit 1
+  fi
+  [[ "$output" == *'requires a disposable GitHub-hosted runner'* ]]
+done
+echo 'PASS Unix installer upgrades refuse local and self-hosted execution in both data modes'

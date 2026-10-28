@@ -6,6 +6,11 @@ on:
         type: choice
         options: [all, linux, macos-arm64, macos-x64]
         default: all
+      data_location:
+        description: Application data location to preserve across installation
+        type: choice
+        options: [default, custom]
+        default: default
 permissions:
   contents: read
   actions: read
@@ -21,6 +26,7 @@ jobs:
       STACKCABIN_QA_KIT_DIR: ${{ github.workspace }}/.local/previous-qa
       STACKCABIN_SMOKE_DIR: ${{ github.workspace }}/.local/upgrade data ทดสอบ
       STACKCABIN_SMOKE_COMPONENTS: node,caddy,php,cacert,composer,pnpm,yarn,mariadb,postgres
+      STACKCABIN_UPGRADE_DATA_LOCATION: ${{ inputs.data_location }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -59,7 +65,9 @@ jobs:
       - run: npm ci
       - run: node scripts/prepare-qa-desktop.mjs
       - name: Build acceptance tools with the same QA credential namespace
-        run: cargo build -p stackcabin-core --features qa --example native-smoke
+        run: |
+          cargo test -p stackcabin-core --features qa --example native-smoke
+          cargo build -p stackcabin-core --features qa --example native-smoke
       - name: Build the unpublished 0.1.1 QA upgrade candidate without E2E
         shell: bash
         run: |
@@ -81,7 +89,7 @@ jobs:
         shell: bash
         run: |
           export STACKCABIN_OFFLINE_DIR="$STACKCABIN_QA_KIT_DIR/offline"
-          export XDG_DATA_HOME="$RUNNER_TEMP/upgrade-secrets"
+          if [[ "$STACKCABIN_UPGRADE_DATA_LOCATION" == custom ]]; then export XDG_DATA_HOME="$RUNNER_TEMP/upgrade-secrets"; fi
           xvfb-run -a dbus-run-session -- bash scripts/verify-qa-upgrade.sh
       - name: Actual app replacement with existing data on macOS
         if: runner.os == 'macOS'
@@ -93,7 +101,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: upgrade-evidence-${{ matrix.os }}
+          name: upgrade-evidence-${{ matrix.os }}-${{ inputs.data_location }}
           retention-days: 7
           path: |
             artifacts/upgrade-acceptance.log
