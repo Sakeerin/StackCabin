@@ -29,6 +29,16 @@ pub const ARCH: &str = if cfg!(target_arch = "aarch64") {
     "x64"
 };
 
+pub fn php_archive_url(url: &str) -> Option<String> {
+    let filename = url.strip_prefix("https://downloads.php.net/~windows/releases/")?;
+    (filename.starts_with("php-")
+        && filename.ends_with(".zip")
+        && filename
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || ['.', '-'].contains(&character)))
+    .then(|| format!("https://downloads.php.net/~windows/releases/archives/{filename}"))
+}
+
 pub struct RuntimeManager {
     pub root: PathBuf,
     pub catalog: Catalog,
@@ -250,7 +260,14 @@ impl RuntimeManager {
             } else if !archive_path.exists() {
                 (self.sink)(event("progress",operation,&artifact.id,"Downloading runtime",Some(0.0)));
                 let client = reqwest::Client::builder().timeout(std::time::Duration::from_secs(1800)).https_only(true).build()?;
-                let response = tokio::select!{_=token.cancelled()=>anyhow::bail!("Installation cancelled"),response=client.get(&artifact.url).send()=>response?}.error_for_status()?;
+                let mut response = tokio::select!{_=token.cancelled()=>anyhow::bail!("Installation cancelled"),response=client.get(&artifact.url).send()=>response?};
+                if matches!(response.status(), reqwest::StatusCode::NOT_FOUND | reqwest::StatusCode::GONE) {
+                    if let Some(archive) = php_archive_url(&artifact.url) {
+                        (self.sink)(event("progress",operation,&artifact.id,"Downloading the same version from the official PHP archive",Some(0.0)));
+                        response = tokio::select!{_=token.cancelled()=>anyhow::bail!("Installation cancelled"),response=client.get(archive).send()=>response?};
+                    }
+                }
+                let response = response.error_for_status()?;
                 let total = response.content_length().unwrap_or(artifact.size).max(1);
                 let mut stream = response.bytes_stream();
                 let mut file = tokio::fs::File::create(&partial).await?;

@@ -10,15 +10,33 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 export const root = path.resolve(import.meta.dirname, "..");
 export const sha256 = (data) => createHash("sha256").update(data).digest("hex");
+export function phpArchiveUrl(url) {
+  const match =
+    /^https:\/\/downloads\.php\.net\/~windows\/releases\/(php-[a-zA-Z0-9.-]+\.zip)$/.exec(
+      url,
+    );
+  return match
+    ? `https://downloads.php.net/~windows/releases/archives/${match[1]}`
+    : null;
+}
 export async function get(url, binary = false) {
-  const response = await fetch(url, {
+  const options = {
     headers: {
       "User-Agent": "StackCabin-catalog-builder/0.1",
       Accept: "application/json",
     },
     signal: AbortSignal.timeout(binary ? 1_800_000 : 60_000),
-  });
+  };
+  let response = await fetch(url, options);
+  const archive =
+    binary && [404, 410].includes(response.status) && phpArchiveUrl(url);
+  if (archive) {
+    await response.body?.cancel();
+    response = await fetch(archive, options);
+  }
   if (!response.ok) throw new Error(`${response.status} ${url}`);
+  if (response.url && !response.url.startsWith("https://"))
+    throw new Error(`Refusing HTTPS downgrade: ${response.url}`);
   return binary ? Buffer.from(await response.arrayBuffer()) : response.text();
 }
 export async function signingKey(dev) {

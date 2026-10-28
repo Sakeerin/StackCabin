@@ -148,6 +148,16 @@ bindings, eleven runtimes and 78 file hashes after the normal desktop executable
 opened the populated Thai/spaced directory. Both fresh and existing metadata
 startup passed; the core then verified real HTTP versions and existing SQL rows.
 
+On 28 October the pinned Windows PHP URLs began returning 404 at the ordinary
+release location. Both the native installer and offline-pack downloader now try
+the exact same filename in the [official PHP archive](https://downloads.php.net/~windows/releases/archives/)
+after 404/410. The existing signed catalog, selected versions and SHA-256 remain
+unchanged; other hosts, credentials, query-bearing URLs and HTTPS downgrades are
+not substituted. Actual downloads of both pinned archives matched their hashes,
+and fresh online installation plus PHP 8.4/8.5 HTTP through Caddy passed on Windows.
+The current local Rust suite passes 18 tests (two process-fixture entry points are
+ignored when run directly), and all ten JavaScript catalog regressions pass.
+
 Internal health checks, Caddy reloads and routed readiness now use direct
 loopback clients with finite timeouts and no redirect following. An isolated
 child-process regression passed with an unreachable machine proxy and an

@@ -135,6 +135,23 @@ fn signed_catalog_rejects_tampering() {
     assert!(runtime::verify_catalog(&tampered, signature, key).is_err());
 }
 #[test]
+fn archived_php_keeps_the_exact_filename_and_official_https_origin() {
+    let url = "https://downloads.php.net/~windows/releases/php-8.5.12-nts-Win32-vs17-x64.zip";
+    assert_eq!(
+        runtime::php_archive_url(url).as_deref(),
+        Some("https://downloads.php.net/~windows/releases/archives/php-8.5.12-nts-Win32-vs17-x64.zip")
+    );
+    for invalid in [
+        "http://downloads.php.net/~windows/releases/php-8.5.12.zip",
+        "https://downloads.php.net.evil.test/~windows/releases/php-8.5.12.zip",
+        "https://user@downloads.php.net/~windows/releases/php-8.5.12.zip",
+        "https://downloads.php.net/~windows/releases/php-8.5.12.zip?token=value",
+        "https://downloads.php.net/~windows/releases/archives/php-8.5.12.zip",
+    ] {
+        assert!(runtime::php_archive_url(invalid).is_none());
+    }
+}
+#[test]
 fn corrupted_archives_and_path_traversal_are_rejected() {
     let temp = TempDir::new().unwrap();
     let archive = temp.path().join("evil.zip");

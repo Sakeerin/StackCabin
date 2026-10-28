@@ -4,7 +4,90 @@ import { generateKeyPairSync, sign } from "node:crypto";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { verifyCatalog } from "./catalog-lib.mjs";
+import { get, sha256, verifyCatalog } from "./catalog-lib.mjs";
+
+test("a moved pinned PHP binary is recovered from the same official archive filename", async (t) => {
+  const original =
+    "https://downloads.php.net/~windows/releases/php-8.5.12-nts-Win32-vs17-x64.zip";
+  const archive = original.replace("/releases/", "/releases/archives/");
+  const bytes = Buffer.from("the exact pinned publisher archive");
+  const requests = [];
+  let movedStatus = 404;
+  t.mock.method(globalThis, "fetch", async (url) => {
+    requests.push(url);
+    return new Response(url === original ? "moved" : bytes, {
+      status: url === original ? movedStatus : 200,
+    });
+  });
+  for (movedStatus of [404, 410]) {
+    requests.length = 0;
+    const recovered = await get(original, true);
+    assert.equal(sha256(recovered), sha256(bytes));
+    assert.deepEqual(requests, [original, archive]);
+  }
+});
+
+test("PHP recovery rejects a missing archive instead of choosing another build", async (t) => {
+  const requests = [];
+  t.mock.method(globalThis, "fetch", async (url) => {
+    requests.push(url);
+    return new Response("missing", { status: 404 });
+  });
+  await assert.rejects(
+    get(
+      "https://downloads.php.net/~windows/releases/php-8.5.12-nts-Win32-vs17-x64.zip",
+      true,
+    ),
+    /404/,
+  );
+  assert.equal(requests.length, 2);
+});
+
+test("archive recovery never rewrites unrelated or credential/query-bearing URLs", async (t) => {
+  const requests = [];
+  t.mock.method(globalThis, "fetch", async (url) => {
+    requests.push(url);
+    return new Response("missing", { status: 404 });
+  });
+  for (const url of [
+    "http://downloads.php.net/~windows/releases/php-8.5.12.zip",
+    "https://downloads.php.net.evil.test/~windows/releases/php-8.5.12.zip",
+    "https://user@downloads.php.net/~windows/releases/php-8.5.12.zip",
+    "https://downloads.php.net/~windows/releases/php-8.5.12.zip?token=value",
+    "https://downloads.php.net/~windows/releases/archives/php-8.5.12.zip",
+  ]) {
+    const count = requests.length;
+    await assert.rejects(get(url, true), /404/);
+    assert.deepEqual(requests.slice(count), [url]);
+  }
+});
+
+test("publisher server errors and metadata requests do not trigger archive substitution", async (t) => {
+  const requests = [];
+  let status = 503;
+  t.mock.method(globalThis, "fetch", async (url) => {
+    requests.push(url);
+    return new Response("unavailable", { status });
+  });
+  const url = "https://downloads.php.net/~windows/releases/php-8.5.12.zip";
+  await assert.rejects(get(url, true), /503/);
+  assert.deepEqual(requests, [url]);
+  status = 404;
+  await assert.rejects(get(url), /404/);
+  assert.deepEqual(requests, [url, url]);
+});
+
+test("an HTTPS downgrade cannot become a packed runtime", async (t) => {
+  const response = new Response("archive");
+  Object.defineProperty(response, "url", {
+    value: "http://downloads.php.net/archive.zip",
+  });
+  t.mock.method(globalThis, "fetch", async () => response);
+  await assert.rejects(
+    get("https://downloads.php.net/archive.zip", true),
+    /HTTPS downgrade/,
+  );
+});
 
 function releaseArtifacts() {
   const artifacts = [];
