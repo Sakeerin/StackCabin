@@ -64,7 +64,10 @@ async fn main() -> Result<()> {
                 && !["password", "statement:", "query:", "detail:", "context:"]
                     .iter()
                     .any(|word| event.message.to_ascii_lowercase().contains(word));
-            if ["error", "complete"].contains(&event.kind.as_str()) || postgres_log {
+            let install_phase =
+                event.kind == "progress" && matches!(event.progress, Some(0.0 | 90.0));
+            if ["error", "complete"].contains(&event.kind.as_str()) || postgres_log || install_phase
+            {
                 println!("{}: {}", event.subject, event.message)
             }
         }),

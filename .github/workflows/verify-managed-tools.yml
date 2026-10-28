@@ -1,7 +1,12 @@
-name: Verify managed tools on the macOS baseline
+name: Verify managed Node toolchains on macOS
 on:
   workflow_dispatch:
     inputs:
+      runner:
+        description: macos-14 is the temporary baseline; use macos-15 for current Apple Silicon
+        type: choice
+        options: [macos-15, macos-14]
+        default: macos-15
       arch:
         description: x64 runs through the runner's preinstalled Rosetta
         type: choice
@@ -12,7 +17,7 @@ permissions:
 jobs:
   verify:
     # This hosted image retires on 2 November 2026; replace with a maintained VM.
-    runs-on: macos-14
+    runs-on: ${{ inputs.runner }}
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4

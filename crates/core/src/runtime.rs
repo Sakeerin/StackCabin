@@ -12,6 +12,7 @@ use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
     sync::Arc,
+    time::Duration,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -37,6 +38,101 @@ pub fn php_archive_url(url: &str) -> Option<String> {
             .chars()
             .all(|character| character.is_ascii_alphanumeric() || ['.', '-'].contains(&character)))
     .then(|| format!("https://downloads.php.net/~windows/releases/archives/{filename}"))
+}
+
+async fn download_archive(
+    client: &reqwest::Client,
+    artifact: &RuntimeArtifact,
+    partial: &Path,
+    token: &CancellationToken,
+    sink: &EventSink,
+    operation: &str,
+) -> Result<()> {
+    let transfer = async {
+        for attempt in 0..3 {
+            if attempt > 0 {
+                (sink)(event(
+                    "progress",
+                    operation,
+                    &artifact.id,
+                    format!("Retrying interrupted download ({}/3)", attempt + 1),
+                    Some(0.0),
+                ));
+                tokio::time::sleep(Duration::from_secs(attempt)).await;
+            }
+            let result: Result<()> = async {
+                let mut response = client.get(&artifact.url).send().await?;
+                if matches!(
+                    response.status(),
+                    reqwest::StatusCode::NOT_FOUND | reqwest::StatusCode::GONE
+                ) {
+                    if let Some(archive) = php_archive_url(&artifact.url) {
+                        (sink)(event(
+                            "progress",
+                            operation,
+                            &artifact.id,
+                            "Downloading the same version from the official PHP archive",
+                            Some(0.0),
+                        ));
+                        response = client.get(archive).send().await?;
+                    }
+                }
+                let response = response.error_for_status()?;
+                let total = response.content_length().unwrap_or(artifact.size).max(1);
+                let mut stream = response.bytes_stream();
+                // Always restart a failed transfer. Never append unverified bytes.
+                let mut file = tokio::fs::File::create(partial).await?;
+                let mut received = 0u64;
+                use tokio::io::AsyncWriteExt;
+                while let Some(chunk) = stream.next().await {
+                    let chunk = chunk?;
+                    file.write_all(&chunk).await?;
+                    received += chunk.len() as u64;
+                    anyhow::ensure!(
+                        received <= 8 * 1024 * 1024 * 1024,
+                        "Runtime download exceeds size limit"
+                    );
+                    (sink)(event(
+                        "progress",
+                        operation,
+                        &artifact.id,
+                        "Downloading runtime",
+                        Some((received as f64 / total as f64 * 85.0).min(85.0)),
+                    ));
+                }
+                file.sync_all().await?;
+                Ok(())
+            }
+            .await;
+            match result {
+                Ok(()) => return Ok(()),
+                Err(error) => {
+                    let _ = tokio::fs::remove_file(partial).await;
+                    let interrupted = error.downcast_ref::<reqwest::Error>().is_some_and(|error| {
+                        error.is_timeout()
+                            || error.is_connect()
+                            || error.is_body()
+                            || error.is_decode()
+                    });
+                    if attempt == 2 || !interrupted {
+                        return Err(error);
+                    }
+                }
+            }
+        }
+        unreachable!()
+    };
+    // Preserve the original total transfer budget across all attempts. Cancellation
+    // also interrupts backoff, waiting for headers, stalled bodies and file writes.
+    let result = tokio::select! {
+        _ = token.cancelled() => Err(anyhow::anyhow!("Installation cancelled")),
+        result = tokio::time::timeout(Duration::from_secs(1800), transfer) =>
+            result.unwrap_or_else(|_| Err(anyhow::anyhow!("Runtime download exceeded thirty minutes"))),
+    };
+    if result.is_err() {
+        let _ = tokio::fs::remove_file(partial).await;
+    }
+    result
 }
 
 pub struct RuntimeManager {
@@ -256,39 +352,36 @@ impl RuntimeManager {
         let download: Result<()> = async {
             if let Some(folder) = offline {
                 let source = folder.join(&artifact.sha256);
-                tokio::fs::copy(source, &partial).await.context("Offline bundle does not contain this runtime")?;
+                tokio::fs::copy(source, &partial)
+                    .await
+                    .context("Offline bundle does not contain this runtime")?;
             } else if !archive_path.exists() {
-                (self.sink)(event("progress",operation,&artifact.id,"Downloading runtime",Some(0.0)));
-                let client = reqwest::Client::builder().timeout(std::time::Duration::from_secs(1800)).https_only(true).build()?;
-                let mut response = tokio::select!{_=token.cancelled()=>anyhow::bail!("Installation cancelled"),response=client.get(&artifact.url).send()=>response?};
-                if matches!(response.status(), reqwest::StatusCode::NOT_FOUND | reqwest::StatusCode::GONE) {
-                    if let Some(archive) = php_archive_url(&artifact.url) {
-                        (self.sink)(event("progress",operation,&artifact.id,"Downloading the same version from the official PHP archive",Some(0.0)));
-                        response = tokio::select!{_=token.cancelled()=>anyhow::bail!("Installation cancelled"),response=client.get(archive).send()=>response?};
-                    }
-                }
-                let response = response.error_for_status()?;
-                let total = response.content_length().unwrap_or(artifact.size).max(1);
-                let mut stream = response.bytes_stream();
-                let mut file = tokio::fs::File::create(&partial).await?;
-                let mut received = 0u64;
-                use tokio::io::AsyncWriteExt;
-                loop {
-                    let chunk = tokio::select! { _=token.cancelled()=>anyhow::bail!("Installation cancelled"), item=stream.next()=>item };
-                    let Some(chunk) = chunk else { break }; let chunk=chunk?;
-                    file.write_all(&chunk).await?; received+=chunk.len() as u64;
-                    anyhow::ensure!(received<=8*1024*1024*1024, "Runtime download exceeds size limit");
-                    (self.sink)(event("progress",operation,&artifact.id,"Downloading runtime",Some((received as f64 / total as f64 * 85.0).min(85.0))));
-                }
-                file.sync_all().await?;
+                (self.sink)(event(
+                    "progress",
+                    operation,
+                    &artifact.id,
+                    "Downloading runtime",
+                    Some(0.0),
+                ));
+                let client = reqwest::Client::builder()
+                    .connect_timeout(Duration::from_secs(30))
+                    .read_timeout(Duration::from_secs(60))
+                    .timeout(Duration::from_secs(1800))
+                    .https_only(true)
+                    .build()?;
+                download_archive(&client, artifact, &partial, token, &self.sink, operation).await?;
             }
             Ok(())
-        }.await;
+        }
+        .await;
         if let Err(e) = download {
             let _ = tokio::fs::remove_file(&partial).await;
             return Err(e);
         }
-        anyhow::ensure!(!token.is_cancelled(), "Installation cancelled");
+        if token.is_cancelled() {
+            let _ = tokio::fs::remove_file(&partial).await;
+            anyhow::bail!("Installation cancelled");
+        }
         let candidate = if partial.exists() {
             &partial
         } else {
@@ -603,4 +696,188 @@ pub fn directory_size(root: &Path) -> u64 {
         .filter(|m| m.is_file())
         .map(|m| m.len())
         .sum()
+}
+
+#[cfg(test)]
+mod download_tests {
+    use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    const CONTENT: &[u8] = b"complete verified runtime archive";
+    enum Reply {
+        Truncated,
+        Complete,
+        Stalled,
+        Missing,
+    }
+
+    async fn publisher(replies: Vec<Reply>) -> (RuntimeArtifact, tokio::task::JoinHandle<()>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let task = tokio::spawn(async move {
+            for reply in replies {
+                let (mut connection, _) = listener.accept().await.unwrap();
+                let mut header = Vec::new();
+                while !header.ends_with(b"\r\n\r\n") {
+                    let byte = connection.read_u8().await.unwrap();
+                    header.push(byte);
+                    assert!(header.len() < 16384);
+                }
+                let status = if matches!(reply, Reply::Missing) {
+                    "404 Not Found"
+                } else {
+                    "200 OK"
+                };
+                connection
+                    .write_all(
+                        format!(
+                            "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                            CONTENT.len()
+                        )
+                        .as_bytes(),
+                    )
+                    .await
+                    .unwrap();
+                if matches!(reply, Reply::Complete) {
+                    connection.write_all(CONTENT).await.unwrap();
+                } else {
+                    connection.write_all(&CONTENT[..2]).await.unwrap();
+                    if matches!(reply, Reply::Stalled) {
+                        tokio::time::sleep(Duration::from_millis(1500)).await;
+                    }
+                }
+            }
+        });
+        let mut artifact = RuntimeManager::new(PathBuf::new(), Arc::new(|_| {}))
+            .catalog
+            .artifacts[0]
+            .clone();
+        artifact.url = format!("http://{address}/runtime");
+        artifact.sha256 = hex::encode(Sha256::digest(CONTENT));
+        (artifact, task)
+    }
+
+    fn client() -> reqwest::Client {
+        // Local transport fixtures need no TLS certificate. The production caller
+        // always supplies its HTTPS-only client, without changing trusted roots.
+        reqwest::Client::builder()
+            .no_proxy()
+            .read_timeout(Duration::from_millis(500))
+            .build()
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn truncated_transfer_restarts_without_appending_partial_bytes() {
+        let (artifact, server) = publisher(vec![Reply::Truncated, Reply::Complete]).await;
+        let root = tempfile::tempdir().unwrap();
+        let partial = root.path().join("runtime.part");
+        let sink: EventSink = Arc::new(|_| {});
+        download_archive(
+            &client(),
+            &artifact,
+            &partial,
+            &CancellationToken::new(),
+            &sink,
+            "test",
+        )
+        .await
+        .unwrap();
+        server.await.unwrap();
+        assert_eq!(std::fs::read(&partial).unwrap(), CONTENT);
+        verify_checksum(&partial, &artifact.sha256).unwrap();
+    }
+
+    #[tokio::test]
+    async fn exhausted_transfer_retries_remove_partial_bytes() {
+        let (artifact, server) =
+            publisher(vec![Reply::Truncated, Reply::Truncated, Reply::Truncated]).await;
+        let root = tempfile::tempdir().unwrap();
+        let partial = root.path().join("runtime.part");
+        let sink: EventSink = Arc::new(|_| {});
+        assert!(download_archive(
+            &client(),
+            &artifact,
+            &partial,
+            &CancellationToken::new(),
+            &sink,
+            "test"
+        )
+        .await
+        .is_err());
+        server.await.unwrap();
+        assert!(!partial.exists());
+    }
+
+    #[tokio::test]
+    async fn missing_artifact_is_not_retried_as_a_transfer_error() {
+        let (artifact, server) = publisher(vec![Reply::Missing]).await;
+        let root = tempfile::tempdir().unwrap();
+        let partial = root.path().join("runtime.part");
+        let sink: EventSink = Arc::new(|_| {});
+        let error = download_archive(
+            &client(),
+            &artifact,
+            &partial,
+            &CancellationToken::new(),
+            &sink,
+            "test",
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(
+            error.downcast_ref::<reqwest::Error>().unwrap().status(),
+            Some(reqwest::StatusCode::NOT_FOUND)
+        );
+        server.await.unwrap();
+        assert!(!partial.exists());
+    }
+
+    #[tokio::test]
+    async fn stalled_body_times_out_and_retries_the_transfer() {
+        let (artifact, server) = publisher(vec![Reply::Stalled, Reply::Complete]).await;
+        let root = tempfile::tempdir().unwrap();
+        let partial = root.path().join("runtime.part");
+        let sink: EventSink = Arc::new(|_| {});
+        tokio::time::timeout(
+            Duration::from_secs(6),
+            download_archive(
+                &client(),
+                &artifact,
+                &partial,
+                &CancellationToken::new(),
+                &sink,
+                "test",
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        server.await.unwrap();
+        verify_checksum(&partial, &artifact.sha256).unwrap();
+    }
+
+    #[tokio::test]
+    async fn cancellation_interrupts_a_stalled_body_and_removes_partial_bytes() {
+        let (artifact, server) = publisher(vec![Reply::Stalled]).await;
+        let root = tempfile::tempdir().unwrap();
+        let partial = root.path().join("runtime.part");
+        let token = CancellationToken::new();
+        let cancel = token.clone();
+        let sink: EventSink = Arc::new(move |event| {
+            if event.progress.is_some_and(|value| value > 0.0) {
+                cancel.cancel();
+            }
+        });
+        let error = tokio::time::timeout(
+            Duration::from_secs(6),
+            download_archive(&client(), &artifact, &partial, &token, &sink, "test"),
+        )
+        .await
+        .unwrap()
+        .unwrap_err();
+        assert!(error.to_string().contains("Installation cancelled"));
+        assert!(!partial.exists());
+        server.await.unwrap();
+    }
 }
