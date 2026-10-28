@@ -40,6 +40,24 @@ pub fn php_archive_url(url: &str) -> Option<String> {
     .then(|| format!("https://downloads.php.net/~windows/releases/archives/{filename}"))
 }
 
+fn node_release_alias(url: &str) -> Option<String> {
+    let relative = url.strip_prefix("https://nodejs.org/dist/")?;
+    let (version, filename) = relative.split_once('/')?;
+    let numbers: Vec<_> = version.strip_prefix('v')?.split('.').collect();
+    (numbers.len() == 3
+        && numbers
+            .iter()
+            .all(|part| !part.is_empty() && part.bytes().all(|byte| byte.is_ascii_digit()))
+        && filename.starts_with(&format!("node-{version}-"))
+        && [".zip", ".tar.gz", ".tar.xz"]
+            .iter()
+            .any(|suffix| filename.ends_with(suffix))
+        && filename
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || ['.', '-'].contains(&character)))
+    .then(|| format!("https://nodejs.org/download/release/{relative}"))
+}
+
 async fn download_archive(
     client: &reqwest::Client,
     artifact: &RuntimeArtifact,
@@ -61,7 +79,21 @@ async fn download_archive(
                 tokio::time::sleep(Duration::from_secs(attempt)).await;
             }
             let result: Result<()> = async {
-                let mut response = client.get(&artifact.url).send().await?;
+                let url = if attempt > 0 {
+                    node_release_alias(&artifact.url).unwrap_or_else(|| artifact.url.clone())
+                } else {
+                    artifact.url.clone()
+                };
+                if url != artifact.url {
+                    (sink)(event(
+                        "progress",
+                        operation,
+                        &artifact.id,
+                        "Downloading the same version from Node.js",
+                        Some(0.0),
+                    ));
+                }
+                let mut response = client.get(url).send().await?;
                 if matches!(
                     response.status(),
                     reqwest::StatusCode::NOT_FOUND | reqwest::StatusCode::GONE
@@ -709,6 +741,34 @@ mod download_tests {
         Complete,
         Stalled,
         Missing,
+    }
+
+    #[test]
+    fn node_alias_preserves_the_exact_official_version_and_filename() {
+        for relative in [
+            "v24.22.1/node-v24.22.1-darwin-arm64.tar.gz",
+            "v22.23.4/node-v22.23.4-win-x64.zip",
+        ] {
+            assert_eq!(
+                node_release_alias(&format!("https://nodejs.org/dist/{relative}")),
+                Some(format!("https://nodejs.org/download/release/{relative}"))
+            );
+        }
+        for url in [
+            "http://nodejs.org/dist/v24.22.1/node-v24.22.1-win-x64.zip",
+            "https://nodejs.org.evil.test/dist/v24.22.1/node-v24.22.1-win-x64.zip",
+            "https://user@nodejs.org/dist/v24.22.1/node-v24.22.1-win-x64.zip",
+            "https://nodejs.org/dist/v24.22.1/node-v24.22.1-win-x64.zip?token=secret",
+            "https://nodejs.org/dist/v24.22.1/node-v22.23.4-win-x64.zip",
+            "https://nodejs.org/dist/v24.22.1/../node-v24.22.1-win-x64.zip",
+            "https://nodejs.org/dist/v24..1/node-v24..1-win-x64.zip",
+            "https://nodejs.org/dist/v24.22.1/node-v24.22.1-win-x64.exe",
+        ] {
+            assert!(
+                node_release_alias(url).is_none(),
+                "Unexpected alias for {url}"
+            );
+        }
     }
 
     async fn publisher(replies: Vec<Reply>) -> (RuntimeArtifact, tokio::task::JoinHandle<()>) {
