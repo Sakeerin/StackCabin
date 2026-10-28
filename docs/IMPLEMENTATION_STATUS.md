@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **24 October 2026**.
+Development version: **0.1.0**, checked on **28 October 2026**.
 This is a working development preview. It has not passed the plan's simultaneous
 Windows/macOS/Ubuntu production acceptance gate.
 
@@ -132,6 +132,21 @@ macOS 15. Each verified eleven installed runtimes, ten projects, five existing
 database bindings and 78 file hashes, plus the packaged process's open metadata
 handle for both versions. All 28 Python helper tests passed on these Unix runners;
 Windows passes the 26 applicable checks and skips the two Unix handle probes.
+
+The shared packaged-application startup helper now also verifies actual Windows
+metadata file use through Restart Manager. Its 29 helper regressions pass on
+Windows and Ubuntu WSL, including real SQLite open/close, wrong-file and wrong-PID
+checks. Six Windows wrapper tests include refusal to run upgrade installers on
+local or self-hosted machines, and the fixtures clean themselves after testing.
+The new Windows NSIS preservation workflow checks an existing normal 0.1.0 package
+against an unpublished 0.1.1 candidate with the same real ten-project/five-database
+fixture. Hosted installer evidence is pending; this does not certify a clean VM
+or the default data path. See `docs/UPGRADE_ACCEPTANCE.md`.
+
+Local Windows acceptance on 28 October retained all ten projects, five database
+bindings, eleven runtimes and 78 file hashes after the normal desktop executable
+opened the populated Thai/spaced directory. Both fresh and existing metadata
+startup passed; the core then verified real HTTP versions and existing SQL rows.
 
 Internal health checks, Caddy reloads and routed readiness now use direct
 loopback clients with finite timeouts and no redirect following. An isolated

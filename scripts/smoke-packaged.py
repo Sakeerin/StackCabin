@@ -20,8 +20,61 @@ def metadata(path):
         }
 
 
+def windows_metadata_handle(pid, database):
+    """Query Restart Manager's file users; never request shutdown or restart."""
+    import ctypes
+    from ctypes import wintypes
+
+    class UniqueProcess(ctypes.Structure):
+        _fields_ = [("pid", wintypes.DWORD), ("started", wintypes.FILETIME)]
+
+    class ProcessInfo(ctypes.Structure):
+        _fields_ = [("process", UniqueProcess), ("name", wintypes.WCHAR * 256),
+                    ("service", wintypes.WCHAR * 64), ("kind", ctypes.c_int),
+                    ("status", wintypes.ULONG), ("session", wintypes.DWORD),
+                    ("restartable", wintypes.BOOL)]
+
+    manager = ctypes.WinDLL("Rstrtmgr.dll")
+    manager.RmStartSession.argtypes = [ctypes.POINTER(wintypes.DWORD), wintypes.DWORD, wintypes.LPWSTR]
+    manager.RmRegisterResources.argtypes = [wintypes.DWORD, wintypes.UINT, ctypes.POINTER(wintypes.LPCWSTR),
+                                          wintypes.UINT, ctypes.POINTER(UniqueProcess),
+                                          wintypes.UINT, ctypes.POINTER(wintypes.LPCWSTR)]
+    manager.RmGetList.argtypes = [wintypes.DWORD, ctypes.POINTER(wintypes.UINT), ctypes.POINTER(wintypes.UINT),
+                                 ctypes.POINTER(ProcessInfo), ctypes.POINTER(wintypes.DWORD)]
+    manager.RmEndSession.argtypes = [wintypes.DWORD]
+    for name in ("RmStartSession", "RmRegisterResources", "RmGetList", "RmEndSession"):
+        getattr(manager, name).restype = wintypes.DWORD
+
+    def check(error):
+        if error:
+            raise ctypes.WinError(error)
+
+    session = wintypes.DWORD()
+    check(manager.RmStartSession(ctypes.byref(session), 0, ctypes.create_unicode_buffer(33)))
+    try:
+        paths = (wintypes.LPCWSTR * 1)(str(database.resolve(strict=True)))
+        check(manager.RmRegisterResources(session, 1, paths, 0, None, 0, None))
+        processes = None
+        for _ in range(3):
+            needed = wintypes.UINT()
+            count = wintypes.UINT(len(processes) if processes is not None else 0)
+            reasons = wintypes.DWORD()
+            error = manager.RmGetList(session, ctypes.byref(needed), ctypes.byref(count),
+                                      processes, ctypes.byref(reasons))
+            if error == 0:
+                return any(processes[index].process.pid == pid for index in range(count.value))
+            if error != 234:  # ERROR_MORE_DATA: the file's users may change during enumeration.
+                check(error)
+            processes = (ProcessInfo * needed.value)()
+        raise RuntimeError("Windows metadata file users did not stabilize")
+    finally:
+        check(manager.RmEndSession(session))
+
+
 def has_metadata_handle(pid, database):
     """Confirm the installed process opened this existing database inode."""
+    if os.name == "nt":
+        return windows_metadata_handle(pid, database)
     expected = database.stat()
     if sys.platform == "darwin":
         result = subprocess.run(
@@ -51,9 +104,14 @@ def verify(application, data_directory=None):
     context = nullcontext(str(existing)) if existing else tempfile.TemporaryDirectory(prefix="stackcabin packaged ทดสอบ ")
     with context as directory:
         environment = {**os.environ, "STACKCABIN_DATA_DIR": directory}
+        launch = {"start_new_session": True}
+        if os.name == "nt":
+            hidden = subprocess.STARTUPINFO()
+            hidden.dwFlags = subprocess.STARTF_USESHOWWINDOW
+            hidden.wShowWindow = 0
+            launch = {"startupinfo": hidden, "creationflags": subprocess.CREATE_NO_WINDOW}
         child = subprocess.Popen([str(application)], env=environment,
-                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                 start_new_session=True)
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, **launch)
         try:
             database = Path(directory) / "stackcabin.sqlite"
             deadline = time.monotonic() + 45
@@ -91,11 +149,17 @@ def verify(application, data_directory=None):
                 print("PASS installed application process holds the existing metadata database open")
         finally:
             if child.poll() is None:
-                os.killpg(child.pid, signal.SIGTERM)
+                if os.name == "nt":
+                    child.terminate()
+                else:
+                    os.killpg(child.pid, signal.SIGTERM)
                 try:
                     child.wait(timeout=5)
                 except subprocess.TimeoutExpired:
-                    os.killpg(child.pid, signal.SIGKILL)
+                    if os.name == "nt":
+                        child.kill()
+                    else:
+                        os.killpg(child.pid, signal.SIGKILL)
                     child.wait(timeout=5)
             child.communicate()
         if expected and metadata(database) != expected:

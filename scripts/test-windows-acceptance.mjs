@@ -100,3 +100,22 @@ test("rejects file workspaces without replacing their contents", async () => {
   rejected(kit, target, /not a file, junction or symbolic link/);
   assert.equal(await readFile(target, "utf8"), "keep my data");
 });
+
+test("installer upgrade acceptance refuses local and self-hosted machines", async () => {
+  const kit = await fixture();
+  for (const environment of [
+    { GITHUB_ACTIONS: "false", RUNNER_ENVIRONMENT: "github-hosted" },
+    { GITHUB_ACTIONS: "true", RUNNER_ENVIRONMENT: "self-hosted" },
+  ]) {
+    const result = spawnSync(powershell, [
+      "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+      path.join(root, "scripts/verify-windows-upgrade.ps1"),
+      "-PreviousInstaller", path.join(kit, "native-smoke.exe"),
+      "-CandidateInstaller", path.join(kit, "native-smoke.exe"),
+      "-Python", process.execPath,
+    ], { encoding: "utf8", env: { ...process.env, ...environment, RUNNER_OS: "Windows" } });
+    if (result.error) throw result.error;
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /requires a disposable GitHub-hosted Windows runner/);
+  }
+});

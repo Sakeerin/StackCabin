@@ -58,7 +58,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb dbus-x11 "./${normal[0]}"
           sha256sum /usr/bin/stackcabin > "$RUNNER_TEMP/normal-binary.sha256"
-          xvfb-run -a dbus-run-session -- python scripts/smoke-packaged-unix.py /usr/bin/stackcabin
+          xvfb-run -a dbus-run-session -- python scripts/smoke-packaged.py /usr/bin/stackcabin
       - name: Install QA and confirm that the normal executable is unchanged
         if: runner.os == 'Linux'
         run: |
@@ -67,11 +67,11 @@ jobs:
           [[ "$(dpkg-deb -f "${debs[0]}" Package)" == *-qa ]]
           sudo dpkg -i "${debs[0]}"
           sha256sum -c "$RUNNER_TEMP/normal-binary.sha256"
-          xvfb-run -a dbus-run-session -- python scripts/smoke-packaged-unix.py /usr/bin/stackcabin-qa
+          xvfb-run -a dbus-run-session -- python scripts/smoke-packaged.py /usr/bin/stackcabin-qa
           images=("$RUNNER_TEMP/desktop QA pack/installers/appimage/"*.AppImage)
           [[ ${#images[@]} -eq 1 ]]
           chmod +x "${images[0]}"
-          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a dbus-run-session -- python scripts/smoke-packaged-unix.py "${images[0]}"
+          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a dbus-run-session -- python scripts/smoke-packaged.py "${images[0]}"
       - name: Check preinstalled x64 compatibility
         if: runner.os == 'macOS' && inputs.arch == 'x64'
         run: arch -x86_64 /usr/bin/true
@@ -93,4 +93,4 @@ jobs:
           trap - EXIT
           [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$destination/Contents/Info.plist")" == dev.stackcabin.qa ]]
           python scripts/check-macos-bundle.py "$destination"
-          python scripts/smoke-packaged-unix.py "$destination/Contents/MacOS/stackcabin-qa"
+          python scripts/smoke-packaged.py "$destination/Contents/MacOS/stackcabin-qa"

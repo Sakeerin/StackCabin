@@ -37,11 +37,11 @@ if [[ "$RUNNER_OS" == Linux ]]; then
   [[ "$package" == *-qa && "$(dpkg-deb -f "${candidate[0]}" Package)" == "$package" ]]
   [[ "$(dpkg-deb -f "${previous[0]}" Version)" == 0.1.0 && "$(dpkg-deb -f "${candidate[0]}" Version)" == 0.1.1 ]]
   sudo dpkg -i "${previous[0]}"
-  python scripts/smoke-packaged-unix.py /usr/bin/stackcabin-qa --data-directory "$STACKCABIN_SMOKE_DIR/app-data"
+  python scripts/smoke-packaged.py /usr/bin/stackcabin-qa --data-directory "$STACKCABIN_SMOKE_DIR/app-data"
   target/debug/examples/native-smoke verify-persistence
   sudo dpkg -i "${candidate[0]}"
   [[ "$(dpkg-query -W -f='${Version}' "$package")" == 0.1.1 ]]
-  python scripts/smoke-packaged-unix.py /usr/bin/stackcabin-qa --data-directory "$STACKCABIN_SMOKE_DIR/app-data"
+  python scripts/smoke-packaged.py /usr/bin/stackcabin-qa --data-directory "$STACKCABIN_SMOKE_DIR/app-data"
 else
   destination="$RUNNER_TEMP/installed upgrade ทดสอบ/StackCabin QA.app"
   mount="$RUNNER_TEMP/upgrade-mount"
@@ -64,11 +64,11 @@ else
   [[ ${#previous[@]} -eq 1 && ${#candidate[@]} -eq 1 ]]
   installer_hashes "${previous[0]}" "${candidate[0]}"
   install_dmg "${previous[0]}" 0.1.0
-  python scripts/smoke-packaged-unix.py "$destination/Contents/MacOS/stackcabin-qa" --data-directory "$STACKCABIN_SMOKE_DIR/app-data"
+  python scripts/smoke-packaged.py "$destination/Contents/MacOS/stackcabin-qa" --data-directory "$STACKCABIN_SMOKE_DIR/app-data"
   target/debug/examples/native-smoke verify-persistence
   mv "$destination" "$destination.previous"
   install_dmg "${candidate[0]}" 0.1.1
-  python scripts/smoke-packaged-unix.py "$destination/Contents/MacOS/stackcabin-qa" --data-directory "$STACKCABIN_SMOKE_DIR/app-data"
+  python scripts/smoke-packaged.py "$destination/Contents/MacOS/stackcabin-qa" --data-directory "$STACKCABIN_SMOKE_DIR/app-data"
 fi
 target/debug/examples/native-smoke verify-persistence
 echo 'PASS actual QA 0.1.0 -> unpublished 0.1.1 package replacement preserves all real fixture data'

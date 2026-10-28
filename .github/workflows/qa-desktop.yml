@@ -81,14 +81,14 @@ jobs:
           [[ ${#debs[@]} -eq 1 ]]
           [[ "$(dpkg-deb -f "${debs[0]}" Package)" == *-qa ]]
           sudo dpkg -i "${debs[0]}"
-          xvfb-run -a dbus-run-session -- python scripts/smoke-packaged-unix.py /usr/bin/stackcabin-qa
+          xvfb-run -a dbus-run-session -- python scripts/smoke-packaged.py /usr/bin/stackcabin-qa
       - name: Verify and start the normal QA macOS app
         if: runner.os == 'macOS'
         run: |
           apps=(target/release/bundle/macos/*.app)
           [[ ${#apps[@]} -eq 1 ]]
           python scripts/check-macos-bundle.py "${apps[0]}"
-          python scripts/smoke-packaged-unix.py "${apps[0]}/Contents/MacOS/stackcabin-qa"
+          python scripts/smoke-packaged.py "${apps[0]}/Contents/MacOS/stackcabin-qa"
       - run: node scripts/release-checksums.mjs
       - name: Verify all distributed installer checksums
         run: python scripts/verify-installer-checksums.py target/release/bundle --platform "$RUNNER_OS"

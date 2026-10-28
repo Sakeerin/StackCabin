@@ -6,6 +6,11 @@ Select Ubuntu 22.04 x64, macOS 14 ARM, native Intel macOS 15, or all three.
 The repository's product version stays 0.1.0; this workflow does not publish a
 release or enable application self-update.
 
+The separate **Verify Windows installer upgrade preserves real data** workflow
+uses normal Windows installers and the normal credential namespace. It is limited
+to disposable GitHub-hosted runners; local and self-hosted execution is rejected
+before an installer can run.
+
 ## Existing data fixture
 
 The workflow verifies a previous QA pack's checksums, signature and every matching
@@ -47,9 +52,11 @@ driven to start all databases during this upgrade test.
 
 For an existing data directory, readiness also requires an actual metadata file
 handle in the installed process: `/proc` inode/device matching on Linux or
-`lsof` process/inode matching on macOS. This proves the application opened the
-existing database before the check succeeds. Two regressions exercise a real
-SQLite open/close lifecycle and reject a handle to a different database.
+`lsof` process/inode matching on macOS. Windows queries the file's actual users
+through [Restart Manager's RmGetList](https://learn.microsoft.com/en-us/windows/win32/api/restartmanager/nf-restartmanager-rmgetlist),
+without requesting process shutdown or restart. This proves the application opened
+the existing database before the check succeeds. Three regressions exercise a real
+SQLite open/close lifecycle and reject a different database or a different process.
 
 - Ubuntu installs the actual previous `.deb`, then uses `dpkg` to upgrade the
   same package from 0.1.0 to 0.1.1 and checks the installed version.
@@ -66,6 +73,29 @@ refusal before launching a process.
 `upgrade-evidence-*` artifacts contain the acceptance log and baseline hashes
 for seven days. They exclude installed runtime archives, databases, OS keychains
 and catalog private keys. The candidate installers are not published.
+
+## Windows NSIS acceptance
+
+The Windows workflow downloads and checksums an existing normal 0.1.0 installer
+(the successful build run is an explicit input). It assembles the eleven matching
+Windows offline runtimes from the shipping development catalog and builds an
+unpublished normal 0.1.1 NSIS candidate without E2E plugins. The source version and
+catalog remain unchanged. Actual installer hashes and both source commits are logged.
+
+The old installer runs first so that its Microsoft prerequisites are available.
+Both installed versions must report the expected version and contain exactly the
+same catalog, signature and trust root as the acceptance executable. The native
+harness then prepares and records the same ten-project/five-database fixture
+described above. After the old installed application opens that data, the real
+core verifies the persisted data before the candidate replaces the installation
+at the same Thai/spaced destination. Startup, actual metadata-file use, exact
+project/settings rows, live HTTP/runtime pins and existing database reads are
+checked again after replacement. No fixture is reset to make the candidate pass.
+
+The installed application uses a dedicated custom data directory, preserving the
+runner's ordinary app-data location. `upgrade-evidence-windows-x64` contains only
+the transcript and credential-free preservation hashes. This workflow still needs
+a passing hosted run before Windows installer upgrade is recorded as verified.
 
 ## Limits
 

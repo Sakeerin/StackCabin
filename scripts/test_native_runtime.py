@@ -12,6 +12,7 @@ from unittest.mock import patch
 import hashlib
 import os
 import sqlite3
+import subprocess
 import sys
 import urllib.error
 from source_download import download_verified
@@ -24,7 +25,7 @@ spec.loader.exec_module(builder)
 installer_spec = importlib.util.spec_from_file_location("installer_checksums", Path(__file__).with_name("verify-installer-checksums.py"))
 installer_checksums = importlib.util.module_from_spec(installer_spec)
 installer_spec.loader.exec_module(installer_checksums)
-packaged_spec = importlib.util.spec_from_file_location("packaged_smoke", Path(__file__).with_name("smoke-packaged-unix.py"))
+packaged_spec = importlib.util.spec_from_file_location("packaged_smoke", Path(__file__).with_name("smoke-packaged.py"))
 packaged_smoke = importlib.util.module_from_spec(packaged_spec)
 packaged_spec.loader.exec_module(packaged_smoke)
 
@@ -69,7 +70,6 @@ class PackagedMetadataTests(unittest.TestCase):
                 launch.assert_not_called()
             self.assertEqual(database.read_bytes(), before)
 
-    @unittest.skipIf(os.name == "nt", "Unix packaged process inspection")
     def test_a_real_open_database_handle_is_required(self):
         with tempfile.TemporaryDirectory() as directory:
             database = self.fixture(Path(directory))
@@ -78,12 +78,22 @@ class PackagedMetadataTests(unittest.TestCase):
                 self.assertTrue(packaged_smoke.has_metadata_handle(os.getpid(), database))
             self.assertFalse(packaged_smoke.has_metadata_handle(os.getpid(), database))
 
-    @unittest.skipIf(os.name == "nt", "Unix packaged process inspection")
     def test_a_different_database_handle_does_not_prove_readiness(self):
         with tempfile.TemporaryDirectory() as directory:
             database = self.fixture(Path(directory))
             with closing(sqlite3.connect(Path(directory) / "different.sqlite")):
                 self.assertFalse(packaged_smoke.has_metadata_handle(os.getpid(), database))
+
+    def test_a_different_process_cannot_claim_an_open_database(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = self.fixture(Path(directory))
+            with closing(sqlite3.connect(database)):
+                child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+                try:
+                    self.assertFalse(packaged_smoke.has_metadata_handle(child.pid, database))
+                finally:
+                    child.terminate()
+                    child.wait(timeout=5)
 
 
 class InstallerChecksumTests(unittest.TestCase):

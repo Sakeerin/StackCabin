@@ -66,7 +66,7 @@ jobs:
           test "${#packages[@]}" -eq 1
           sudo apt-get update
           sudo apt-get install -y xvfb dbus-x11 "./${packages[0]}"
-          xvfb-run -a dbus-run-session -- python scripts/smoke-packaged-unix.py /usr/bin/stackcabin
+          xvfb-run -a dbus-run-session -- python scripts/smoke-packaged.py /usr/bin/stackcabin
       - name: Execute the same AppImage without FUSE
         if: runner.os == 'Linux'
         shell: bash
@@ -74,7 +74,7 @@ jobs:
           images=(artifacts/installers/appimage/*.AppImage)
           test "${#images[@]}" -eq 1
           chmod +x "${images[0]}"
-          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a dbus-run-session -- python scripts/smoke-packaged-unix.py "${images[0]}"
+          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a dbus-run-session -- python scripts/smoke-packaged.py "${images[0]}"
       - name: Verify x64 compatibility support
         if: runner.os == 'macOS' && inputs.arch == 'x64'
         run: arch -x86_64 /usr/bin/true
@@ -95,4 +95,4 @@ jobs:
           hdiutil detach "$mount"
           trap - EXIT
           python scripts/check-macos-bundle.py "$destination/StackCabin.app"
-          python scripts/smoke-packaged-unix.py "$destination/StackCabin.app/Contents/MacOS/stackcabin"
+          python scripts/smoke-packaged.py "$destination/StackCabin.app/Contents/MacOS/stackcabin"

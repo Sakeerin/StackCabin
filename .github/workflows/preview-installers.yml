@@ -65,7 +65,7 @@ jobs:
           packages=(target/release/bundle/deb/*.deb)
           test "${#packages[@]}" -eq 1
           sudo dpkg -i "${packages[0]}"
-          xvfb-run -a dbus-run-session -- python scripts/smoke-packaged-unix.py /usr/bin/stackcabin
+          xvfb-run -a dbus-run-session -- python scripts/smoke-packaged.py /usr/bin/stackcabin
       - name: Start the normal macOS bundle
         if: runner.os == 'macOS'
         shell: bash
@@ -73,7 +73,7 @@ jobs:
           binary=$(find target/release/bundle/macos -path '*/Contents/MacOS/stackcabin' -type f)
           test -n "$binary"
           python scripts/check-macos-bundle.py "$(dirname "$(dirname "$(dirname "$binary")")")"
-          python scripts/smoke-packaged-unix.py "$binary"
+          python scripts/smoke-packaged.py "$binary"
       - name: Installer checksums
         if: always() && !cancelled()
         run: node scripts/release-checksums.mjs

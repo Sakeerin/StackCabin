@@ -1,0 +1,76 @@
+name: Verify Windows installer upgrade preserves real data
+on:
+  workflow_dispatch:
+    inputs:
+      source_run:
+        description: Successful normal Windows 0.1.0 installer build run
+        type: string
+        default: "40056742523"
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  upgrade:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Packaging and actual process metadata regressions
+        run: python -m unittest discover -s scripts -p test_native_runtime.py -v
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Record the previous installer's source
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_RUN: ${{ inputs.source_run }}
+        shell: pwsh
+        run: |
+          if ($env:SOURCE_RUN -notmatch '^\d+$') { throw 'A numeric source run is required' }
+          $previousRun = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:SOURCE_RUN" | ConvertFrom-Json
+          $source = $previousRun.head_sha
+          if ($LASTEXITCODE -ne 0 -or $source -notmatch '^[a-f0-9]{40}$' -or $previousRun.conclusion -ne 'success' -or $previousRun.path -ne '.github/workflows/preview-installers.yml') { throw 'A successful normal installer build with a verified source is required' }
+          "STACKCABIN_PREVIOUS_SOURCE=$source" >> $env:GITHUB_ENV
+      - uses: actions/download-artifact@v4
+        with:
+          name: development-installers-windows-latest
+          run-id: ${{ inputs.source_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/previous-windows/
+      - name: Verify the actual previous distributed installer
+        run: python scripts/verify-installer-checksums.py artifacts/previous-windows --platform Windows
+      - run: npm ci
+      - name: Assemble matching development offline archives
+        run: node scripts/offline-pack.mjs --platform=windows --dev
+      - name: Build the real native persistence acceptance executable
+        run: cargo build -p stackcabin-core --example native-smoke
+      - name: Build an unpublished 0.1.1 normal NSIS candidate without E2E
+        shell: pwsh
+        run: node node_modules/@tauri-apps/cli/tauri.js build --config '{"version":"0.1.1"}' --bundles nsis
+      - name: Upgrade the same installed application with existing real data
+        timeout-minutes: 15
+        shell: pwsh
+        run: |
+          $previous = @(Get-ChildItem artifacts/previous-windows/nsis/*-setup.exe)
+          $candidate = @(Get-ChildItem target/release/bundle/nsis/*-setup.exe)
+          if ($previous.Count -ne 1 -or $candidate.Count -ne 1) { throw 'Expected exactly two versioned NSIS installers' }
+          ./scripts/verify-windows-upgrade.ps1 -PreviousInstaller $previous[0].FullName -CandidateInstaller $candidate[0].FullName -Python (Get-Command python).Source
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: upgrade-evidence-windows-x64
+          retention-days: 7
+          path: |
+            artifacts/windows-upgrade-acceptance.log
+            artifacts/preservation-baseline-windows.json
