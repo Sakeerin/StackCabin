@@ -11,12 +11,13 @@ if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hoste
 $workspace = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $runnerTemporary = (Resolve-Path -LiteralPath $env:RUNNER_TEMP).Path
 $destination = [IO.Path]::GetFullPath((Join-Path $runnerTemporary 'installed upgrade ทดสอบ'))
-$fixture = [IO.Path]::GetFullPath((Join-Path $workspace '.local/windows upgrade ทดสอบ'))
+$fixtureParent = [IO.Path]::GetFullPath((Join-Path $workspace '.local/windows-upgrade'))
+$fixture = Join-Path $fixtureParent 'data ทดสอบ'
 if (-not $destination.StartsWith($runnerTemporary.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or
     -not $fixture.StartsWith($workspace.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
     throw 'Upgrade paths must remain inside the dedicated runner directories'
 }
-if ((Test-Path -LiteralPath $destination) -or (Test-Path -LiteralPath $fixture)) {
+if ((Test-Path -LiteralPath $destination) -or (Test-Path -LiteralPath $fixtureParent)) {
     throw 'Upgrade acceptance requires new installation and fixture directories'
 }
 $previous = (Resolve-Path -LiteralPath $PreviousInstaller).Path
@@ -33,6 +34,9 @@ foreach ($name in @('STACKCABIN_SMOKE_DIR', 'STACKCABIN_SMOKE_COMPONENTS', 'STAC
     $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
 }
 try {
+    Add-Type -Path (Join-Path $PSScriptRoot 'StandardUserAcceptance.cs')
+    [StackCabinAcceptance.StandardUser]::VerifyIdentity()
+    Write-Output 'PASS standard desktop token keeps the current Windows user/credential identity with administrator groups disabled'
     Write-Output "Hosted runner: $env:RUNNER_OS / $env:RUNNER_ARCH"
     Write-Output "Source: $(git -C $workspace rev-parse HEAD)"
     Write-Output "Previous application source: $env:STACKCABIN_PREVIOUS_SOURCE"
@@ -57,13 +61,39 @@ try {
         Write-Output "PASS installed normal application $version at the same Unicode/spaced destination with matching catalog and trust root"
     }
 
+    function Invoke-StandardProgram([string]$Program, [string[]]$ToolArguments) {
+        $output = Join-Path $evidence ('standard-user-' + [Guid]::NewGuid().ToString() + '.log')
+        try {
+            $status = [StackCabinAcceptance.StandardUser]::Run($Program, $ToolArguments, $workspace, $output)
+            if ($status -ne 0) { throw "Standard-user acceptance failed: $status" }
+        } finally {
+            if (Test-Path -LiteralPath $output) {
+                Get-Content -LiteralPath $output -Encoding utf8 | Write-Output
+                Remove-Item -LiteralPath $output -Force
+            }
+        }
+    }
+
     function Invoke-Core([string]$Mode) {
-        if ($Mode) { & $native $Mode } else { & $native }
-        if ($LASTEXITCODE -ne 0) { throw "Native preservation acceptance failed: $Mode" }
+        [string[]]$coreArguments = @()
+        if ($Mode) { $coreArguments = @($Mode) }
+        Invoke-StandardProgram $native $coreArguments
+    }
+
+    function Invoke-InstalledApplication {
+        Invoke-StandardProgram $Python @((Join-Path $PSScriptRoot 'smoke-packaged.py'), $binary, '--data-directory', (Join-Path $fixture 'app-data'))
     }
 
     # The actual old installer supplies OS prerequisites before any runtime is executed.
     Install-Version $previous '0.1.0'
+    # Only this newly created test parent becomes writable by the limited token.
+    # Its ASCII path also owns PostgreSQL's compatibility junction for Thai data paths.
+    New-Item -ItemType Directory -Path $fixtureParent | Out-Null
+    $fixtureAcl = Get-Acl -LiteralPath $fixtureParent
+    $userSid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+    $access = [Security.AccessControl.FileSystemAccessRule]::new($userSid, 'Modify', 'ContainerInherit, ObjectInherit', 'None', 'Allow')
+    $fixtureAcl.SetAccessRule($access)
+    Set-Acl -LiteralPath $fixtureParent -AclObject $fixtureAcl
     $env:STACKCABIN_SMOKE_DIR = $fixture
     $env:STACKCABIN_SMOKE_COMPONENTS = 'node,caddy,php,cacert,composer,pnpm,yarn,mariadb,postgres'
     $env:STACKCABIN_OFFLINE_DIR = $offline
@@ -71,11 +101,11 @@ try {
     Invoke-Core 'record-persistence'
     Copy-Item -LiteralPath (Join-Path $fixture 'preservation-baseline.json') -Destination (Join-Path $evidence 'preservation-baseline-windows.json')
     Invoke-Core 'verify-persistence'
-    & (Join-Path $PSScriptRoot 'smoke-packaged-windows.ps1') -Application $binary -Python $Python -DataDirectory (Join-Path $fixture 'app-data')
+    Invoke-InstalledApplication
     Invoke-Core 'verify-persistence'
 
     Install-Version $candidate '0.1.1'
-    & (Join-Path $PSScriptRoot 'smoke-packaged-windows.ps1') -Application $binary -Python $Python -DataDirectory (Join-Path $fixture 'app-data')
+    Invoke-InstalledApplication
     Invoke-Core 'verify-persistence'
     Write-Output 'PASS actual Windows NSIS 0.1.0 -> unpublished 0.1.1 upgrade preserves all real fixture data'
 } finally {

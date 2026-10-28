@@ -59,7 +59,12 @@ async fn main() -> Result<()> {
     let core = AppCore::new(
         root.join("app-data"),
         Arc::new(|event| {
-            if ["error", "complete"].contains(&event.kind.as_str()) {
+            let postgres_log = event.kind == "log"
+                && event.subject == "service:postgres"
+                && !["password", "statement:", "query:", "detail:", "context:"]
+                    .iter()
+                    .any(|word| event.message.to_ascii_lowercase().contains(word));
+            if ["error", "complete"].contains(&event.kind.as_str()) || postgres_log {
                 println!("{}: {}", event.subject, event.message)
             }
         }),

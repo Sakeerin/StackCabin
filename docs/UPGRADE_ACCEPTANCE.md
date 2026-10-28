@@ -92,6 +92,16 @@ at the same Thai/spaced destination. Startup, actual metadata-file use, exact
 project/settings rows, live HTTP/runtime pins and existing database reads are
 checked again after replacement. No fixture is reset to make the candidate pass.
 
+Hosted Windows runners use an administrative account. PostgreSQL refuses an
+administrative server token, so acceptance launches the core and packaged-app
+probe with a restricted token: the same user SID and credential identity, with
+administrator/power-user groups and administrative privileges disabled. The helper
+checks that identity before starting, quotes literal arguments without a shell,
+and contains each process tree in its own kill-on-close Job Object before resuming
+it. Only the new disposable fixture parent receives an explicit user-SID write
+grant. Installers keep the runner's normal prerequisite installation context.
+This is an internal CI launcher, not a change to the product's process supervisor.
+
 The installed application uses a dedicated custom data directory, preserving the
 runner's ordinary app-data location. `upgrade-evidence-windows-x64` contains only
 the transcript and credential-free preservation hashes. This workflow still needs

@@ -119,3 +119,39 @@ test("installer upgrade acceptance refuses local and self-hosted machines", asyn
     assert.match(result.stdout + result.stderr, /requires a disposable GitHub-hosted Windows runner/);
   }
 });
+
+test("standard-user acceptance retains identity and round-trips literal Windows arguments", async () => {
+  const kit = await fixture();
+  const argumentsFile = path.join(kit, "arguments.json");
+  const values = ["", "พาธ ที่มีช่องว่าง\\", 'literal "quote"', 'backslash\\"quote', "$(literal); & value"];
+  await writeFile(argumentsFile, JSON.stringify(values));
+  const script = path.join(kit, "check-launcher.ps1");
+  await writeFile(script, `param($Launcher, $Node, $ArgumentsFile)
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+Add-Type -Path $Launcher
+[StackCabinAcceptance.StandardUser]::VerifyIdentity()
+$values = Get-Content -LiteralPath $ArgumentsFile -Raw -Encoding utf8 | ConvertFrom-Json
+$arguments = @('-e', 'process.stdout.write(JSON.stringify(process.argv.slice(1)))') + $values
+$quoted = @($arguments | ForEach-Object { [StackCabinAcceptance.StandardUser]::Quote($_) }) -join ' '
+$start = New-Object System.Diagnostics.ProcessStartInfo
+$start.FileName = $Node
+$start.Arguments = $quoted
+$start.UseShellExecute = $false
+$start.CreateNoWindow = $true
+$start.RedirectStandardOutput = $true
+$start.RedirectStandardError = $true
+$child = [System.Diagnostics.Process]::Start($start)
+$output = $child.StandardOutput.ReadToEnd()
+$diagnostic = $child.StandardError.ReadToEnd()
+$child.WaitForExit()
+if ($child.ExitCode -ne 0) { throw $diagnostic }
+[Console]::Write($output)
+`);
+  const result = spawnSync(powershell, ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script,
+    "-Launcher", path.join(root, "scripts/StandardUserAcceptance.cs"),
+    "-Node", process.execPath, "-ArgumentsFile", argumentsFile], { encoding: "utf8" });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), values);
+});
