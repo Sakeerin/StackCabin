@@ -47,7 +47,7 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | macOS 14 installers        | Fixed the Intel bundle's external Homebrew liblzma dependency by linking xz statically. DMG mount/copy, strict binary dependency/minimum-OS checks and actual application startup passed for [ARM](https://github.com/Sakeerin/StackCabin/actions/runs/40048119819) and [x64 via Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/40048533899)                                                                                                                                                                          |
 | Ubuntu 24.04 installers    | [Run 40048741905](https://github.com/Sakeerin/StackCabin/actions/runs/40048741905): the same Ubuntu 22.04 deb and AppImage passed complete distributed-installer checksums and real application startup on Ubuntu 24.04; AppImage used extract-and-run without FUSE                                                                                                                                                                                                                                                                 |
 | Actual disk exhaustion     | [Ubuntu 24.04 acceptance](https://github.com/Sakeerin/StackCabin/actions/runs/39960665443): dedicated 32 MiB tmpfs produced ENOSPC during installation; no installed receipt or executable resolution, staging cleaned, same archive installed after freeing owned space                                                                                                                                                                                                                                                            |
-| Packaging verification     | 29 cross-platform Python checks cover explicit HTTPS mirror recovery, checksum/HTTPS-downgrade failures, traversal, FastCGI fragmentation, macOS library baseline rejection and complete installer checksum verification. Seven JavaScript stack checks reject incorrect source/architecture/identity, corrupt or truncated archives, duplicates and unsupported macOS requirements                                                                                                              |
+| Packaging verification     | 29 cross-platform Python checks cover explicit HTTPS mirror recovery, checksum/HTTPS-downgrade failures, traversal, FastCGI fragmentation, macOS library baseline rejection and complete installer checksum verification. Seven JavaScript stack checks reject incorrect source/architecture/identity, corrupt or truncated archives, duplicates and unsupported macOS requirements                                                                                                                                                 |
 | Framework acceptance       | Express, Vue, React, Nest, Next and Laravel dependency installation and actual HTTP; Laravel runs PHP and Vite together                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Browser HMR on Windows     | Actual React/Vue/Next browsers updated after source edits through Caddy while preserving a clicked counter. React/Vue WebSocket probes received HTTP 101 and module updates. React's starter now exports `App.jsx` to support Fast Refresh; screenshots `hmr-react.png` / `hmr-next.png`                                                                                                                                                                                                                                            |
 | Real databases             | MariaDB/PostgreSQL provision, insert/select, dump, new-identity restore and select; SQLite consistent snapshot/restore                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -123,15 +123,14 @@ credentials and starts every stored project, checking actual HTTP/runtime versio
 The mode refuses to overwrite a baseline, reinstall tools or repopulate expected
 rows to make verification pass. A private CI keychain is created after compilation
 with a bounded timeout and deleted after evidence collection. This is same-schema
-preview replacement, separate from default-data-path, Windows and clean-VM release
+preview replacement, separate from default-data-path and clean-VM release
 certification.
 
 [Run 40104040800](https://github.com/Sakeerin/StackCabin/actions/runs/40104040800)
 passed these complete checks on Ubuntu 22.04 x64, macOS 14 ARM and native Intel
 macOS 15. Each verified eleven installed runtimes, ten projects, five existing
 database bindings and 78 file hashes, plus the packaged process's open metadata
-handle for both versions. All 28 Python helper tests passed on these Unix runners;
-Windows passes the 26 applicable checks and skips the two Unix handle probes.
+handle for both versions. All 28 Python helper tests passed on these Unix runners.
 
 The shared packaged-application startup helper now also verifies actual Windows
 metadata file use through Restart Manager. Its 29 helper regressions pass on
@@ -140,10 +139,22 @@ checks. Seven Windows wrapper tests include refusal to run upgrade installers on
 local or self-hosted machines, and the fixtures clean themselves after testing.
 The additional check verifies restricted-token identity and actual literal
 Unicode/empty/quoted argument round-tripping through a real Windows child process.
-The new Windows NSIS preservation workflow checks an existing normal 0.1.0 package
-against an unpublished 0.1.1 candidate with the same real ten-project/five-database
-fixture. Hosted installer evidence is pending; this does not certify a clean VM
-or the default data path. See `docs/UPGRADE_ACCEPTANCE.md`.
+The [Windows NSIS preservation run](https://github.com/Sakeerin/StackCabin/actions/runs/40654545909/job/122702304801)
+passed on 28 October: an actual normal 0.1.0 installation was upgraded in place to
+an unpublished 0.1.1 candidate. Both installed applications opened the same existing
+metadata, with actual file use verified through Restart Manager. All ten projects,
+five original/restored MariaDB/PostgreSQL/SQLite bindings, eleven installed tools,
+78 file hashes and Thai/dark/nondefault-port settings survived. After replacement,
+the core read existing database rows and verified all ten projects' actual
+HTTP/runtime versions without resetting the fixture.
+
+The hosted runner's restricted-process launcher now explicitly retains user
+access in the new token's default ACL while disabling administrator membership.
+An early real Python child confirms non-administrative membership and literal
+Unicode/empty/quoted arguments before installer compilation. This is scoped to the
+CI helper, with the same user SID/credential identity; the product's process
+supervisor is unchanged. Hosted success does not certify a clean VM or the default
+data path. See [upgrade acceptance](UPGRADE_ACCEPTANCE.md).
 
 Local Windows acceptance on 28 October retained all ten projects, five database
 bindings, eleven runtimes and 78 file hashes after the normal desktop executable

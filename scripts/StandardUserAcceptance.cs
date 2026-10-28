@@ -66,7 +66,7 @@ namespace StackCabinAcceptance {
             // Elevated accounts can have only Administrators/System in their default
             // ACL. After disabling Administrators, child processes still need access
             // to their own pipes/process objects. Change only this new token's ACL.
-            // See PostgreSQL src/common/exec.c AddUserToTokenDacl and TOKEN_DEFAULT_DACL.
+            // Background: https://github.com/postgres/postgres/blob/REL_18_STABLE/src/common/exec.c
             var acl = DefaultAcl(token);
             acl.InsertAce(acl.Count, new CommonAce(AceFlags.ObjectInherit, AceQualifier.AccessAllowed, 0x10000000, user, false, null));
             var bytes = new byte[acl.BinaryLength]; acl.GetBinaryForm(bytes, 0);

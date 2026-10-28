@@ -98,21 +98,36 @@ probe with a restricted token: the same user SID and credential identity, with
 administrator/power-user groups and administrative privileges disabled. The helper
 checks that identity before starting, quotes literal arguments without a shell,
 and contains each process tree in its own kill-on-close Job Object before resuming
-it. Only the new disposable fixture parent receives an explicit user-SID write
+it. The new token's default ACL explicitly retains the current user, so disabling
+the administrator group does not deny access to the child's own process/pipe
+objects (the same requirement described by PostgreSQL's
+[AddUserToTokenDacl](https://github.com/postgres/postgres/blob/REL_18_STABLE/src/common/exec.c)).
+Before downloading runtimes or compiling, an actual Python child must prove it
+is non-administrative and receives literal Unicode, empty and quoted arguments.
+Only the new disposable fixture parent receives an explicit user-SID write
 grant. Installers keep the runner's normal prerequisite installation context.
 This is an internal CI launcher, not a change to the product's process supervisor.
 
 The installed application uses a dedicated custom data directory, preserving the
 runner's ordinary app-data location. `upgrade-evidence-windows-x64` contains only
-the transcript and credential-free preservation hashes. This workflow still needs
-a passing hosted run before Windows installer upgrade is recorded as verified.
+the transcript and credential-free preservation hashes.
+
+[Run 40654545909](https://github.com/Sakeerin/StackCabin/actions/runs/40654545909/job/122702304801)
+passed on 28 October 2026. The previous installer came from source
+`a9fd4767d859ca740777aa895d85fd9b0a1873de`; the candidate and acceptance executable
+came from `0680f06bf75c0b1935748039c863a1273bb7e4c6`. Both installed versions opened
+the same existing metadata, with actual file use confirmed through Restart
+Manager. The final baseline retains ten projects, five database bindings, eleven
+tools and 78 file hashes; Thai, dark theme and proxy port 18080 also remain intact.
+The real core read every original/restored database and verified all ten projects'
+HTTP/runtime versions after replacement.
 
 ## Limits
 
 This establishes same-schema preview replacement on hosted developer machines.
 It does not establish migration from a supported public release, upgrade across
 metadata schema versions, preservation at the default OS app-data location,
-Windows installer upgrade, AppImage replacement,
+AppImage replacement,
 native macOS 14 Intel acceptance, or clean-machine certification. Repeat the
 [VM checklist](VM_ACCEPTANCE.md) with actual signed supported release versions
 before certifying an upgrade path. Runtime major-version migration remains an
@@ -120,10 +135,12 @@ explicit database dump/restore operation.
 
 ## Verification evidence
 
-Populated 0.1.0 → unpublished 0.1.1 checks on 24 October 2026:
+Populated 0.1.0 → unpublished 0.1.1 checks on 24 October 2026 (Unix) and
+28 October 2026 (Windows):
 
 | Target           | Result | Evidence                                                                                                       |
 | ---------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
+| Windows x64      | Passed | [Actual NSIS upgrade](https://github.com/Sakeerin/StackCabin/actions/runs/40654545909/job/122702304801)        |
 | Ubuntu 22.04 x64 | Passed | [Installed deb upgrade](https://github.com/Sakeerin/StackCabin/actions/runs/40104040800/job/120901909714)      |
 | macOS 14 ARM     | Passed | [Actual DMG app replacement](https://github.com/Sakeerin/StackCabin/actions/runs/40104040800/job/120901909952) |
 | macOS 15 Intel   | Passed | [Native Intel check](https://github.com/Sakeerin/StackCabin/actions/runs/40104040800/job/120901909920)         |
