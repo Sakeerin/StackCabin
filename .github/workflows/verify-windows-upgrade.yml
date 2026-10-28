@@ -25,6 +25,22 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Verify the restricted launcher before building installers
+        shell: pwsh
+        run: |
+          Add-Type -Path scripts/StandardUserAcceptance.cs
+          [StackCabinAcceptance.StandardUser]::VerifyIdentity()
+          $output = Join-Path $env:RUNNER_TEMP ('standard-user-' + [Guid]::NewGuid().ToString() + '.log')
+          $probe = 'import ctypes, sys; assert not ctypes.windll.shell32.IsUserAnAdmin(); assert sys.argv[1:] == ["พาธ ที่มีช่องว่าง\\", "", ''literal "quote"'']; print("PASS actual restricted process: non-administrative token and literal Unicode/empty/quoted arguments")'
+          try {
+            $status = [StackCabinAcceptance.StandardUser]::Run((Get-Command python).Source, @('-c', $probe, 'พาธ ที่มีช่องว่าง\', '', 'literal "quote"'), $PWD.Path, $output)
+            if ($status -ne 0) { throw "Restricted launcher failed: $status" }
+          } finally {
+            if (Test-Path -LiteralPath $output) {
+              Get-Content -LiteralPath $output -Encoding utf8 | Write-Output
+              Remove-Item -LiteralPath $output -Force
+            }
+          }
       - name: Packaging and actual process metadata regressions
         run: python -m unittest discover -s scripts -p test_native_runtime.py -v
       - uses: dtolnay/rust-toolchain@stable

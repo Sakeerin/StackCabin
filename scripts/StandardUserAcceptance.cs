@@ -4,6 +4,7 @@ using System;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
 
@@ -31,6 +32,8 @@ namespace StackCabinAcceptance {
         [DllImport("kernel32.dll", SetLastError = true)] static extern bool CloseHandle(IntPtr handle);
         [DllImport("advapi32.dll", SetLastError = true)] static extern bool OpenProcessToken(IntPtr process, uint access, out IntPtr token);
         [DllImport("advapi32.dll", SetLastError = true)] static extern bool CreateRestrictedToken(IntPtr original, uint flags, uint disabledCount, SidAndAttributes[] disabled, uint deletedCount, IntPtr deleted, uint restrictedCount, IntPtr restricted, out IntPtr token);
+        [DllImport("advapi32.dll", SetLastError = true)] static extern bool GetTokenInformation(IntPtr token, int kind, IntPtr information, int size, out int needed);
+        [DllImport("advapi32.dll", SetLastError = true)] static extern bool SetTokenInformation(IntPtr token, int kind, IntPtr information, int size);
         [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern bool CreateProcessAsUserW(IntPtr token, string application, StringBuilder command, IntPtr processSecurity, IntPtr threadSecurity, bool inherit, uint flags, IntPtr environment, string directory, ref StartupInfo startup, out ProcessInfo process);
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern IntPtr CreateJobObjectW(IntPtr security, string name);
         [DllImport("kernel32.dll", SetLastError = true)] static extern bool SetInformationJobObject(IntPtr job, int kind, ref JobLimits limits, uint size);
@@ -45,11 +48,48 @@ namespace StackCabinAcceptance {
         static void Check(bool success, string operation) {
             if (!success) throw new Win32Exception(Marshal.GetLastWin32Error(), operation);
         }
+        static RawAcl DefaultAcl(IntPtr token) {
+            int needed;
+            if (GetTokenInformation(token, 6, IntPtr.Zero, 0, out needed) || Marshal.GetLastWin32Error() != 122)
+                throw new InvalidOperationException("Cannot size acceptance token default ACL");
+            var buffer = Marshal.AllocHGlobal(needed);
+            try {
+                Check(GetTokenInformation(token, 6, buffer, needed, out needed), "Read acceptance token default ACL");
+                var pointer = Marshal.ReadIntPtr(buffer);
+                if (pointer == IntPtr.Zero) throw new InvalidOperationException("Acceptance token must have an explicit default ACL");
+                var bytes = new byte[(ushort)Marshal.ReadInt16(pointer, 2)];
+                Marshal.Copy(pointer, bytes, 0, bytes.Length);
+                return new RawAcl(bytes, 0);
+            } finally { Marshal.FreeHGlobal(buffer); }
+        }
+        static void GrantDefaultUserAccess(IntPtr token, SecurityIdentifier user) {
+            // Elevated accounts can have only Administrators/System in their default
+            // ACL. After disabling Administrators, child processes still need access
+            // to their own pipes/process objects. Change only this new token's ACL.
+            // See PostgreSQL src/common/exec.c AddUserToTokenDacl and TOKEN_DEFAULT_DACL.
+            var acl = DefaultAcl(token);
+            acl.InsertAce(acl.Count, new CommonAce(AceFlags.ObjectInherit, AceQualifier.AccessAllowed, 0x10000000, user, false, null));
+            var bytes = new byte[acl.BinaryLength]; acl.GetBinaryForm(bytes, 0);
+            var buffer = Marshal.AllocHGlobal(IntPtr.Size + bytes.Length);
+            try {
+                var pointer = IntPtr.Add(buffer, IntPtr.Size);
+                Marshal.Copy(bytes, 0, pointer, bytes.Length);
+                Marshal.WriteIntPtr(buffer, pointer);
+                Check(SetTokenInformation(token, 6, buffer, IntPtr.Size), "Set acceptance token default user access");
+            } finally { Marshal.FreeHGlobal(buffer); }
+            bool granted = false;
+            foreach (GenericAce entry in DefaultAcl(token)) {
+                var ace = entry as CommonAce;
+                if (ace != null && ace.AceQualifier == AceQualifier.AccessAllowed && ace.SecurityIdentifier.Equals(user) &&
+                    (ace.AccessMask & 0x10000000) != 0 && (ace.AceFlags & AceFlags.InheritOnly) == 0) granted = true;
+            }
+            if (!granted) throw new InvalidOperationException("Acceptance token lacks explicit default user access");
+        }
         static IntPtr LimitedToken() {
             IntPtr original = IntPtr.Zero, limited = IntPtr.Zero;
             var groups = new SidAndAttributes[2];
             try {
-                Check(OpenProcessToken(GetCurrentProcess(), 0x000B, out original), "Open acceptance token");
+                Check(OpenProcessToken(GetCurrentProcess(), 0x008B, out original), "Open acceptance token"); // assign/duplicate/query/adjust default
                 var roles = new[] { WellKnownSidType.BuiltinAdministratorsSid, WellKnownSidType.BuiltinPowerUsersSid };
                 for (int index = 0; index < roles.Length; index++) {
                     var sid = new SecurityIdentifier(roles[index], null);
@@ -63,6 +103,7 @@ namespace StackCabinAcceptance {
                     var principal = new WindowsPrincipal(identity);
                     if (!identity.User.Equals(caller.User) || principal.IsInRole(WindowsBuiltInRole.Administrator) || principal.IsInRole(WindowsBuiltInRole.PowerUser))
                         throw new InvalidOperationException("The acceptance token must retain the user SID and disable administrative membership");
+                    GrantDefaultUserAccess(limited, identity.User);
                 }
                 var result = limited; limited = IntPtr.Zero; return result;
             } finally {
@@ -85,7 +126,7 @@ namespace StackCabinAcceptance {
             return result.Append('\\', slashes * 2).Append('"').ToString();
         }
         public static int Run(string application, string[] arguments, string directory, string output) {
-            if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true" || Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") != "github-hosted")
+            if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true" || Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") != "github-hosted" || Environment.GetEnvironmentVariable("RUNNER_OS") != "Windows")
                 throw new InvalidOperationException("Process acceptance requires a disposable hosted runner");
             IntPtr token = IntPtr.Zero, job = IntPtr.Zero, input = IntPtr.Zero;
             var process = new ProcessInfo(); bool finished = false;
