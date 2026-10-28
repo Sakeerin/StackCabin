@@ -1,10 +1,11 @@
-import { test } from "node:test";
+import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   mkdir,
   writeFile,
   copyFile,
   readFile,
+  rm,
   symlink,
 } from "node:fs/promises";
 import path from "node:path";
@@ -18,9 +19,16 @@ const powershell = path.join(
   process.env.SystemRoot,
   "System32/WindowsPowerShell/v1.0/powershell.exe",
 );
+const fixtures = [];
+after(async () => {
+  for (const directory of fixtures) {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 async function fixture() {
   const kit = path.join(root, ".local/windows-acceptance-tests", randomUUID());
   await mkdir(kit, { recursive: true });
+  fixtures.push(kit);
   const bytes = Buffer.from("Fixture only; must never be executed");
   await writeFile(path.join(kit, "native-smoke.exe"), bytes);
   await writeFile(

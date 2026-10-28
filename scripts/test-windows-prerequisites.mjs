@@ -2,16 +2,17 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync, mkdirSync, mkdtempSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { test } from "node:test";
+import { after, test } from "node:test";
 
 if (process.platform !== "win32") throw new Error("Run these prerequisite checks on Windows");
 const root = fileURLToPath(new URL("../", import.meta.url));
 const parent = path.join(root, ".local", "prerequisite-tests");
 mkdirSync(parent, { recursive: true });
 const fixture = mkdtempSync(path.join(parent, "case-"));
+after(() => rmSync(fixture, { recursive: true, force: true }));
 const specification = JSON.parse(readFileSync(path.join(root, "runtime-catalog/windows-prerequisites.json")));
 const payload = path.join(root, "artifacts/windows-prerequisites");
 const corrupted = readFileSync(path.join(payload, "vc_redist.x64.exe"));
