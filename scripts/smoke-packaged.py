@@ -93,17 +93,22 @@ def has_metadata_handle(pid, database):
     return False
 
 
-def verify(application, data_directory=None):
+def verify(application, data_directory=None, use_default_data_directory=False):
     application = Path(application).resolve(strict=True)
     if not application.is_file():
         raise RuntimeError("An executable file is required")
     existing = Path(data_directory).resolve(strict=True) if data_directory else None
+    if use_default_data_directory and existing is None:
+        raise RuntimeError("Default-path acceptance requires an existing preservation fixture")
     expected = metadata(existing / "stackcabin.sqlite") if existing else None
     if existing and (expected["schema"] != 1 or len(expected["projects"]) != 10 or not expected["settings"]):
         raise RuntimeError("An existing ten-project preservation fixture is required")
     context = nullcontext(str(existing)) if existing else tempfile.TemporaryDirectory(prefix="stackcabin packaged ทดสอบ ")
     with context as directory:
-        environment = {**os.environ, "STACKCABIN_DATA_DIR": directory}
+        environment = {key: value for key, value in os.environ.items()
+                       if key.upper() != "STACKCABIN_DATA_DIR"}
+        if not use_default_data_directory:
+            environment["STACKCABIN_DATA_DIR"] = directory
         launch = {"start_new_session": True}
         if os.name == "nt":
             hidden = subprocess.STARTUPINFO()
@@ -147,6 +152,8 @@ def verify(application, data_directory=None):
                   + ("all existing project metadata and settings unchanged" if expected else "real SQLite metadata in a Unicode/spaced directory"))
             if expected:
                 print("PASS installed application process holds the existing metadata database open")
+            if use_default_data_directory:
+                print("PASS installed application uses the OS default data location without STACKCABIN_DATA_DIR")
         finally:
             if child.poll() is None:
                 if os.name == "nt":
@@ -170,5 +177,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("application")
     parser.add_argument("--data-directory", help="Existing native-smoke preservation fixture; never deleted")
+    parser.add_argument("--use-default-data-directory", action="store_true",
+                        help="Check the existing fixture without overriding the application's OS default path")
     args = parser.parse_args()
-    verify(args.application, args.data_directory)
+    verify(args.application, args.data_directory, args.use_default_data_directory)

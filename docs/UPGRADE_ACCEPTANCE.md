@@ -81,6 +81,8 @@ The Windows workflow downloads and checksums an existing normal 0.1.0 installer
 Windows offline runtimes from the shipping development catalog and builds an
 unpublished normal 0.1.1 NSIS candidate without E2E plugins. The source version and
 catalog remain unchanged. Actual installer hashes and both source commits are logged.
+The `data_location` input selects `custom`, `default`, or `both` (the default).
+Each location runs on a separate disposable hosted machine.
 
 The old installer runs first so that its Microsoft prerequisites are available.
 Both installed versions must report the expected version and contain exactly the
@@ -108,9 +110,19 @@ Only the new disposable fixture parent receives an explicit user-SID write
 grant. Installers keep the runner's normal prerequisite installation context.
 This is an internal CI launcher, not a change to the product's process supervisor.
 
-The installed application uses a dedicated custom data directory, preserving the
-runner's ordinary app-data location. `upgrade-evidence-windows-x64` contains only
-the transcript and credential-free preservation hashes.
+Custom mode uses a dedicated Thai/spaced directory. Default mode uses the real
+Windows roaming application-data folder, obtained through Windows' known-folder
+API, under `dev.stackcabin.desktop`. It refuses pre-existing data before installing
+anything and creates a physical application-data directory. Only the native
+acceptance workspace's `app-data` path is a junction to that directory; the
+installed application is launched without `STACKCABIN_DATA_DIR` and must itself
+open the exact populated default database. Inherited overrides are removed only
+from the child's environment. Two Rust checks preserve the manifest's logical
+`app-data` keys for either physical layout and reject unrelated file paths.
+
+`upgrade-evidence-windows-x64-custom` and `upgrade-evidence-windows-x64-default`
+contain only their transcript and credential-free preservation hashes. The first
+custom-only run used the artifact name `upgrade-evidence-windows-x64`.
 
 [Run 40654545909](https://github.com/Sakeerin/StackCabin/actions/runs/40654545909/job/122702304801)
 passed on 28 October 2026. The previous installer came from source

@@ -1,8 +1,9 @@
-# Installs preview packages only on a disposable GitHub-hosted Windows runner.
+﻿# Installs preview packages only on a disposable GitHub-hosted Windows runner.
 param(
     [Parameter(Mandatory = $true)][string]$PreviousInstaller,
     [Parameter(Mandatory = $true)][string]$CandidateInstaller,
-    [Parameter(Mandatory = $true)][string]$Python
+    [Parameter(Mandatory = $true)][string]$Python,
+    [ValidateSet('custom', 'default')][string]$DataLocation = 'custom'
 )
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $env:RUNNER_OS -ne 'Windows') {
@@ -10,9 +11,16 @@ if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hoste
 }
 $workspace = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $runnerTemporary = (Resolve-Path -LiteralPath $env:RUNNER_TEMP).Path
-$destination = [IO.Path]::GetFullPath((Join-Path $runnerTemporary 'installed upgrade ทดสอบ'))
-$fixtureParent = [IO.Path]::GetFullPath((Join-Path $workspace '.local/windows-upgrade'))
+$destination = [IO.Path]::GetFullPath((Join-Path $runnerTemporary "installed upgrade $DataLocation ทดสอบ"))
+$fixtureParent = [IO.Path]::GetFullPath((Join-Path $workspace ".local/windows-upgrade-$DataLocation"))
 $fixture = Join-Path $fixtureParent 'data ทดสอบ'
+$dataDirectory = Join-Path $fixture 'app-data'
+if ($DataLocation -eq 'default') {
+    $roaming = [Environment]::GetFolderPath([Environment+SpecialFolder]::ApplicationData)
+    if (-not $roaming -or -not [IO.Path]::IsPathRooted($roaming)) { throw 'Windows must supply an absolute roaming application data folder' }
+    $dataDirectory = [IO.Path]::GetFullPath((Join-Path $roaming 'dev.stackcabin.desktop'))
+    if (Test-Path -LiteralPath $dataDirectory) { throw 'Default-path acceptance refuses existing application data' }
+}
 if (-not $destination.StartsWith($runnerTemporary.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or
     -not $fixture.StartsWith($workspace.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
     throw 'Upgrade paths must remain inside the dedicated runner directories'
@@ -28,7 +36,7 @@ $binary = Join-Path $destination 'stackcabin.exe'
 $offline = Join-Path $workspace 'artifacts/offline-windows-x64'
 $evidence = Join-Path $workspace 'artifacts'
 New-Item -ItemType Directory -Path $evidence -Force | Out-Null
-Start-Transcript -LiteralPath (Join-Path $evidence 'windows-upgrade-acceptance.log') -Force | Out-Null
+Start-Transcript -LiteralPath (Join-Path $evidence "windows-upgrade-$DataLocation.log") -Force | Out-Null
 $savedEnvironment = @{}
 foreach ($name in @('STACKCABIN_SMOKE_DIR', 'STACKCABIN_SMOKE_COMPONENTS', 'STACKCABIN_OFFLINE_DIR')) {
     $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
@@ -38,6 +46,7 @@ try {
     [StackCabinAcceptance.StandardUser]::VerifyIdentity()
     Write-Output 'PASS standard desktop token keeps the current Windows user/credential identity with administrator groups disabled'
     Write-Output "Hosted runner: $env:RUNNER_OS / $env:RUNNER_ARCH"
+    Write-Output "Data location: $DataLocation; expected physical application data: $dataDirectory"
     Write-Output "Source: $(git -C $workspace rev-parse HEAD)"
     Write-Output "Previous application source: $env:STACKCABIN_PREVIOUS_SOURCE"
     foreach ($installer in @($previous, $candidate)) {
@@ -81,7 +90,17 @@ try {
     }
 
     function Invoke-InstalledApplication {
-        Invoke-StandardProgram $Python @((Join-Path $PSScriptRoot 'smoke-packaged.py'), $binary, '--data-directory', (Join-Path $fixture 'app-data'))
+        $probeArguments = @((Join-Path $PSScriptRoot 'smoke-packaged.py'), $binary, '--data-directory', $dataDirectory)
+        if ($DataLocation -eq 'default') { $probeArguments += '--use-default-data-directory' }
+        Invoke-StandardProgram $Python $probeArguments
+    }
+
+    function Grant-FixtureAccess([string]$Directory) {
+        $acl = Get-Acl -LiteralPath $Directory
+        $userSid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+        $access = [Security.AccessControl.FileSystemAccessRule]::new($userSid, 'Modify', 'ContainerInherit, ObjectInherit', 'None', 'Allow')
+        $acl.SetAccessRule($access)
+        Set-Acl -LiteralPath $Directory -AclObject $acl
     }
 
     # The actual old installer supplies OS prerequisites before any runtime is executed.
@@ -89,17 +108,23 @@ try {
     # Only this newly created test parent becomes writable by the limited token.
     # Its ASCII path also owns PostgreSQL's compatibility junction for Thai data paths.
     New-Item -ItemType Directory -Path $fixtureParent | Out-Null
-    $fixtureAcl = Get-Acl -LiteralPath $fixtureParent
-    $userSid = [Security.Principal.WindowsIdentity]::GetCurrent().User
-    $access = [Security.AccessControl.FileSystemAccessRule]::new($userSid, 'Modify', 'ContainerInherit, ObjectInherit', 'None', 'Allow')
-    $fixtureAcl.SetAccessRule($access)
-    Set-Acl -LiteralPath $fixtureParent -AclObject $fixtureAcl
+    Grant-FixtureAccess $fixtureParent
+    if ($DataLocation -eq 'default') {
+        # The real default directory is physical. Only the native harness's workspace
+        # links to it; the installed application resolves it through Windows itself.
+        if (Test-Path -LiteralPath $dataDirectory) { throw 'Default application data must still be absent after installation' }
+        New-Item -ItemType Directory -Path $dataDirectory | Out-Null
+        Grant-FixtureAccess $dataDirectory
+        New-Item -ItemType Directory -Path $fixture | Out-Null
+        New-Item -ItemType Junction -Path (Join-Path $fixture 'app-data') -Value $dataDirectory | Out-Null
+        if ((Get-Item -LiteralPath $dataDirectory).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'The default application data directory must not be a link' }
+    }
     $env:STACKCABIN_SMOKE_DIR = $fixture
     $env:STACKCABIN_SMOKE_COMPONENTS = 'node,caddy,php,cacert,composer,pnpm,yarn,mariadb,postgres'
     $env:STACKCABIN_OFFLINE_DIR = $offline
     Invoke-Core
     Invoke-Core 'record-persistence'
-    Copy-Item -LiteralPath (Join-Path $fixture 'preservation-baseline.json') -Destination (Join-Path $evidence 'preservation-baseline-windows.json')
+    Copy-Item -LiteralPath (Join-Path $fixture 'preservation-baseline.json') -Destination (Join-Path $evidence "preservation-baseline-windows-$DataLocation.json")
     Invoke-Core 'verify-persistence'
     Invoke-InstalledApplication
     Invoke-Core 'verify-persistence'
@@ -107,7 +132,7 @@ try {
     Install-Version $candidate '0.1.1'
     Invoke-InstalledApplication
     Invoke-Core 'verify-persistence'
-    Write-Output 'PASS actual Windows NSIS 0.1.0 -> unpublished 0.1.1 upgrade preserves all real fixture data'
+    Write-Output "PASS actual Windows NSIS 0.1.0 -> unpublished 0.1.1 upgrade preserves all real fixture data ($DataLocation data location)"
 } finally {
     foreach ($name in $savedEnvironment.Keys) {
         [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], 'Process')

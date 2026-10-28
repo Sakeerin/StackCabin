@@ -107,26 +107,54 @@ test("installer upgrade acceptance refuses local and self-hosted machines", asyn
     { GITHUB_ACTIONS: "false", RUNNER_ENVIRONMENT: "github-hosted" },
     { GITHUB_ACTIONS: "true", RUNNER_ENVIRONMENT: "self-hosted" },
   ]) {
-    const result = spawnSync(powershell, [
-      "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-      path.join(root, "scripts/verify-windows-upgrade.ps1"),
-      "-PreviousInstaller", path.join(kit, "native-smoke.exe"),
-      "-CandidateInstaller", path.join(kit, "native-smoke.exe"),
-      "-Python", process.execPath,
-    ], { encoding: "utf8", env: { ...process.env, ...environment, RUNNER_OS: "Windows" } });
-    if (result.error) throw result.error;
-    assert.notEqual(result.status, 0);
-    assert.match(result.stdout + result.stderr, /requires a disposable GitHub-hosted Windows runner/);
+    for (const location of ["custom", "default"]) {
+      const result = spawnSync(
+        powershell,
+        [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          path.join(root, "scripts/verify-windows-upgrade.ps1"),
+          "-PreviousInstaller",
+          path.join(kit, "native-smoke.exe"),
+          "-CandidateInstaller",
+          path.join(kit, "native-smoke.exe"),
+          "-Python",
+          process.execPath,
+          "-DataLocation",
+          location,
+        ],
+        {
+          encoding: "utf8",
+          env: { ...process.env, ...environment, RUNNER_OS: "Windows" },
+        },
+      );
+      if (result.error) throw result.error;
+      assert.notEqual(result.status, 0);
+      assert.match(
+        result.stdout + result.stderr,
+        /requires a disposable GitHub-hosted Windows runner/,
+      );
+    }
   }
 });
 
 test("standard-user acceptance retains identity and round-trips literal Windows arguments", async () => {
   const kit = await fixture();
   const argumentsFile = path.join(kit, "arguments.json");
-  const values = ["", "พาธ ที่มีช่องว่าง\\", 'literal "quote"', 'backslash\\"quote', "$(literal); & value"];
+  const values = [
+    "",
+    "พาธ ที่มีช่องว่าง\\",
+    'literal "quote"',
+    'backslash\\"quote',
+    "$(literal); & value",
+  ];
   await writeFile(argumentsFile, JSON.stringify(values));
   const script = path.join(kit, "check-launcher.ps1");
-  await writeFile(script, `param($Launcher, $Node, $ArgumentsFile)
+  await writeFile(
+    script,
+    `param($Launcher, $Node, $ArgumentsFile)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 Add-Type -Path $Launcher
@@ -147,10 +175,25 @@ $diagnostic = $child.StandardError.ReadToEnd()
 $child.WaitForExit()
 if ($child.ExitCode -ne 0) { throw $diagnostic }
 [Console]::Write($output)
-`);
-  const result = spawnSync(powershell, ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script,
-    "-Launcher", path.join(root, "scripts/StandardUserAcceptance.cs"),
-    "-Node", process.execPath, "-ArgumentsFile", argumentsFile], { encoding: "utf8" });
+`,
+  );
+  const result = spawnSync(
+    powershell,
+    [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      script,
+      "-Launcher",
+      path.join(root, "scripts/StandardUserAcceptance.cs"),
+      "-Node",
+      process.execPath,
+      "-ArgumentsFile",
+      argumentsFile,
+    ],
+    { encoding: "utf8" },
+  );
   if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), values);

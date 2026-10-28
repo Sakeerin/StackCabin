@@ -7,6 +7,11 @@ on:
         type: string
         default: "40056742523"
         required: true
+      data_location:
+        description: Application data location to preserve across installation
+        type: choice
+        options: [both, default, custom]
+        default: both
 permissions:
   contents: read
   actions: read
@@ -14,6 +19,10 @@ jobs:
   upgrade:
     runs-on: windows-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        data_location: ${{ fromJSON(inputs.data_location == 'default' && '["default"]' || inputs.data_location == 'custom' && '["custom"]' || '["default","custom"]') }}
     env:
       PYTHONUTF8: "1"
     steps:
@@ -70,23 +79,28 @@ jobs:
       - name: Assemble matching development offline archives
         run: node scripts/offline-pack.mjs --platform=windows --dev
       - name: Build the real native persistence acceptance executable
-        run: cargo build -p stackcabin-core --example native-smoke
+        run: |
+          cargo test -p stackcabin-core --example native-smoke
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo build -p stackcabin-core --example native-smoke
       - name: Build an unpublished 0.1.1 normal NSIS candidate without E2E
         shell: pwsh
         run: node node_modules/@tauri-apps/cli/tauri.js build --config '{"version":"0.1.1"}' --bundles nsis
       - name: Upgrade the same installed application with existing real data
         timeout-minutes: 15
         shell: pwsh
+        env:
+          DATA_LOCATION: ${{ matrix.data_location }}
         run: |
           $previous = @(Get-ChildItem artifacts/previous-windows/nsis/*-setup.exe)
           $candidate = @(Get-ChildItem target/release/bundle/nsis/*-setup.exe)
           if ($previous.Count -ne 1 -or $candidate.Count -ne 1) { throw 'Expected exactly two versioned NSIS installers' }
-          ./scripts/verify-windows-upgrade.ps1 -PreviousInstaller $previous[0].FullName -CandidateInstaller $candidate[0].FullName -Python (Get-Command python).Source
+          ./scripts/verify-windows-upgrade.ps1 -PreviousInstaller $previous[0].FullName -CandidateInstaller $candidate[0].FullName -Python (Get-Command python).Source -DataLocation $env:DATA_LOCATION
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: upgrade-evidence-windows-x64
+          name: upgrade-evidence-windows-x64-${{ matrix.data_location }}
           retention-days: 7
           path: |
-            artifacts/windows-upgrade-acceptance.log
-            artifacts/preservation-baseline-windows.json
+            artifacts/windows-upgrade-*.log
+            artifacts/preservation-baseline-windows-*.json

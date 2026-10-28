@@ -38,6 +38,17 @@ fn hash_file(file: &Path) -> Result<String> {
     Ok(hex::encode(hash.finalize()))
 }
 
+fn file_key(file: &Path, workspace: &Path, data: &Path) -> Result<String> {
+    // The CI workspace may link app-data to the real OS default directory.
+    // Keep the same logical manifest keys for both layouts, without moving files.
+    let relative = if let Ok(relative) = file.strip_prefix(data) {
+        Path::new("app-data").join(relative)
+    } else {
+        file.strip_prefix(workspace)?.to_path_buf()
+    };
+    Ok(relative.to_string_lossy().into())
+}
+
 fn collect_files(core: &AppCore, workspace: &Path) -> Result<BTreeMap<String, String>> {
     let mut files = BTreeMap::new();
     let mut directories = vec![core.store.root.join("backups")];
@@ -58,11 +69,7 @@ fn collect_files(core: &AppCore, workspace: &Path) -> Result<BTreeMap<String, St
             );
             if entry.file_type().is_file() {
                 files.insert(
-                    entry
-                        .path()
-                        .strip_prefix(workspace)?
-                        .to_string_lossy()
-                        .into(),
+                    file_key(entry.path(), workspace, &core.store.root)?,
                     hash_file(entry.path())?,
                 );
             }
@@ -78,7 +85,7 @@ fn collect_files(core: &AppCore, workspace: &Path) -> Result<BTreeMap<String, St
                 .map(|file| directory.join(file)),
         ) {
             files.insert(
-                file.strip_prefix(workspace)?.to_string_lossy().into(),
+                file_key(&file, workspace, &core.store.root)?,
                 hash_file(&file)?,
             );
         }
@@ -242,4 +249,39 @@ pub async fn run(mode: &str) -> Result<()> {
         println!("PASS unchanged project identities, trust, settings, selected runtimes, source files and backups across app restart/replacement");
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn file_keys_preserve_the_existing_custom_data_manifest() {
+        let root = std::env::temp_dir().join("fixture workspace");
+        let data = root.join("app-data");
+        let file = data.join("runtimes/tool/bin");
+        assert_eq!(
+            file_key(&file, &root, &data).unwrap(),
+            file.strip_prefix(&root).unwrap().to_string_lossy()
+        );
+        let project = root.join("projects/source/stackcabin.json");
+        assert_eq!(
+            file_key(&project, &root, &data).unwrap(),
+            project.strip_prefix(&root).unwrap().to_string_lossy()
+        );
+    }
+
+    #[test]
+    fn file_keys_include_default_data_outside_the_project_workspace() {
+        let parent = std::env::temp_dir();
+        let root = parent.join("fixture workspace");
+        let data = parent.join("roaming/dev.stackcabin.desktop");
+        assert_eq!(
+            file_key(&data.join("backups/project.zip"), &root, &data).unwrap(),
+            Path::new("app-data")
+                .join("backups/project.zip")
+                .to_string_lossy()
+        );
+        assert!(file_key(&parent.join("unrelated/secret"), &root, &data).is_err());
+    }
 }

@@ -70,6 +70,38 @@ class PackagedMetadataTests(unittest.TestCase):
                 launch.assert_not_called()
             self.assertEqual(database.read_bytes(), before)
 
+    def test_default_path_refuses_to_touch_data_without_an_existing_fixture(self):
+        with patch.object(packaged_smoke.subprocess, "Popen") as launch:
+            with self.assertRaisesRegex(RuntimeError, "requires an existing preservation fixture"):
+                packaged_smoke.verify(sys.executable, use_default_data_directory=True)
+            launch.assert_not_called()
+
+    def test_default_path_opens_the_real_database_despite_an_inherited_override(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = self.fixture(Path(directory))
+            before = database.read_bytes()
+            inherited = str(Path(directory) / "must not be created")
+            real_popen = subprocess.Popen
+            command = [str(Path(sys.executable).resolve())]
+
+            def start_application(arguments, **options):
+                if arguments == command:
+                    # A real child emulates an app's default-path selection. Readiness
+                    # still requires that child's actual SQLite file handle on each OS.
+                    probe = ("import os, sqlite3, time; from pathlib import Path; "
+                             "root = Path(os.environ.get('STACKCABIN_DATA_DIR', os.environ['TEST_DEFAULT_DATA'])); "
+                             "connection = sqlite3.connect(root / 'stackcabin.sqlite'); "
+                             "connection.execute('SELECT * FROM projects').fetchall(); time.sleep(30)")
+                    arguments = [sys.executable, "-c", probe]
+                return real_popen(arguments, **options)
+
+            with patch.dict(os.environ, {"STACKCABIN_DATA_DIR": inherited, "TEST_DEFAULT_DATA": directory}), \
+                    patch.object(packaged_smoke.subprocess, "Popen", side_effect=start_application):
+                packaged_smoke.verify(sys.executable, directory, use_default_data_directory=True)
+                self.assertEqual(os.environ["STACKCABIN_DATA_DIR"], inherited)
+            self.assertFalse(Path(inherited).exists())
+            self.assertEqual(database.read_bytes(), before)
+
     def test_a_real_open_database_handle_is_required(self):
         with tempfile.TemporaryDirectory() as directory:
             database = self.fixture(Path(directory))
