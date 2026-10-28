@@ -2,7 +2,12 @@
 
 The manual **Verify QA installer upgrade preserves real data** workflow checks
 an existing QA 0.1.0 installer against an unpublished 0.1.1 test candidate.
-Select Ubuntu 22.04 x64, macOS 14 ARM, native Intel macOS 15, or all three.
+Select Ubuntu 22.04 x64, macOS 15 ARM, native Intel macOS 15, or all three.
+`macos-arm64-current` selects macOS 15; the separate `macos-arm64` option retains
+macOS 14 baseline execution while GitHub still supplies that image. GitHub
+[retires the macOS 14 image on 2 November 2026](https://github.com/actions/runner-images/issues/13518);
+a maintained baseline VM is still required after retirement. Choosing a current
+runner does not certify the older OS baseline.
 The `data_location` input selects `default` (the default) or `custom`.
 The repository's product version stays 0.1.0; this workflow does not publish a
 release or enable application self-update.

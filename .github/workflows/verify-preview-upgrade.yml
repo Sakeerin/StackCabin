@@ -4,7 +4,8 @@ on:
     inputs:
       target:
         type: choice
-        options: [all, linux, macos-arm64, macos-x64]
+        description: macos-arm64 is the temporary macOS 14 baseline; current uses macOS 15
+        options: [all, linux, macos-arm64-current, macos-arm64, macos-x64]
         default: all
       data_location:
         description: Application data location to preserve across installation
@@ -20,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.target == 'linux' && '[{"os":"ubuntu-22.04","run":"40075038598","artifact":"desktop-qa-ubuntu-22.04"}]' || inputs.target == 'macos-arm64' && '[{"os":"macos-14","run":"40074337734","artifact":"desktop-qa-macos-15"}]' || inputs.target == 'macos-x64' && '[{"os":"macos-15-intel","run":"40075333416","artifact":"desktop-qa-macos-15-intel"}]' || '[{"os":"ubuntu-22.04","run":"40075038598","artifact":"desktop-qa-ubuntu-22.04"},{"os":"macos-14","run":"40074337734","artifact":"desktop-qa-macos-15"},{"os":"macos-15-intel","run":"40075333416","artifact":"desktop-qa-macos-15-intel"}]') }}
+        include: ${{ fromJSON(inputs.target == 'linux' && '[{"os":"ubuntu-22.04","run":"40075038598","artifact":"desktop-qa-ubuntu-22.04"}]' || inputs.target == 'macos-arm64-current' && '[{"os":"macos-15","run":"40074337734","artifact":"desktop-qa-macos-15"}]' || inputs.target == 'macos-arm64' && '[{"os":"macos-14","run":"40074337734","artifact":"desktop-qa-macos-15"}]' || inputs.target == 'macos-x64' && '[{"os":"macos-15-intel","run":"40075333416","artifact":"desktop-qa-macos-15-intel"}]' || '[{"os":"ubuntu-22.04","run":"40075038598","artifact":"desktop-qa-ubuntu-22.04"},{"os":"macos-15","run":"40074337734","artifact":"desktop-qa-macos-15"},{"os":"macos-15-intel","run":"40075333416","artifact":"desktop-qa-macos-15-intel"}]') }}
     runs-on: ${{ matrix.os }}
     env:
       STACKCABIN_QA_KIT_DIR: ${{ github.workspace }}/.local/previous-qa
