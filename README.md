@@ -133,7 +133,8 @@ npm run test:desktop
 npm run test:lifecycle    # Native close/tray/Quit/crash checks after the E2E build
 ```
 
-The ignored `http_worker`, `http_parent`, and `lifecycle_fixture` Rust tests are
+The ignored `http_worker`, `http_parent`, `lifecycle_fixture`, and
+`dependency_fixture` Rust tests are
 child-process fixtures launched by lifecycle tests. The owner-crash test starts
 two independent process trees and a separate HTTP server, kills only their
 supervisor host, then checks actual process exit, closed ports and the separate
@@ -142,7 +143,7 @@ server's continued health. Run it alone with
 Desktop WebDriver is compiled
 only with the `e2e` feature and is absent from normal application builds.
 
-The lifecycle probe opens three isolated application sessions. It checks native
+The lifecycle probe opens four isolated application sessions. It checks native
 close-to-tray and restore, close without tray, repeated Quit during pending
 shutdown, and abrupt application termination while an owned HTTP service runs.
 An unrelated server must remain healthy. Test commands, the shutdown barrier and
@@ -150,6 +151,14 @@ the bounded HTTP fixture exist only with the `e2e` feature. JSON evidence is sav
 under `artifacts/desktop-lifecycle-*.json`; each temporary workspace is removed.
 Actual tray-menu pointer interaction and clean-machine checks remain in the
 [VM checklist](docs/VM_ACCEPTANCE.md).
+
+Quit closes admission for new project, runtime, service and metadata operations.
+It cancels active or queued runtime installs and dependency commands, waits for
+their cleanup, and lets already accepted backup/restore and database operations
+finish before stopping services. Project preparation shares cancellation across
+Composer/npm stages; failed Laravel generation removes its temporary tree while
+keeping the original project. The lifecycle probe's busy session verifies that
+late IPC writes fail and an accepted SQLite settings write finishes before exit.
 
 Real runtime acceptance tests use an explicit disposable workspace:
 

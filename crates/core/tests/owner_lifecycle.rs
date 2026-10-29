@@ -107,7 +107,7 @@ async fn owner_crash_reaps_multiple_trees_and_preserves_unrelated_process() {
     let ready = workspace.join("ready.json");
     let client = reqwest::Client::builder()
         .no_proxy()
-        .timeout(Duration::from_millis(500))
+        .timeout(Duration::from_secs(2))
         .build()
         .unwrap();
 
@@ -239,13 +239,24 @@ fn lifecycle_fixture() {
             while std::time::Instant::now() < deadline {
                 match listener.accept() {
                     Ok((mut stream, _)) => {
+                        stream.set_nonblocking(false).unwrap();
                         stream
-                            .set_read_timeout(Some(Duration::from_millis(100)))
+                            .set_read_timeout(Some(Duration::from_secs(2)))
                             .unwrap();
                         stream
-                            .set_write_timeout(Some(Duration::from_millis(100)))
+                            .set_write_timeout(Some(Duration::from_secs(2)))
                             .unwrap();
-                        let _ = stream.read(&mut [0u8; 1024]);
+                        let mut request = Vec::new();
+                        while !request.ends_with(b"\r\n\r\n") && request.len() < 16384 {
+                            let mut chunk = [0u8; 1024];
+                            match stream.read(&mut chunk) {
+                                Ok(0) | Err(_) => break,
+                                Ok(size) => request.extend_from_slice(&chunk[..size]),
+                            }
+                        }
+                        if !request.ends_with(b"\r\n\r\n") {
+                            continue;
+                        }
                         let _ = write!(stream, "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
                     }
                     Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {

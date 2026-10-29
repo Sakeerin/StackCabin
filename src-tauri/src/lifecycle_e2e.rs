@@ -47,6 +47,7 @@ pub(crate) async fn before_shutdown(app: &tauri::AppHandle) {
         })
         .await
         .expect("Lifecycle test did not release shutdown");
+        record(app, "shutdown_draining");
     }
 }
 
@@ -77,6 +78,7 @@ pub(crate) async fn lifecycle_test(
         }
         "start_worker" => {
             let core = app.state::<Arc<AppCore>>().inner().clone();
+            let _activity = core.activity().map_err(|e| e.to_string())?;
             let port = stackcabin_core::process::available_port(0)
                 .await
                 .map_err(|e| e.to_string())?;
@@ -91,6 +93,30 @@ pub(crate) async fn lifecycle_test(
                 .await
                 .map_err(|e| e.to_string())?;
             Ok(serde_json::json!({ "port": port }))
+        }
+        "start_work" => {
+            let core = app.state::<Arc<AppCore>>().inner().clone();
+            let activity = core.activity().map_err(|e| e.to_string())?;
+            let handle = app.clone();
+            tauri::async_runtime::spawn(async move {
+                record(&handle, "work_started");
+                let release = core.store.root.join("work-release");
+                tokio::time::timeout(Duration::from_secs(15), async {
+                    while !release.is_file() {
+                        tokio::time::sleep(Duration::from_millis(20)).await;
+                    }
+                })
+                .await
+                .expect("Lifecycle test did not release accepted work");
+                // Finish an already admitted metadata transaction after late
+                // IPC writes have been rejected, just as normal IPC guards do.
+                let mut settings = core.store.settings().unwrap();
+                settings.theme = "dark".into();
+                core.store.save_settings(&settings).unwrap();
+                record(&handle, "work_finished");
+                drop(activity);
+            });
+            Ok(serde_json::Value::Null)
         }
         _ => Err("Unknown lifecycle action".into()),
     }
@@ -111,13 +137,24 @@ pub fn run_fixture() -> bool {
     while std::time::Instant::now() < deadline {
         match listener.accept() {
             Ok((mut stream, _)) => {
+                stream.set_nonblocking(false).unwrap();
                 stream
-                    .set_read_timeout(Some(Duration::from_millis(100)))
+                    .set_read_timeout(Some(Duration::from_secs(2)))
                     .unwrap();
                 stream
-                    .set_write_timeout(Some(Duration::from_millis(100)))
+                    .set_write_timeout(Some(Duration::from_secs(2)))
                     .unwrap();
-                let _ = stream.read(&mut [0u8; 1024]);
+                let mut request = Vec::new();
+                while !request.ends_with(b"\r\n\r\n") && request.len() < 16384 {
+                    let mut chunk = [0u8; 1024];
+                    match stream.read(&mut chunk) {
+                        Ok(0) | Err(_) => break,
+                        Ok(size) => request.extend_from_slice(&chunk[..size]),
+                    }
+                }
+                if !request.ends_with(b"\r\n\r\n") {
+                    continue;
+                }
                 let body = "StackCabin lifecycle fixture";
                 let _ = write!(
                     stream,

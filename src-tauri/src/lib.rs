@@ -54,6 +54,7 @@ async fn project_start(core: Core<'_>, id: String) -> Result<ProjectStatus, Stri
 }
 #[tauri::command]
 async fn project_stop(core: Core<'_>, id: String) -> Result<(), String> {
+    let _activity = core.activity().map_err(message)?;
     core.supervisor.stop(&id).await.map_err(message)
 }
 #[tauri::command]
@@ -82,6 +83,7 @@ async fn runtime_install(
 }
 #[tauri::command]
 async fn runtime_remove(core: Core<'_>, id: String) -> Result<(), String> {
+    let _activity = core.activity().map_err(message)?;
     if core.supervisor.service_state("caddy").await == ProcessState::Running
         || !core.supervisor.statuses().await.iter().all(|s| {
             s.processes
@@ -115,6 +117,7 @@ async fn database_attach(
 }
 #[tauri::command]
 async fn database_query(core: Core<'_>, id: String, sql: String) -> Result<String, String> {
+    let _activity = core.activity().map_err(message)?;
     let project = core.store.project(&id).map_err(message)?;
     core.databases
         .query_project(&project, &sql)
@@ -123,10 +126,12 @@ async fn database_query(core: Core<'_>, id: String, sql: String) -> Result<Strin
 }
 #[tauri::command]
 async fn service_start(core: Core<'_>, engine: DatabaseEngine) -> Result<u16, String> {
+    let _activity = core.activity().map_err(message)?;
     core.databases.start(&engine).await.map_err(message)
 }
 #[tauri::command]
 async fn service_stop(core: Core<'_>, id: String) -> Result<(), String> {
+    let _activity = core.activity().map_err(message)?;
     if core.store.projects().map_err(message)?.iter().any(|p| {
         p.spec
             .database
@@ -172,12 +177,14 @@ async fn backup_restore(
 }
 #[tauri::command]
 fn backup_export(core: Core<'_>, id: String, destination: String) -> Result<(), String> {
+    let _activity = core.activity().map_err(message)?;
     core.backups
         .export(&id, std::path::Path::new(&destination))
         .map_err(message)
 }
 #[tauri::command]
 fn settings_save(core: Core<'_>, settings: Settings) -> Result<(), String> {
+    let _activity = core.activity().map_err(message)?;
     core.store.save_settings(&settings).map_err(message)
 }
 #[tauri::command]
@@ -190,6 +197,7 @@ fn logs(core: Core<'_>, subject: Option<String>) -> Vec<AppEvent> {
 }
 #[tauri::command]
 fn data_open(core: Core<'_>) -> Result<(), String> {
+    let _activity = core.activity().map_err(message)?;
     stackcabin_core::open_external(&core.store.root.to_string_lossy()).map_err(message)
 }
 
@@ -330,6 +338,7 @@ pub fn run() {
                     }
                     ExitDecision::BeginShutdown => {
                         api.prevent_exit();
+                        app.state::<Arc<AppCore>>().begin_shutdown();
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.set_enabled(false);
                         }

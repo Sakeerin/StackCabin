@@ -8,7 +8,6 @@ use ed25519_dalek::{Signature, VerifyingKey};
 use futures_util::StreamExt;
 use sha2::{Digest, Sha256};
 use std::{
-    collections::BTreeMap,
     io::{Read, Write},
     path::{Path, PathBuf},
     sync::Arc,
@@ -172,7 +171,7 @@ pub struct RuntimeManager {
     pub catalog: Catalog,
     pub catalog_error: Option<String>,
     sink: EventSink,
-    operations: tokio::sync::Mutex<BTreeMap<String, CancellationToken>>,
+    operations: crate::operations::Operations,
     install_lock: tokio::sync::Mutex<()>,
 }
 
@@ -322,11 +321,17 @@ impl RuntimeManager {
         self.resolve(component, &runtime.artifact.version, tool)
     }
     pub async fn cancel(&self, operation: &str) {
-        if let Some(token) = self.operations.lock().await.get(operation) {
-            token.cancel();
-        }
+        self.operations.cancel(operation);
+    }
+    pub fn begin_shutdown(&self) {
+        self.operations.close();
+    }
+    pub async fn wait_idle(&self) {
+        self.operations.wait_idle().await;
     }
     pub async fn install(&self, id: &str, operation: &str, offline: Option<PathBuf>) -> Result<()> {
+        let activity = self.operations.begin(operation)?;
+        let token = activity.token();
         let artifact = self
             .catalog
             .artifacts
@@ -334,16 +339,17 @@ impl RuntimeManager {
             .find(|a| a.id == id && a.platform == PLATFORM && a.arch == ARCH)
             .context("Runtime not available for this platform")?
             .clone();
-        let token = CancellationToken::new();
-        self.operations
-            .lock()
-            .await
-            .insert(operation.into(), token.clone());
-        let _guard = self.install_lock.lock().await;
-        let result = self
-            .install_inner(&artifact, operation, &token, offline)
-            .await;
-        self.operations.lock().await.remove(operation);
+        let result = async {
+            let _guard = tokio::select! {
+                biased;
+                _ = token.cancelled() => anyhow::bail!("Installation cancelled"),
+                guard = self.install_lock.lock() => guard,
+            };
+            anyhow::ensure!(!token.is_cancelled(), "Installation cancelled");
+            self.install_inner(&artifact, operation, token, offline)
+                .await
+        }
+        .await;
         (self.sink)(event(
             if result.is_ok() { "complete" } else { "error" },
             operation,
@@ -520,6 +526,7 @@ impl RuntimeManager {
         result
     }
     pub fn remove(&self, id: &str, projects: &[Project]) -> Result<()> {
+        let _activity = self.operations.enter()?;
         let artifact = self
             .catalog
             .artifacts

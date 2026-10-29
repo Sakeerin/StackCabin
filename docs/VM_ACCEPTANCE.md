@@ -152,6 +152,11 @@ and records shutdown completion before normal exit. The deterministic shutdown
 barrier and fixed loopback child fixture are absent from normal builds. This
 automation does not click the OS tray menu; include that interaction on each VM.
 
+The busy session also verifies that Quit rejects new IPC writes while an already
+accepted SQLite settings transaction finishes before service shutdown. Core
+regressions exercise cancellation of real dependency processes and active/queued
+runtime installs, plus real backup/SQLite restore completion during shutdown.
+
 1. Start from a clean snapshot without development runtimes. Test installation
    online, then repeat from a fresh snapshot with the complete offline payload
    while disconnected. Record prerequisite prompts and reboot requests.
@@ -166,6 +171,10 @@ automation does not click the OS tray menu; include that interaction on each VM.
 5. Test Stop/Restart, closing to tray and Quit. Terminate the app abruptly during
    a running project; verify no owned children remain and unrelated processes
    remain alive. Inspect addresses to confirm services bind only to loopback.
+   Also Quit during download, dependency installation, backup, restore and SQL
+   writes. Install/dependency cancellation must finish cleanup; already accepted
+   data operations must settle before their database stops. Verify late work is
+   rejected and backups do not restart a project while the app is quitting.
 6. Test interrupted installation, insufficient space and retry. Verify a partial
    runtime never appears installed. Linux's bounded tmpfs ENOSPC CI result is
    complementary evidence; include platform-specific installer/storage failures.

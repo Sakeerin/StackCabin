@@ -36,7 +36,7 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Production frontend        | TypeScript and Vite build                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Frontend tests             | 5 tests: preview honesty, templates/trust, Thai/theme, process state and sizes                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Rust core                  | 25 passed on every CI target; 3 ignored tests are launched child-process fixtures                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Rust core                  | 32 passed on Windows; 4 ignored tests are launched child-process fixtures                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Core edge cases            | Corrupted archives, traversal, signed catalog tampering, interrupted installation, Unicode registration, future schema, port conflicts, secret-free SQLite backup/restore and concurrent destination reservation                                                                                                                                                                                                                                                                                                                    |
 | Native lifecycle           | Real HTTP grandchild, stop of its process tree, and cleanup after its parent exits unexpectedly                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Native Desktop E2E         | 4 cases against real Rust IPC/SQLite; screenshot `stackcabin-desktop.png`                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -186,7 +186,7 @@ after 404/410. The existing signed catalog, selected versions and SHA-256 remain
 unchanged; other hosts, credentials, query-bearing URLs and HTTPS downgrades are
 not substituted. Actual downloads of both pinned archives matched their hashes,
 and fresh online installation plus PHP 8.4/8.5 HTTP through Caddy passed on Windows.
-The current Rust suite passes 25 tests (three process-fixture entry points are
+The current Rust suite passes 32 tests (four process-fixture entry points are
 ignored when run directly), and all ten JavaScript catalog regressions pass.
 
 An online macOS smoke observed a truncated Node.js response after a long stalled
@@ -241,6 +241,29 @@ Rust regressions cover sequential and concurrent exit requests. The standalone
 probe, fixture and barrier are E2E-only; normal builds retain no test command.
 CI runs the probe on every desktop target and uploads its JSON evidence. Actual
 OS tray-menu pointer clicks and clean-VM acceptance remain separate checks.
+
+Shutdown now closes admission synchronously at the first native exit request.
+New project/runtime/service/metadata writes are rejected. Active and queued
+runtime installations and dependency commands receive cancellation; exit waits
+for their real cleanup. Queued installations cannot clear existing files after
+cancellation. Already accepted backup, restore and database work drains before
+servers stop, and backup completion cannot restart a project during shutdown.
+Operation guards release tracking on success, error or dropped futures; duplicate
+active operation IDs are rejected. Project preparation links cancellation across
+Composer/npm phases and removes generated Laravel staging on failure.
+
+Local Windows regressions cover active/queued installation with no receipt or
+partial leftovers, a real managed-tool fixture process stopped before shutdown
+returns, completed backup ZIPs, SQLite restore plus metadata registration after
+shutdown begins, and preservation of source after failed Laravel preparation.
+A fourth real-application lifecycle session holds an accepted SQLite settings
+write, verifies late create/prepare/install/settings IPC calls fail without a new
+project folder, then completes that write before service shutdown and normal exit.
+Fresh Laravel preparation also passed on Windows with the app-managed PHP,
+Composer and Node: generated source moved out of temporary staging, Composer/npm
+completed, PHP and Vite ran together behind Caddy, real HTTP passed, and shutdown
+stopped the owned processes. Its log is kept locally as
+`artifacts/laravel-prepare-shutdown-20261029.log`.
 
 The native Desktop language test dispatches a DOM change event because the
 embedded driver does not implement native option selection. The resulting UI

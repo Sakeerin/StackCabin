@@ -62,7 +62,9 @@ function request(port, route, payload, timeout = 5000) {
     req.setTimeout(timeout, () =>
       req.destroy(new Error(`Loopback request timed out: ${route}`)),
     );
-    req.on("error", reject);
+    req.on("error", (error) =>
+      reject(new Error(`Loopback ${port}${route} failed`, { cause: error })),
+    );
     req.end(body);
   });
 }
@@ -166,6 +168,7 @@ async function verify(mode) {
   };
   const action = (action) => invoke("lifecycle_test", { action });
   let port;
+  let runtimeId;
   try {
     await until(
       async () => {
@@ -185,6 +188,14 @@ async function verify(mode) {
     ({ port } = await action("start_worker"));
     assert.equal(await request(port, "/"), "StackCabin lifecycle fixture");
     assert.equal(await request(foreignPort, "/"), "unrelated lifecycle server");
+    if (mode === "busy") {
+      runtimeId = (await invoke("snapshot")).runtimes[0].artifact.id;
+      await action("start_work");
+      await until(
+        async () => (await evidence()).includes("work_started"),
+        "Accepted work did not start",
+      );
+    }
 
     if (mode === "crash") {
       app.kill("SIGKILL");
@@ -229,7 +240,61 @@ async function verify(mode) {
       );
       assert.ok(alive(), "Repeated Quit exited before shutdown completed");
       assert.equal(await request(port, "/"), "StackCabin lifecycle fixture");
+      if (mode === "busy") {
+        for (const [command, args] of [
+          [
+            "project_create",
+            {
+              parent: path.join(workspace, mode),
+              name: "late-project",
+              preset: "static",
+              trusted: false,
+            },
+          ],
+          [
+            "project_prepare",
+            { id: "late-project", operationId: "late-prepare" },
+          ],
+          [
+            "runtime_install",
+            { id: runtimeId, operationId: "late-install", offlineFolder: data },
+          ],
+          [
+            "settings_save",
+            {
+              settings: {
+                language: "en",
+                theme: "light",
+                closeToTray: false,
+                proxyPort: 8080,
+              },
+            },
+          ],
+        ]) {
+          await assert.rejects(
+            invoke(command, args),
+            /shutting down/i,
+            `${command} admitted new work during shutdown`,
+          );
+        }
+        await assert.rejects(
+          readFile(
+            path.join(workspace, mode, "late-project", "stackcabin.json"),
+          ),
+          { code: "ENOENT" },
+        );
+      }
       await writeFile(path.join(data, "lifecycle-release"), "release\n");
+      if (mode === "busy") {
+        await until(
+          async () => (await evidence()).includes("shutdown_draining"),
+          "Shutdown did not begin draining work",
+        );
+        assert.ok(alive(), "Application did not wait for accepted work");
+        assert.ok(!(await evidence()).includes("shutdown_complete"));
+        assert.equal(await request(port, "/"), "StackCabin lifecycle fixture");
+        await writeFile(path.join(data, "work-release"), "release\n");
+      }
     }
 
     let exit;
@@ -262,6 +327,14 @@ async function verify(mode) {
       assert.ok(
         stages.indexOf("exit_allowed") > stages.indexOf("shutdown_complete"),
       );
+      if (mode === "busy") {
+        assert.ok(
+          stages.indexOf("work_finished") > stages.indexOf("shutdown_draining"),
+        );
+        assert.ok(
+          stages.indexOf("shutdown_complete") > stages.indexOf("work_finished"),
+        );
+      }
     }
     const result = {
       mode,
@@ -286,7 +359,7 @@ async function verify(mode) {
 }
 
 try {
-  for (const mode of ["tray", "close", "crash"]) await verify(mode);
+  for (const mode of ["tray", "close", "crash", "busy"]) await verify(mode);
   const artifacts = path.join(root, "artifacts");
   await mkdir(artifacts, { recursive: true });
   await writeFile(

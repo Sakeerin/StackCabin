@@ -8,7 +8,10 @@ use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
     process::Stdio,
-    sync::Arc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     time::Duration,
 };
 use tokio::{
@@ -398,7 +401,8 @@ pub struct Supervisor {
     services: Mutex<BTreeMap<String, OwnedProcess>>,
     proxy: Mutex<Option<Proxy>>,
     routes: Mutex<BTreeMap<String, ProxyRoute>>,
-    operations: Mutex<BTreeMap<String, tokio_util::sync::CancellationToken>>,
+    operations: crate::operations::Operations,
+    shutting_down: AtomicBool,
     transition: Mutex<()>,
     runtime: Arc<RuntimeManager>,
     sink: EventSink,
@@ -412,6 +416,7 @@ impl Supervisor {
             proxy: Default::default(),
             routes: Default::default(),
             operations: Default::default(),
+            shutting_down: AtomicBool::new(false),
             transition: Default::default(),
             runtime,
             sink,
@@ -547,6 +552,10 @@ impl Supervisor {
     }
     pub async fn start(&self, project: &Project, proxy_port: u16) -> Result<ProjectStatus> {
         let _transition = self.transition.lock().await;
+        anyhow::ensure!(
+            !self.shutting_down.load(Ordering::Acquire),
+            "StackCabin is shutting down"
+        );
         anyhow::ensure!(
             project.trusted,
             "Trust this project before executing its code"
@@ -765,27 +774,67 @@ impl Supervisor {
         args: &[String],
         operation: &str,
     ) -> Result<()> {
+        self.run_task_inner(project, tool, args, operation, None)
+            .await
+    }
+    pub(crate) async fn run_task_with_parent(
+        &self,
+        project: &Project,
+        tool: &str,
+        args: &[String],
+        operation: &str,
+        parent: &tokio_util::sync::CancellationToken,
+    ) -> Result<()> {
+        self.run_task_inner(project, tool, args, operation, Some(parent))
+            .await
+    }
+    async fn run_task_inner(
+        &self,
+        project: &Project,
+        tool: &str,
+        args: &[String],
+        operation: &str,
+        parent: Option<&tokio_util::sync::CancellationToken>,
+    ) -> Result<()> {
         anyhow::ensure!(
             project.trusted,
             "Trust this project before installing dependencies"
         );
-        let token = tokio_util::sync::CancellationToken::new();
-        self.operations
-            .lock()
-            .await
-            .insert(operation.into(), token.clone());
-        let result=async {
-            let (program,mut prefix)=self.tool(project,tool)?;prefix.extend_from_slice(args);
-            let mut process=OwnedProcess::spawn(&program,&prefix,Path::new(&project.path),&self.environment(project)?,"dependencies",&project.id,self.sink.clone()).await?;
-            tokio::select!{result=process.wait()=>result,_=token.cancelled()=>{process.stop().await;anyhow::bail!("Operation cancelled")}}
-        }.await;
-        self.operations.lock().await.remove(operation);
-        result
+        let activity = match parent {
+            Some(parent) => self.operations.begin_child(operation, parent)?,
+            None => self.operations.begin(operation)?,
+        };
+        let token = activity.token();
+        anyhow::ensure!(!token.is_cancelled(), "Operation cancelled");
+        let (program, mut prefix) = self.tool(project, tool)?;
+        prefix.extend_from_slice(args);
+        let mut process = OwnedProcess::spawn(
+            &program,
+            &prefix,
+            Path::new(&project.path),
+            &self.environment(project)?,
+            "dependencies",
+            &project.id,
+            self.sink.clone(),
+        )
+        .await?;
+        tokio::select! {
+            biased;
+            _ = token.cancelled() => {
+                process.stop().await;
+                anyhow::bail!("Operation cancelled")
+            }
+            result = process.wait() => result,
+        }
     }
     pub async fn cancel(&self, id: &str) {
-        if let Some(token) = self.operations.lock().await.get(id) {
-            token.cancel();
-        }
+        self.operations.cancel(id);
+    }
+    pub fn cancel_tasks(&self) {
+        self.operations.close();
+    }
+    pub async fn wait_tasks(&self) {
+        self.operations.wait_idle().await;
     }
     pub async fn start_service(
         &self,
@@ -796,6 +845,10 @@ impl Supervisor {
         port: u16,
     ) -> Result<()> {
         let mut services = self.services.lock().await;
+        anyhow::ensure!(
+            !self.shutting_down.load(Ordering::Acquire),
+            "StackCabin is shutting down"
+        );
         if let Some(process) = services.get_mut(id) {
             process.poll();
             if process.info.state == ProcessState::Running {
@@ -851,6 +904,10 @@ impl Supervisor {
         }
     }
     pub async fn shutdown(&self) {
+        self.shutting_down.store(true, Ordering::Release);
+        self.cancel_tasks();
+        self.wait_tasks().await;
+        let _transition = self.transition.lock().await;
         let ids: Vec<_> = self.projects.lock().await.keys().cloned().collect();
         for id in ids {
             self.stop_inner(&id).await;

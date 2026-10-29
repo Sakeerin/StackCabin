@@ -1,6 +1,7 @@
 pub mod backup;
 pub mod database;
 pub mod models;
+pub mod operations;
 pub mod process;
 pub mod project;
 pub mod runtime;
@@ -29,6 +30,8 @@ pub struct AppCore {
     pub backups: backup::BackupManager,
     events: Arc<Mutex<VecDeque<AppEvent>>>,
     sink: EventSink,
+    activities: operations::Operations,
+    shutdown_lock: tokio::sync::Mutex<()>,
 }
 impl AppCore {
     pub fn new(root: PathBuf, external: EventSink) -> Result<Self> {
@@ -66,6 +69,8 @@ impl AppCore {
             backups,
             events,
             sink,
+            activities: Default::default(),
+            shutdown_lock: Default::default(),
         })
     }
     pub async fn snapshot(&self) -> Result<Snapshot> {
@@ -108,7 +113,11 @@ impl AppCore {
             &serde_json::to_vec_pretty(&serde_json::json!({"schemaVersion":1,"runtimes":locks}))?,
         )
     }
-    pub fn import(&self, path: &Path, mut spec: ProjectSpec, trusted: bool) -> Result<Project> {
+    pub fn import(&self, path: &Path, spec: ProjectSpec, trusted: bool) -> Result<Project> {
+        let _activity = self.activity()?;
+        self.import_inner(path, spec, trusted)
+    }
+    fn import_inner(&self, path: &Path, mut spec: ProjectSpec, trusted: bool) -> Result<Project> {
         self.pin(&mut spec);
         let project = project::register(&self.store, path, spec, trusted)?;
         self.write_lock(&project)?;
@@ -121,6 +130,7 @@ impl AppCore {
         preset: Preset,
         trusted: bool,
     ) -> Result<Project> {
+        let _activity = self.activity()?;
         let parent = dunce::canonicalize(parent).context("Choose an existing parent directory")?;
         let path = parent.join(name);
         project::create_files(&path, name, &preset)?;
@@ -136,6 +146,7 @@ impl AppCore {
         mut spec: ProjectSpec,
         trusted: bool,
     ) -> Result<Project> {
+        let _activity = self.activity()?;
         anyhow::ensure!(
             !self.supervisor.is_active(id).await,
             "Stop the project before changing its settings"
@@ -151,6 +162,7 @@ impl AppCore {
         Ok(project)
     }
     pub async fn start_project(&self, id: &str) -> Result<ProjectStatus> {
+        let _activity = self.activity()?;
         let mut project = self.store.project(id)?;
         if let Some(binding) = project.spec.database.as_mut() {
             let port = self.databases.start(&binding.engine).await?;
@@ -170,6 +182,8 @@ impl AppCore {
             .await
     }
     pub async fn prepare(&self, id: &str, operation: &str) -> Result<()> {
+        let activity = self.activities.begin(operation)?;
+        let token = activity.token();
         let project = self.store.project(id)?;
         anyhow::ensure!(
             !self.supervisor.is_active(id).await,
@@ -177,23 +191,24 @@ impl AppCore {
         );
         let root = Path::new(&project.path);
         let result = async {
+            anyhow::ensure!(!token.is_cancelled(), "Operation cancelled");
             if root.join(".stackcabin-laravel-pending").exists() {
-                let staging = self
-                    .store
-                    .root
-                    .join("staging")
-                    .join(uuid::Uuid::new_v4().to_string());
+                let staging = tempfile::Builder::new()
+                    .prefix("laravel-")
+                    .tempdir_in(self.store.root.join("staging"))?;
+                let generated = staging.path().join("project");
                 let args = vec![
                     "create-project".into(),
                     "laravel/laravel:^12.0".into(),
-                    staging.to_string_lossy().into(),
+                    generated.to_string_lossy().into(),
                     "--no-interaction".into(),
                 ];
                 self.supervisor
-                    .run_task(&project, "composer", &args, operation)
+                    .run_task_with_parent(&project, "composer", &args, operation, token)
                     .await?;
+                anyhow::ensure!(!token.is_cancelled(), "Operation cancelled");
                 // Preserve explicit StackCabin configuration while moving the newly generated Laravel tree.
-                for entry in std::fs::read_dir(&staging)? {
+                for entry in std::fs::read_dir(&generated)? {
                     let entry = entry?;
                     let destination = root.join(entry.file_name());
                     if destination.exists() {
@@ -201,19 +216,21 @@ impl AppCore {
                     }
                     move_new_entry(&entry.path(), &destination)?;
                 }
-                let _ = std::fs::remove_dir_all(staging);
                 std::fs::remove_file(root.join(".stackcabin-laravel-pending"))?;
             } else if root.join("composer.json").exists() {
+                anyhow::ensure!(!token.is_cancelled(), "Operation cancelled");
                 self.supervisor
-                    .run_task(
+                    .run_task_with_parent(
                         &project,
                         "composer",
                         &["install".into(), "--no-interaction".into()],
                         operation,
+                        token,
                     )
                     .await?;
             }
             if root.join("package.json").exists() {
+                anyhow::ensure!(!token.is_cancelled(), "Operation cancelled");
                 let tool = project
                     .spec
                     .processes
@@ -227,9 +244,10 @@ impl AppCore {
                     vec!["install".into()]
                 };
                 self.supervisor
-                    .run_task(&project, tool, &args, operation)
+                    .run_task_with_parent(&project, tool, &args, operation, token)
                     .await?;
             }
+            anyhow::ensure!(!token.is_cancelled(), "Operation cancelled");
             Ok(())
         }
         .await;
@@ -246,10 +264,12 @@ impl AppCore {
         result
     }
     pub async fn forget(&self, id: &str) -> Result<()> {
+        let _activity = self.activity()?;
         self.supervisor.stop(id).await?;
         self.store.forget(id)
     }
     pub async fn attach_database(&self, id: &str, engine: DatabaseEngine) -> Result<Project> {
+        let _activity = self.activity()?;
         anyhow::ensure!(
             !self.supervisor.is_active(id).await,
             "Stop the project before changing databases"
@@ -265,14 +285,18 @@ impl AppCore {
         Ok(project)
     }
     pub async fn backup(&self, id: &str, operation: &str) -> Result<BackupInfo> {
+        let _activity = self.activities.begin(operation)?;
         let project = self.store.project(id)?;
         let was_running = self.supervisor.is_active(id).await;
         if was_running {
             self.supervisor.stop(id).await?;
         }
         let result = self.backups.create(&project, operation).await;
-        if was_running {
+        if was_running && !self.activities.closed() {
             if let Err(error) = self.start_project(id).await {
+                if self.activities.closed() {
+                    return result;
+                }
                 (self.sink)(event(
                     "error",
                     operation,
@@ -290,6 +314,7 @@ impl AppCore {
         destination: &Path,
         trusted: bool,
     ) -> Result<Project> {
+        let _activity = self.activity()?;
         let spec = self.backups.restore(archive, destination, trusted).await?;
         let marker = destination.join(".stackcabin-restore-id");
         if marker.exists() {
@@ -307,7 +332,7 @@ impl AppCore {
             std::fs::remove_file(marker)?;
             Ok(project)
         } else {
-            self.import(destination, spec, trusted)
+            self.import_inner(destination, spec, trusted)
         }
     }
     pub fn logs(&self, subject: Option<&str>) -> Vec<AppEvent> {
@@ -331,6 +356,7 @@ impl AppCore {
         ]
     }
     pub async fn open_project(&self, id: &str, target: &str) -> Result<()> {
+        let _activity = self.activity()?;
         let project = self.store.project(id)?;
         let root = dunce::canonicalize(&project.path)?;
         if target == "browser" || target == "loopback" {
@@ -403,7 +429,22 @@ impl AppCore {
         command.current_dir(root).spawn()?;
         Ok(())
     }
+    pub fn activity(&self) -> Result<operations::Operation> {
+        self.activities.enter()
+    }
+    pub fn begin_shutdown(&self) {
+        self.activities.close();
+        self.runtimes.begin_shutdown();
+        self.supervisor.cancel_tasks();
+    }
     pub async fn shutdown(&self) {
+        self.begin_shutdown();
+        let _shutdown = self.shutdown_lock.lock().await;
+        tokio::join!(
+            self.activities.wait_idle(),
+            self.runtimes.wait_idle(),
+            self.supervisor.wait_tasks()
+        );
         for status in self.supervisor.statuses().await {
             let _ = self.supervisor.stop(&status.project_id).await;
         }
@@ -413,6 +454,7 @@ impl AppCore {
         self.supervisor.shutdown().await;
     }
     pub async fn cancel(&self, id: &str) {
+        self.activities.cancel(id);
         self.runtimes.cancel(id).await;
         self.supervisor.cancel(id).await;
     }
