@@ -8,6 +8,15 @@ Required machines are Windows 10 22H2 x64, Windows 11 x64, macOS 14 Intel and
 Apple Silicon, and Ubuntu Desktop 22.04/24.04 x64. Rosetta checks supplement a
 native Intel VM; they do not replace it.
 
+Current normal preview installers from source `483ee55` are available in
+[run 40812811594](https://github.com/Sakeerin/StackCabin/actions/runs/40812811594)
+for Windows x64, Ubuntu x64 and macOS ARM/Intel. Download the matching
+`development-installers-*` artifact and verify `SHA256SUMS.txt`; retention is
+seven days. The Ubuntu 22.04 deb and AppImage also passed
+[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/40813563458).
+These are normal builds without E2E instrumentation and retain the signed
+development catalog. Existing macOS 14 evidence is from earlier installer builds.
+
 ## Windows runtime test kit
 
 The manual **Build the Windows VM acceptance tool** workflow packages the existing

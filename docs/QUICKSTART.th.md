@@ -5,8 +5,14 @@
 
 ## ติดตั้งบน Windows
 
+ดาวน์โหลดแพ็กเกจวันที่ 29 ตุลาคม 2026 จาก
+[GitHub Actions run นี้](https://github.com/Sakeerin/StackCabin/actions/runs/40812811594)
+เลือก Artifact `development-installers-windows-latest` แล้วแตก ZIP และตรวจไฟล์
+ตาม `SHA256SUMS.txt` ไฟล์ติดตั้งอยู่ในโฟลเดอร์ `nsis/` ส่วนแพ็กเกจจากการ build เอง
+อยู่ใน `target/release/bundle/nsis/` Artifact เก็บไว้ 7 วัน
+
 แบบออนไลน์: เปิด `StackCabin_0.1.0_x64-setup.exe` ใน
-`target/release/bundle/nsis/` แล้วติดตั้ง runtime ที่ต้องการจากหน้า Runtimes
+โฟลเดอร์แพ็กเกจที่เลือก แล้วติดตั้ง runtime ที่ต้องการจากหน้า Runtimes
 ตัวติดตั้งรวม Visual C++ x64 ที่ตรึงเวอร์ชันและตรวจลายเซ็น Microsoft ไว้แล้ว
 หากต้องติดตั้งหรืออัปเดตส่วนนี้ Windows อาจขอสิทธิ์ผู้ดูแลระบบ ส่วน WebView2
 จะดาวน์โหลดเมื่อเครื่องยังไม่มี
@@ -34,8 +40,9 @@ chmod +x StackCabin_*.AppImage
 APPIMAGE_EXTRACT_AND_RUN=1 ./StackCabin_*.AppImage
 ```
 
-macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel โดยผ่านการเปิดแอปบน macOS 14
-ทั้ง ARM และ x64 ผ่าน Rosetta แล้ว ดูขอบเขตใน [รายงานสถานะ](IMPLEMENTATION_STATUS.md)
+macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 29 ตุลาคมผ่านการเปิดแอป
+บน macOS 15 ทั้งสองสถาปัตยกรรม ผลทดสอบ macOS 14 ของแพ็กเกจรุ่นก่อนหน้ารวมไว้ใน
+[รายงานสถานะ](IMPLEMENTATION_STATUS.md)
 Node.js และเว็บ Static ใช้ catalog ปัจจุบันได้
 ส่วน PHP/ฐานข้อมูลบน Unix จะเพิ่มเข้า catalog หลังแพ็กเกจผ่านการตรวจและมีแหล่งดาวน์โหลดจริง
 
