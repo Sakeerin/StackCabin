@@ -138,6 +138,12 @@ same-schema preview 0.1.0 → unpublished 0.1.1 replacement checks with real pro
 runtime, credential, database and backup data. It complements the supported-release
 and clean-desktop upgrade checks below.
 
+The core owner-crash regression launches two real process trees and an unrelated
+HTTP process, kills only their supervisor host, and checks descendant process
+exit, closed ports and the unrelated server's continued health. It runs with the
+core tests on every CI target. Record actual desktop crash and tray/Quit behavior
+on each VM as required below.
+
 1. Start from a clean snapshot without development runtimes. Test installation
    online, then repeat from a fresh snapshot with the complete offline payload
    while disconnected. Record prerequisite prompts and reboot requests.

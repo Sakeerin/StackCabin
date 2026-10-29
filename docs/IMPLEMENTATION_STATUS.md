@@ -36,7 +36,7 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Production frontend        | TypeScript and Vite build                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Frontend tests             | 5 tests: preview honesty, templates/trust, Thai/theme, process state and sizes                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Rust core                  | 24 passed on Windows; 2 ignored tests are launched child-process fixtures                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Rust core                  | 25 passed on Windows; 3 ignored tests are launched child-process fixtures                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Core edge cases            | Corrupted archives, traversal, signed catalog tampering, interrupted installation, Unicode registration, future schema, port conflicts, secret-free SQLite backup/restore and concurrent destination reservation                                                                                                                                                                                                                                                                                                                    |
 | Native lifecycle           | Real HTTP grandchild, stop of its process tree, and cleanup after its parent exits unexpectedly                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Native Desktop E2E         | 4 cases against real Rust IPC/SQLite; screenshot `stackcabin-desktop.png`                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -185,7 +185,7 @@ after 404/410. The existing signed catalog, selected versions and SHA-256 remain
 unchanged; other hosts, credentials, query-bearing URLs and HTTPS downgrades are
 not substituted. Actual downloads of both pinned archives matched their hashes,
 and fresh online installation plus PHP 8.4/8.5 HTTP through Caddy passed on Windows.
-The current Rust suite passes 24 tests (two process-fixture entry points are
+The current Rust suite passes 25 tests (three process-fixture entry points are
 ignored when run directly), and all ten JavaScript catalog regressions pass.
 
 An online macOS smoke observed a truncated Node.js response after a long stalled
@@ -211,6 +211,17 @@ loopback clients with finite timeouts and no redirect following. An isolated
 child-process regression passed with an unreachable machine proxy and an
 unreachable redirect target. Real Windows offline acceptance also passed with
 that proxy while all five projects and both database restores ran.
+
+A new real-process owner-crash regression passes locally on Windows. It starts
+two independent owned launcher/HTTP-worker trees in a Thai/spaced workspace and
+an unrelated HTTP process. The test kills only the owner host, bypassing its Rust
+destructors and shutdown handlers, then observes all four descendants exit and
+both ports close within eight seconds. The unrelated process's original child
+handle and HTTP response remain healthy. Windows observations hold process
+handles; Unix observations distinguish exited zombies from executing processes.
+Every fixture has a bounded lifetime and temporary data is cleaned. This extends
+the core suite automatically on every CI target; full desktop tray/Quit and
+clean-VM crash acceptance remain in the VM checklist.
 
 The native Desktop language test dispatches a DOM change event because the
 embedded driver does not implement native option selection. The resulting UI

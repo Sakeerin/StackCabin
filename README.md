@@ -132,8 +132,13 @@ npm run desktop:test:build
 npm run test:desktop
 ```
 
-The ignored `http_worker` and `http_parent` Rust tests are child-process fixtures
-launched by lifecycle tests, not omitted acceptance tests. Desktop WebDriver is compiled
+The ignored `http_worker`, `http_parent`, and `lifecycle_fixture` Rust tests are
+child-process fixtures launched by lifecycle tests. The owner-crash test starts
+two independent process trees and a separate HTTP server, kills only their
+supervisor host, then checks actual process exit, closed ports and the separate
+server's continued health. Run it alone with
+`cargo test -p stackcabin-core --test owner_lifecycle`.
+Desktop WebDriver is compiled
 only with the `e2e` feature and is absent from normal application builds.
 
 Real runtime acceptance tests use an explicit disposable workspace:
