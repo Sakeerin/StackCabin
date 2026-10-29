@@ -134,7 +134,7 @@ not certify a clean desktop, offline system prerequisites or upgrades.
 ## Desktop checks on every target
 
 The [packaged preservation workflow](UPGRADE_ACCEPTANCE.md) provides automated
-same-schema QA 0.1.0 → unpublished 0.1.1 replacement checks with real project,
+same-schema preview 0.1.0 → unpublished 0.1.1 replacement checks with real project,
 runtime, credential, database and backup data. It complements the supported-release
 and clean-desktop upgrade checks below.
 
@@ -158,7 +158,9 @@ and clean-desktop upgrade checks below.
 7. Back up and restore source plus each database into a new project. Check secret
    exclusions, original project preservation, Thai/spaced paths and restored data.
 8. Upgrade from the previous supported installer while retaining actual project
-   data, selected runtimes, settings and backups. Record the source/target versions.
+   data, selected runtimes, settings and backups. Exercise both the OS default
+   data location without `STACKCABIN_DATA_DIR` and an explicit Thai/spaced custom
+   directory. Record the actual data paths and source/target versions.
 
 Keep failed checks open. Production signing, notarization, runtime hosting and
 the corresponding-source/license review remain separate release requirements.

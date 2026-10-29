@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **28 October 2026**.
+Development version: **0.1.0**, checked on **29 October 2026**.
 This is a working development preview. It has not passed the plan's simultaneous
 Windows/macOS/Ubuntu production acceptance gate.
 
@@ -36,18 +36,18 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Production frontend        | TypeScript and Vite build                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Frontend tests             | 5 tests: preview honesty, templates/trust, Thai/theme, process state and sizes                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Rust core                  | 18 passed on Windows; 2 ignored tests are launched child-process fixtures                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Rust core                  | 24 passed on Windows; 2 ignored tests are launched child-process fixtures                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Core edge cases            | Corrupted archives, traversal, signed catalog tampering, interrupted installation, Unicode registration, future schema, port conflicts, secret-free SQLite backup/restore and concurrent destination reservation                                                                                                                                                                                                                                                                                                                    |
 | Native lifecycle           | Real HTTP grandchild, stop of its process tree, and cleanup after its parent exits unexpectedly                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Native Desktop E2E         | 4 cases against real Rust IPC/SQLite; screenshot `stackcabin-desktop.png`                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Cross-platform CI          | [Run 40648032061](https://github.com/Sakeerin/StackCabin/actions/runs/40648032061): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and managed toolchains, including the unreachable-proxy regression                                                                                                                                                                                                                                                             |
+| Cross-platform CI          | [Run 40678439282](https://github.com/Sakeerin/StackCabin/actions/runs/40678439282): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and managed toolchains, including the unreachable-proxy regression                                                                                                                                                                                                                                                             |
 | Normal Windows package     | [Run 40056742523](https://github.com/Sakeerin/StackCabin/actions/runs/40056742523): release NSIS includes the loopback/proxy fix and pinned Microsoft prerequisite; normal application startup initializes isolated SQLite without E2E plugins                                                                                                                                                                                                                                                                                      |
 | Installed preview packages | [Run 40047451505](https://github.com/Sakeerin/StackCabin/actions/runs/40047451505): Windows NSIS, Ubuntu 22.04 deb, and macOS ARM/Intel DMGs built successfully; normal application startup used isolated SQLite metadata. macOS bundle checks reject external non-system library paths and unsupported minimum OS versions                                                                                                                                                                                                         |
 | Windows prerequisites      | The NSIS installer embeds pinned Microsoft Visual C++ 14.51.36247 x64, verifies SHA-256/Authenticode/version, detects existing runtime versions, and elevates only Microsoft's installer when needed. Four read-only integrity tests passed. [Installed-package verification](https://github.com/Sakeerin/StackCabin/actions/runs/40048115886) confirmed the required version and application startup in a Thai/spaced installation path; that runner already had 14.51, so missing-runtime/UAC acceptance remains a clean-VM check |
 | macOS 14 installers        | Fixed the Intel bundle's external Homebrew liblzma dependency by linking xz statically. DMG mount/copy, strict binary dependency/minimum-OS checks and actual application startup passed for [ARM](https://github.com/Sakeerin/StackCabin/actions/runs/40048119819) and [x64 via Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/40048533899)                                                                                                                                                                          |
 | Ubuntu 24.04 installers    | [Run 40048741905](https://github.com/Sakeerin/StackCabin/actions/runs/40048741905): the same Ubuntu 22.04 deb and AppImage passed complete distributed-installer checksums and real application startup on Ubuntu 24.04; AppImage used extract-and-run without FUSE                                                                                                                                                                                                                                                                 |
 | Actual disk exhaustion     | [Ubuntu 24.04 acceptance](https://github.com/Sakeerin/StackCabin/actions/runs/39960665443): dedicated 32 MiB tmpfs produced ENOSPC during installation; no installed receipt or executable resolution, staging cleaned, same archive installed after freeing owned space                                                                                                                                                                                                                                                            |
-| Packaging verification     | 29 cross-platform Python checks cover explicit HTTPS mirror recovery, checksum/HTTPS-downgrade failures, traversal, FastCGI fragmentation, macOS library baseline rejection and complete installer checksum verification. Seven JavaScript stack checks reject incorrect source/architecture/identity, corrupt or truncated archives, duplicates and unsupported macOS requirements                                                                                                                                                 |
+| Packaging verification     | 31 cross-platform Python checks cover explicit HTTPS mirror recovery, checksum/HTTPS-downgrade failures, traversal, FastCGI fragmentation, macOS library baseline rejection and complete installer checksum verification. Seven JavaScript stack checks reject incorrect source/architecture/identity, corrupt or truncated archives, duplicates and unsupported macOS requirements                                                                                                                                                 |
 | Framework acceptance       | Express, Vue, React, Nest, Next and Laravel dependency installation and actual HTTP; Laravel runs PHP and Vite together                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Browser HMR on Windows     | Actual React/Vue/Next browsers updated after source edits through Caddy while preserving a clicked counter. React/Vue WebSocket probes received HTTP 101 and module updates. React's starter now exports `App.jsx` to support Fast Refresh; screenshots `hmr-react.png` / `hmr-next.png`                                                                                                                                                                                                                                            |
 | Real databases             | MariaDB/PostgreSQL provision, insert/select, dump, new-identity restore and select; SQLite consistent snapshot/restore                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -133,9 +133,11 @@ database bindings and 78 file hashes, plus the packaged process's open metadata
 handle for both versions. All 28 Python helper tests passed on these Unix runners.
 
 The shared packaged-application startup helper now also verifies actual Windows
-metadata file use through Restart Manager. Its 29 helper regressions pass on
+metadata file use through Restart Manager. Its 31 helper regressions pass on
 Windows and Ubuntu WSL, including real SQLite open/close, wrong-file and wrong-PID
-checks. Seven Windows wrapper tests include refusal to run upgrade installers on
+checks, plus real default-path selection despite an inherited override. Two Rust
+manifest checks cover the default and custom physical layouts. Seven Windows
+wrapper tests include refusal to run upgrade installers on
 local or self-hosted machines, and the fixtures clean themselves after testing.
 The additional check verifies restricted-token identity and actual literal
 Unicode/empty/quoted argument round-tripping through a real Windows child process.
@@ -153,8 +155,23 @@ access in the new token's default ACL while disabling administrator membership.
 An early real Python child confirms non-administrative membership and literal
 Unicode/empty/quoted arguments before installer compilation. This is scoped to the
 CI helper, with the same user SID/credential identity; the product's process
-supervisor is unchanged. Hosted success does not certify a clean VM or the default
-data path. See [upgrade acceptance](UPGRADE_ACCEPTANCE.md).
+supervisor is unchanged. Hosted success does not certify a clean VM.
+
+Default OS application-data preservation now also passes without
+`STACKCABIN_DATA_DIR`: [normal Windows NSIS](https://github.com/Sakeerin/StackCabin/actions/runs/40668451630/job/122748871893),
+[Ubuntu 22.04 QA deb](https://github.com/Sakeerin/StackCabin/actions/runs/40668991214/job/122750675963),
+[macOS 14 ARM QA DMG](https://github.com/Sakeerin/StackCabin/actions/runs/40668991214/job/122750676266),
+[native macOS 15 Intel QA DMG](https://github.com/Sakeerin/StackCabin/actions/runs/40668991214/job/122750676400)
+and [macOS 15 ARM QA DMG](https://github.com/Sakeerin/StackCabin/actions/runs/40670379025/job/122755339817).
+Every target retained ten projects, five existing database bindings, eleven tools,
+78 hashes and exact settings; both installed versions held the original metadata
+file open and the core verified existing SQL rows and live HTTP/runtime versions.
+The default folder is physical; only the fixture workspace links to it for the
+native probe. Windows custom-path acceptance also passed independently on a
+separate runner. All new installer modes reject local and self-hosted execution.
+The upgrade workflow keeps a current Apple Silicon runner available while
+retaining an explicit macOS 14 baseline option; that hosted image retires on
+2 November 2026. See [upgrade acceptance](UPGRADE_ACCEPTANCE.md) for scope and evidence.
 
 Local Windows acceptance on 28 October retained all ten projects, five database
 bindings, eleven runtimes and 78 file hashes after the normal desktop executable
@@ -168,8 +185,26 @@ after 404/410. The existing signed catalog, selected versions and SHA-256 remain
 unchanged; other hosts, credentials, query-bearing URLs and HTTPS downgrades are
 not substituted. Actual downloads of both pinned archives matched their hashes,
 and fresh online installation plus PHP 8.4/8.5 HTTP through Caddy passed on Windows.
-The current local Rust suite passes 18 tests (two process-fixture entry points are
+The current Rust suite passes 24 tests (two process-fixture entry points are
 ignored when run directly), and all ten JavaScript catalog regressions pass.
+
+An online macOS smoke observed a truncated Node.js response after a long stalled
+transfer. Runtime downloads now use a 30-second connection timeout, a 60-second
+read timeout and up to three attempts for interrupted transports, with short
+cancellable backoff and a shared thirty-minute total budget. Each retry starts
+from fresh partial bytes; HTTP status errors, disk errors and checksum failures
+do not trigger transfer retries. Exhaustion and cancellation remove partial data.
+HTTPS, the signed catalog, selected versions and final SHA-256 checks are unchanged.
+Five real local TCP regressions cover truncated streams, exhausted retries,
+non-retried HTTP 404, stalled-body recovery and cancellation cleanup. Actual online
+installation, npm/pnpm/Yarn and concurrent Node 22/24 HTTP passed on
+[current Apple Silicon](https://github.com/Sakeerin/StackCabin/actions/runs/40678440459).
+Retries for official Node.js distribution URLs may use the same publisher's
+`/download/release/` alias with the exact version/filename after a transport
+interruption. A real 53 MB ARM archive from that alias matched the original signed
+SHA-256; a separate URL regression rejects other origins, credentials, queries,
+version mismatches and path traversal. No catalog was changed or re-signed.
+The native acceptance log now identifies download, retry and extraction phases.
 
 Internal health checks, Caddy reloads and routed readiness now use direct
 loopback clients with finite timeouts and no redirect following. An isolated

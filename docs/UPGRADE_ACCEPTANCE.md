@@ -149,12 +149,36 @@ tools and 78 file hashes; Thai, dark theme and proxy port 18080 also remain inta
 The real core read every original/restored database and verified all ten projects'
 HTTP/runtime versions after replacement.
 
+[Run 40668451630](https://github.com/Sakeerin/StackCabin/actions/runs/40668451630)
+then passed both default and custom data locations on separate Windows runners.
+Both installed versions used the real roaming data directory in default mode,
+without `STACKCABIN_DATA_DIR`. Each mode retained the same ten-project,
+five-database, eleven-tool and 78-hash fixture, including all existing SQL rows,
+runtime versions and exact settings.
+
+## OS default data verification
+
+Default-path 0.1.0 → unpublished 0.1.1 checks on 28 October 2026:
+
+| Target           | Installed application | Evidence                                                                                                                   |
+| ---------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Windows x64      | Normal NSIS           | [Physical roaming data directory](https://github.com/Sakeerin/StackCabin/actions/runs/40668451630/job/122748871893)        |
+| Ubuntu 22.04 x64 | QA deb                | [Physical home data directory](https://github.com/Sakeerin/StackCabin/actions/runs/40668991214/job/122750675963)           |
+| macOS 14 ARM     | QA DMG                | [Physical Application Support directory](https://github.com/Sakeerin/StackCabin/actions/runs/40668991214/job/122750676266) |
+| macOS 15 ARM     | QA DMG                | [Current Apple Silicon runner](https://github.com/Sakeerin/StackCabin/actions/runs/40670379025/job/122755339817)           |
+| macOS 15 Intel   | QA DMG                | [Native Intel default directory](https://github.com/Sakeerin/StackCabin/actions/runs/40668991214/job/122750676400)         |
+
+Each passing target opens the same physical default metadata file in both
+installed versions without an override. The real core verifies ten projects,
+five database bindings, eleven tools, 78 hashes and exact Thai/dark/proxy settings
+before and after replacement. The packaged process's actual metadata handle is
+checked independently of the core probe.
+
 ## Limits
 
 This establishes same-schema preview replacement on hosted developer machines.
 It does not establish migration from a supported public release, upgrade across
-metadata schema versions, preservation at the default OS app-data location,
-AppImage replacement,
+metadata schema versions, AppImage replacement,
 native macOS 14 Intel acceptance, or clean-machine certification. Repeat the
 [VM checklist](VM_ACCEPTANCE.md) with actual signed supported release versions
 before certifying an upgrade path. Runtime major-version migration remains an
