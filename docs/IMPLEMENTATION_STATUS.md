@@ -225,6 +225,20 @@ Every fixture has a bounded lifetime and temporary data is cleaned. This extends
 the core suite automatically on every CI target; full desktop tray/Quit and
 clean-VM crash acceptance remain in the VM checklist.
 
+Native desktop lifecycle acceptance now passes locally on Windows in three
+isolated real-application sessions: close-to-tray with continuing HTTP and
+restoration, close without tray, and abrupt application termination. Both normal
+exit paths receive repeated Quit while a test-only barrier holds shutdown open.
+The original WebView remains available until release; only one shutdown runs,
+the core completes service shutdown before exit is allowed, the owned port closes,
+and an unrelated HTTP server stays healthy in all three sessions. This fixes an
+earlier boolean guard that allowed a second Quit to bypass pending cleanup. Native
+close requests now preserve the final window until cleanup completes. Two desktop
+Rust regressions cover sequential and concurrent exit requests. The standalone
+probe, fixture and barrier are E2E-only; normal builds retain no test command.
+CI runs the probe on every desktop target and uploads its JSON evidence. Actual
+OS tray-menu pointer clicks and clean-VM acceptance remain separate checks.
+
 The native Desktop language test dispatches a DOM change event because the
 embedded driver does not implement native option selection. The resulting UI
 update and persistence still use the real application and database.

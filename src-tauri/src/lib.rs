@@ -1,12 +1,10 @@
 use stackcabin_core::{models::*, AppCore};
-use std::{
-    path::PathBuf,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use std::{path::PathBuf, sync::Arc};
 use tauri::{Emitter, Manager};
+mod lifecycle;
+#[cfg(feature = "e2e")]
+pub mod lifecycle_e2e;
+use lifecycle::{ExitDecision, Lifecycle};
 type Core<'a> = tauri::State<'a, Arc<AppCore>>;
 fn message(error: anyhow::Error) -> String {
     format!("{error:#}")
@@ -195,6 +193,27 @@ fn data_open(core: Core<'_>) -> Result<(), String> {
     stackcabin_core::open_external(&core.store.root.to_string_lossy()).map_err(message)
 }
 
+fn show_main(app: &tauri::AppHandle) {
+    if app
+        .try_state::<Lifecycle>()
+        .is_some_and(|state| state.running())
+    {
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.show();
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        }
+    }
+}
+
+fn tray_action(app: &tauri::AppHandle, action: &str) {
+    match action {
+        "show" => show_main(app),
+        "quit" => app.exit(0),
+        _ => {}
+    }
+}
+
 pub fn run() {
     let builder = tauri::Builder::default();
     #[cfg(feature = "e2e")]
@@ -203,10 +222,7 @@ pub fn run() {
         .plugin(tauri_plugin_wdio::init());
     builder
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+            show_main(app);
         }))
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
@@ -227,7 +243,9 @@ pub fn run() {
                 }),
             )?);
             app.manage(core);
-            app.manage(Arc::new(AtomicBool::new(false)));
+            app.manage(Lifecycle::default());
+            #[cfg(feature = "e2e")]
+            lifecycle_e2e::setup(app.handle());
             use tauri::{
                 menu::{Menu, MenuItem},
                 tray::{TrayIconBuilder, TrayIconEvent},
@@ -241,22 +259,10 @@ pub fn run() {
                 .tooltip("StackCabin · Your local workspace")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "show" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
-                    }
-                    "quit" => app.exit(0),
-                    _ => {}
-                })
+                .on_menu_event(|app, event| tray_action(app, event.id.as_ref()))
                 .on_tray_icon_event(|tray, event| {
                     if matches!(event, TrayIconEvent::DoubleClick { .. }) {
-                        if let Some(window) = tray.app_handle().get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
+                        show_main(tray.app_handle());
                     }
                 })
                 .build(app)?;
@@ -264,6 +270,9 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // Keep the WebView alive while asynchronous shutdown is running.
+                // Only the completed shutdown may destroy the final window.
+                api.prevent_close();
                 let core = window.state::<Arc<AppCore>>();
                 if core
                     .store
@@ -271,7 +280,6 @@ pub fn run() {
                     .map(|s| s.close_to_tray)
                     .unwrap_or(true)
                 {
-                    api.prevent_close();
                     let _ = window.hide();
                 } else {
                     window.app_handle().exit(0);
@@ -302,21 +310,41 @@ pub fn run() {
             settings_save,
             doctor,
             logs,
-            data_open
+            data_open,
+            #[cfg(feature = "e2e")]
+            lifecycle_e2e::lifecycle_test
         ])
         .build(tauri::generate_context!())
         .expect("Could not initialize StackCabin")
         .run(|app, event| {
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
-                let quitting = app.state::<Arc<AtomicBool>>();
-                if !quitting.swap(true, Ordering::SeqCst) {
-                    api.prevent_exit();
-                    let handle = app.clone();
-                    let core = app.state::<Arc<AppCore>>().inner().clone();
-                    tauri::async_runtime::spawn(async move {
-                        core.shutdown().await;
-                        handle.exit(0);
-                    });
+                match app.state::<Lifecycle>().request_exit() {
+                    ExitDecision::Exit => {
+                        #[cfg(feature = "e2e")]
+                        lifecycle_e2e::record(app, "exit_allowed");
+                    }
+                    ExitDecision::Wait => {
+                        api.prevent_exit();
+                        #[cfg(feature = "e2e")]
+                        lifecycle_e2e::record(app, "exit_waiting");
+                    }
+                    ExitDecision::BeginShutdown => {
+                        api.prevent_exit();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.set_enabled(false);
+                        }
+                        let handle = app.clone();
+                        let core = app.state::<Arc<AppCore>>().inner().clone();
+                        tauri::async_runtime::spawn(async move {
+                            #[cfg(feature = "e2e")]
+                            lifecycle_e2e::before_shutdown(&handle).await;
+                            core.shutdown().await;
+                            #[cfg(feature = "e2e")]
+                            lifecycle_e2e::record(&handle, "shutdown_complete");
+                            handle.state::<Lifecycle>().complete();
+                            handle.exit(0);
+                        });
+                    }
                 }
             }
         });

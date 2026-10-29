@@ -144,6 +144,14 @@ exit, closed ports and the unrelated server's continued health. It runs with the
 core tests on every CI target. Record actual desktop crash and tray/Quit behavior
 on each VM as required below.
 
+After building with the explicit E2E feature, `npm run test:lifecycle` exercises
+the actual application's native window-close events, shared Tray Open/Quit
+handlers, repeated Quit while shutdown is pending, and abrupt app termination.
+It verifies an owned HTTP service stops while an unrelated server stays healthy,
+and records shutdown completion before normal exit. The deterministic shutdown
+barrier and fixed loopback child fixture are absent from normal builds. This
+automation does not click the OS tray menu; include that interaction on each VM.
+
 1. Start from a clean snapshot without development runtimes. Test installation
    online, then repeat from a fresh snapshot with the complete offline payload
    while disconnected. Record prerequisite prompts and reboot requests.

@@ -130,6 +130,7 @@ cargo test -p stackcabin-core
 npm run types
 npm run desktop:test:build
 npm run test:desktop
+npm run test:lifecycle    # Native close/tray/Quit/crash checks after the E2E build
 ```
 
 The ignored `http_worker`, `http_parent`, and `lifecycle_fixture` Rust tests are
@@ -140,6 +141,15 @@ server's continued health. Run it alone with
 `cargo test -p stackcabin-core --test owner_lifecycle`.
 Desktop WebDriver is compiled
 only with the `e2e` feature and is absent from normal application builds.
+
+The lifecycle probe opens three isolated application sessions. It checks native
+close-to-tray and restore, close without tray, repeated Quit during pending
+shutdown, and abrupt application termination while an owned HTTP service runs.
+An unrelated server must remain healthy. Test commands, the shutdown barrier and
+the bounded HTTP fixture exist only with the `e2e` feature. JSON evidence is saved
+under `artifacts/desktop-lifecycle-*.json`; each temporary workspace is removed.
+Actual tray-menu pointer interaction and clean-machine checks remain in the
+[VM checklist](docs/VM_ACCEPTANCE.md).
 
 Real runtime acceptance tests use an explicit disposable workspace:
 
