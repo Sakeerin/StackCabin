@@ -233,6 +233,9 @@ impl RuntimeManager {
             install_lock: Default::default(),
         }
     }
+    pub fn is_installed(&self, artifact: &RuntimeArtifact) -> bool {
+        self.receipt_valid(artifact, &self.root.join("runtimes").join(&artifact.id))
+    }
     pub fn list(&self) -> Vec<RuntimeInfo> {
         self.catalog
             .artifacts

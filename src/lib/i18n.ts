@@ -112,6 +112,30 @@ const en = {
   configuration: "Configuration",
   dependencies: "Install dependencies",
   setupRuntime: "Set up runtimes",
+  reviewSetup: "Review project setup",
+  reviewLoading: "Reading the project setup…",
+  reviewNative: "Open the desktop app to inspect this setup.",
+  reviewHelp:
+    "Review before trusting or installing. No scripts run during this check.",
+  reviewDownload: "To download",
+  reviewUnavailable: "Unavailable",
+  reviewMissing:
+    "Some packages are unavailable for this platform. Runtime setup cannot start until all are available.",
+  reviewDependencies: "Dependency commands",
+  reviewNoDependencies: "No dependency command is needed.",
+  reviewProcesses: "Project processes",
+  reviewDirectory: "Working directory",
+  reviewGeneratedLock:
+    "If the generated project has package.json and package-lock.json.",
+  reviewGeneratedNoLock:
+    "If the generated project has package.json without package-lock.json.",
+  reviewLaravel:
+    "${LARAVEL_DESTINATION} is a temporary folder. Generated files are then moved into your project.",
+  reviewStatic: "Serve static files with Caddy",
+  reviewPhp: "Run managed PHP FastCGI",
+  reviewContinue: "Continue",
+  reviewInstallFirst:
+    "Set up the required runtimes first, then return to install dependencies.",
   backup: "Create backup",
   forget: "Remove from cabin",
   forgetHelp:
@@ -248,6 +272,29 @@ const th: Record<Key, string> = {
   configuration: "การตั้งค่า",
   dependencies: "ติดตั้ง Dependencies",
   setupRuntime: "ติดตั้งรันไทม์ที่ต้องใช้",
+  reviewSetup: "ตรวจสอบการตั้งค่าโปรเจกต์",
+  reviewLoading: "กำลังอ่านการตั้งค่าโปรเจกต์…",
+  reviewNative: "เปิดแอป Desktop เพื่อตรวจสอบการตั้งค่านี้",
+  reviewHelp: "ตรวจสอบก่อนให้ความเชื่อถือหรือติดตั้ง ขั้นตอนนี้จะไม่รันสคริปต์",
+  reviewDownload: "ต้องดาวน์โหลด",
+  reviewUnavailable: "ยังไม่มีแพ็กเกจ",
+  reviewMissing:
+    "ยังไม่มีแพ็กเกจบางตัวสำหรับระบบนี้ ต้องมีแพ็กเกจครบก่อนเริ่มติดตั้งรันไทม์",
+  reviewDependencies: "คำสั่งติดตั้ง Dependencies",
+  reviewNoDependencies: "ไม่ต้องรันคำสั่งติดตั้ง Dependencies",
+  reviewProcesses: "โปรเซสของโปรเจกต์",
+  reviewDirectory: "โฟลเดอร์ที่รันคำสั่ง",
+  reviewGeneratedLock:
+    "เมื่อโปรเจกต์ที่สร้างมี package.json และ package-lock.json",
+  reviewGeneratedNoLock:
+    "เมื่อโปรเจกต์ที่สร้างมี package.json โดยไม่มี package-lock.json",
+  reviewLaravel:
+    "${LARAVEL_DESTINATION} คือโฟลเดอร์ชั่วคราว ไฟล์ที่สร้างเสร็จจะถูกย้ายเข้าโปรเจกต์",
+  reviewStatic: "เปิดเว็บ Static ด้วย Caddy",
+  reviewPhp: "รัน PHP FastCGI ที่แอปจัดการให้",
+  reviewContinue: "ดำเนินการต่อ",
+  reviewInstallFirst:
+    "ติดตั้งรันไทม์ที่ต้องใช้ก่อน แล้วกลับมาติดตั้ง Dependencies",
   backup: "สำรองข้อมูล",
   forget: "นำออกจากรายการ",
   forgetHelp: "นำโปรเจกต์ออกจากรายการหรือไม่? ไฟล์ต้นฉบับและฐานข้อมูลจะยังอยู่",

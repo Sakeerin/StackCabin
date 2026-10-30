@@ -1546,6 +1546,7 @@ select {
   width: 610px;
   max-width: calc(100vw - 40px);
   max-height: calc(100vh - 50px);
+  overflow-y: auto;
   background: var(--surface);
   color: var(--ink);
   box-shadow: 0 25px 90px #061f2340;
@@ -1667,6 +1668,51 @@ select {
   color: var(--muted);
   margin-top: 5px;
   word-break: break-word;
+}
+
+.setup-review {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.setup-review h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.setup-review h4 {
+  margin: 16px 0 8px;
+  font-size: 11px;
+}
+.review-runtimes {
+  padding: 0;
+  list-style: none;
+}
+.review-runtimes li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: 11px;
+}
+.review-commands {
+  padding-left: 18px;
+  font-size: 11px;
+}
+.review-commands li {
+  margin: 10px 0;
+}
+.review-commands code,
+.review-commands small {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.review-commands small {
+  color: var(--muted);
+  margin-top: 4px;
 }
 .toast {
   position: fixed;

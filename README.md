@@ -129,6 +129,19 @@ an integrity manifest, notices, and `Install.cmd`. It prepares files without
 installing software on the build machine. Run `Install.cmd` on the target computer,
 then select the bundle folder in StackCabin's offline runtime picker.
 
+## Review project setup
+
+Creating or importing a project shows its selected runtime versions, dependency
+commands and processes before you grant trust. The same review is available in
+Configuration and before runtime/dependency installation. Inspection does not
+execute project scripts or install tools. Trust defaults to off; cancelling a
+review keeps the project and installed runtimes unchanged.
+
+Runtime setup checks the complete package list before downloading anything.
+Unavailable platform packages are shown explicitly. Laravel's review explains
+its temporary generation folder and the conditional npm command chosen from the
+generated lockfile. Dependency preparation waits for explicit trust to be saved.
+
 ## Tests
 
 ```sh

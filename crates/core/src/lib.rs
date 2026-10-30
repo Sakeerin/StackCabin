@@ -2,6 +2,7 @@ pub mod backup;
 pub mod database;
 pub mod models;
 pub mod operations;
+pub mod planning;
 pub mod process;
 pub mod project;
 pub mod runtime;
@@ -113,6 +114,103 @@ impl AppCore {
             &serde_json::to_vec_pretty(&serde_json::json!({"schemaVersion":1,"runtimes":locks}))?,
         )
     }
+    pub fn project_plan(
+        &self,
+        path: Option<&Path>,
+        preset: Preset,
+        spec: Option<ProjectSpec>,
+    ) -> Result<ProjectPlan> {
+        let mut spec = spec.unwrap_or_else(|| project::default_spec("preview", preset));
+        project::validate_spec(&spec)?;
+        let path = path.map(dunce::canonicalize).transpose()?;
+        anyhow::ensure!(
+            path.as_ref().is_none_or(|root| root.is_dir()),
+            "Choose a project folder"
+        );
+        self.pin(&mut spec);
+        let commands = planning::commands(&spec, path.as_deref());
+        let mut selections = spec.runtimes.clone();
+        let tools: Vec<_> = spec
+            .processes
+            .iter()
+            .map(|p| p.tool.as_str())
+            .chain(commands.iter().map(|c| c.tool.as_str()))
+            .collect();
+        for (component, needed) in [
+            (
+                "php",
+                tools
+                    .iter()
+                    .any(|t| ["php-web", "php", "composer"].contains(t)),
+            ),
+            (
+                "node",
+                tools
+                    .iter()
+                    .any(|t| ["node", "npm", "pnpm", "yarn"].contains(t)),
+            ),
+        ] {
+            anyhow::ensure!(
+                !needed || selections.iter().any(|s| s.component == component),
+                "Select a {component} runtime before preparing this project"
+            );
+        }
+        selections.push(RuntimeSelection {
+            component: "caddy".into(),
+            version: String::new(),
+        });
+        if spec.runtimes.iter().any(|r| r.component == "php") {
+            for component in ["composer", "cacert"] {
+                selections.push(RuntimeSelection {
+                    component: component.into(),
+                    version: String::new(),
+                });
+            }
+        }
+        for tool in tools {
+            if ["pnpm", "yarn"].contains(&tool) {
+                selections.push(RuntimeSelection {
+                    component: tool.into(),
+                    version: String::new(),
+                });
+            }
+        }
+        if let Some(binding) = &spec.database {
+            if !matches!(binding.engine, DatabaseEngine::Sqlite) {
+                selections.push(RuntimeSelection {
+                    component: database::engine_id(&binding.engine).into(),
+                    version: String::new(),
+                });
+            }
+        }
+        let mut seen = std::collections::HashSet::new();
+        let requirements = selections
+            .into_iter()
+            .filter(|s| seen.insert(s.component.clone()))
+            .map(|selection| {
+                let artifact = self.runtimes.catalog.artifacts.iter().find(|a| {
+                    a.platform == runtime::PLATFORM
+                        && a.arch == runtime::ARCH
+                        && a.component == selection.component
+                        && (selection.version.is_empty()
+                            || a.version == selection.version
+                            || a.version.starts_with(&format!("{}.", selection.version)))
+                });
+                RuntimeRequirement {
+                    component: selection.component,
+                    version: artifact.map_or(selection.version, |a| a.version.clone()),
+                    artifact_id: artifact.map(|a| a.id.clone()),
+                    installed: artifact.is_some_and(|a| self.runtimes.is_installed(a)),
+                    download_bytes: artifact.map_or(0, |a| a.size),
+                }
+            })
+            .collect();
+        Ok(ProjectPlan {
+            requirements,
+            commands,
+            processes: spec.processes,
+        })
+    }
     pub fn import(&self, path: &Path, spec: ProjectSpec, trusted: bool) -> Result<Project> {
         let _activity = self.activity()?;
         self.import_inner(path, spec, trusted)
@@ -197,12 +295,7 @@ impl AppCore {
                     .prefix("laravel-")
                     .tempdir_in(self.store.root.join("staging"))?;
                 let generated = staging.path().join("project");
-                let args = vec![
-                    "create-project".into(),
-                    "laravel/laravel:^12.0".into(),
-                    generated.to_string_lossy().into(),
-                    "--no-interaction".into(),
-                ];
+                let args = planning::laravel_arguments(&generated.to_string_lossy());
                 self.supervisor
                     .run_task_with_parent(&project, "composer", &args, operation, token)
                     .await?;
@@ -223,7 +316,7 @@ impl AppCore {
                     .run_task_with_parent(
                         &project,
                         "composer",
-                        &["install".into(), "--no-interaction".into()],
+                        &planning::composer_arguments(),
                         operation,
                         token,
                     )
@@ -231,20 +324,10 @@ impl AppCore {
             }
             if root.join("package.json").exists() {
                 anyhow::ensure!(!token.is_cancelled(), "Operation cancelled");
-                let tool = project
-                    .spec
-                    .processes
-                    .iter()
-                    .find(|p| ["npm", "pnpm", "yarn"].contains(&p.tool.as_str()))
-                    .map(|p| p.tool.as_str())
-                    .unwrap_or("npm");
-                let args = if tool == "npm" && root.join("package-lock.json").exists() {
-                    vec!["ci".into()]
-                } else {
-                    vec!["install".into()]
-                };
+                let command =
+                    planning::node_command(&project.spec, root.join("package-lock.json").exists());
                 self.supervisor
-                    .run_task_with_parent(&project, tool, &args, operation, token)
+                    .run_task_with_parent(&project, &command.tool, &command.args, operation, token)
                     .await?;
             }
             anyhow::ensure!(!token.is_cancelled(), "Operation cancelled");

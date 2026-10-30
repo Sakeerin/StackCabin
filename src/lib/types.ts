@@ -13,6 +13,12 @@ export type ProjectSpec = { schemaVersion: number, name: string, preset: Preset,
 
 export type Project = { id: string, path: string, spec: ProjectSpec, trusted: boolean, createdAt: string, };
 
+export type PreparationCommand = { tool: string, args: Array<string>, condition: string | null, };
+
+export type RuntimeRequirement = { component: string, version: string, artifactId: string | null, installed: boolean, downloadBytes: number, };
+
+export type ProjectPlan = { requirements: Array<RuntimeRequirement>, commands: Array<PreparationCommand>, processes: Array<ProcessSpec>, };
+
 export type ProcessState = "stopped" | "starting" | "running" | "stopping" | "failed";
 
 export type ProcessInfo = { name: string, pid: number | null, state: ProcessState, port: number | null, url: string | null, error: string | null, };

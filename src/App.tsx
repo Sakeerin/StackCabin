@@ -72,6 +72,10 @@ import type {
   Snapshot,
 } from "./lib/types";
 import { translator, type T } from "./lib/i18n";
+import { SetupReview } from "./components/SetupReview";
+import { useProjectPlan } from "./lib/useProjectPlan";
+import { runtimeInstallations } from "./lib/project-plan";
+import type { ProjectPlan } from "./lib/types";
 
 type Page =
   "dashboard" | "projects" | "runtimes" | "services" | "backups" | "settings";
@@ -188,6 +192,10 @@ export default function App() {
   const [page, setPage] = useState<Page>("dashboard");
   const [selected, setSelected] = useState<string | null>(null);
   const [wizard, setWizard] = useState<Wizard>(null);
+  const [setupReview, setSetupReview] = useState<{
+    project: Project;
+    mode: "runtimes" | "dependencies";
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -290,41 +298,21 @@ export default function App() {
       await action(id);
     });
   }
-  async function setupRuntimes(project: Project) {
-    const requirements = [
-      ...project.spec.runtimes,
-      { component: "caddy", version: "" },
-    ];
-    if (["php", "laravel"].includes(project.spec.preset))
-      requirements.push(
-        { component: "composer", version: "" },
-        { component: "cacert", version: "" },
-      );
-    for (const process of project.spec.processes)
-      if (["pnpm", "yarn"].includes(process.tool))
-        requirements.push({ component: process.tool, version: "" });
-    for (const required of requirements) {
-      const runtime = snapshot.runtimes.find(
-        (r) =>
-          r.artifact.component === required.component &&
-          (!required.version ||
-            r.artifact.version === required.version ||
-            r.artifact.version.startsWith(`${required.version}.`)),
-      );
-      if (!runtime)
-        throw new Error(
-          `No verified ${required.component} ${required.version} package is available for ${snapshot.platform}/${snapshot.arch}. Add a tested source-built package to the signed catalog.`,
-        );
-      if (!runtime.installed) {
-        const id = crypto.randomUUID();
-        setTask({
-          id,
-          title: `${t("install")} ${names[required.component] || required.component} ${runtime.artifact.version}`,
-          progress: 0,
-          cancellable: true,
-        });
-        await api.install(runtime.artifact.id, id);
-      }
+  async function setupRuntimes(plan: ProjectPlan) {
+    // Validate the entire plan before the first installation can mutate disk.
+    const ids = runtimeInstallations(plan);
+    for (const artifactId of ids) {
+      const required = plan.requirements.find(
+        (r) => r.artifactId === artifactId,
+      )!;
+      const id = crypto.randomUUID();
+      setTask({
+        id,
+        title: `${t("install")} ${names[required.component] || required.component} ${required.version}`,
+        progress: 0,
+        cancellable: true,
+      });
+      await api.install(artifactId, id);
     }
   }
   async function saveSettings(settings: Settings) {
@@ -480,13 +468,9 @@ export default function App() {
               run={run}
               onStart={() => run(() => api.start(project.id), t("starting"))}
               onStop={() => run(() => api.stop(project.id), t("stopping"))}
-              onSetup={() => run(() => setupRuntimes(project))}
+              onSetup={() => setSetupReview({ project, mode: "runtimes" })}
               onPrepare={() =>
-                operation(
-                  t("dependencies"),
-                  (id) => api.prepare(project.id, id),
-                  true,
-                )
+                setSetupReview({ project, mode: "dependencies" })
               }
               onBackup={() =>
                 operation(t("backup"), (id) => api.backup(project.id, id))
@@ -832,6 +816,29 @@ export default function App() {
           )}
         </main>
       </div>
+      {setupReview && (
+        <ReviewSetupDialog
+          project={setupReview.project}
+          mode={setupReview.mode}
+          t={t}
+          onClose={() => setSetupReview(null)}
+          onProceed={(plan, trust) => {
+            const { project, mode } = setupReview;
+            setSetupReview(null);
+            if (mode === "runtimes") void run(() => setupRuntimes(plan));
+            else
+              void operation(
+                t("dependencies"),
+                async (id) => {
+                  if (!project.trusted && trust)
+                    await api.saveProject(project.id, project.spec, true);
+                  await api.prepare(project.id, id);
+                },
+                true,
+              );
+          }}
+        />
+      )}
       {wizard && (
         <ProjectWizard
           mode={wizard}
@@ -1397,6 +1404,24 @@ function ProjectDetail({
     JSON.stringify(project.spec.environment, null, 2),
   );
   const [engine, setEngine] = useState<DatabaseEngine>("sqlite");
+  let editedSpec: ProjectSpec | null = null;
+  try {
+    editedSpec = {
+      ...spec,
+      processes: JSON.parse(commands),
+      environment: JSON.parse(environment),
+    };
+  } catch {
+    /* The JSON editor reports invalid input on save. */
+  }
+  const configurationReview = useProjectPlan(
+    tab === "configuration" && editedSpec
+      ? { preset: editedSpec.preset, spec: editedSpec, path: project.path }
+      : null,
+  );
+  useEffect(() => {
+    if (!project.trusted) setTrusted(false);
+  }, [commands, environment, JSON.stringify(spec), project.trusted]);
   useEffect(() => {
     setSpec(project.spec);
     setTrusted(project.trusted);
@@ -1541,7 +1566,7 @@ function ProjectDetail({
             </button>
             <button
               className="button secondary full"
-              disabled={busy || state === "running" || !project.trusted}
+              disabled={busy || state === "running"}
               onClick={onPrepare}
             >
               <Package size={15} />
@@ -1671,10 +1696,12 @@ function ProjectDetail({
               onChange={(e) => setEnvironment(e.target.value)}
             />
           </label>
+          <SetupReview {...configurationReview} t={t} />
           <label className="checkbox-label">
             <input
               type="checkbox"
               checked={trusted}
+              disabled={!configurationReview.plan || busy}
               onChange={(e) => setTrusted(e.target.checked)}
             />
             <span>
@@ -1693,7 +1720,11 @@ function ProjectDetail({
             </button>
             <button
               className="button primary"
-              disabled={busy || state === "running"}
+              disabled={
+                busy ||
+                state === "running" ||
+                (trusted && !project.trusted && !configurationReview.plan)
+              }
               onClick={() =>
                 run(() =>
                   api.saveProject(
@@ -1990,6 +2021,92 @@ type WizardInput = {
   spec?: ProjectSpec;
   archive: string;
 };
+function ReviewSetupDialog({
+  project,
+  mode,
+  t,
+  onClose,
+  onProceed,
+}: {
+  project: Project;
+  mode: "runtimes" | "dependencies";
+  t: T;
+  onClose: () => void;
+  onProceed: (plan: ProjectPlan, trust: boolean) => void;
+}) {
+  const review = useProjectPlan({
+    preset: project.spec.preset,
+    spec: project.spec,
+    path: project.path,
+  });
+  const [trust, setTrust] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const current = dialog.current;
+    current?.showModal();
+    return () => current?.close();
+  }, []);
+  const ready =
+    !!review.plan &&
+    review.plan.requirements.every(
+      (r) => !!r.artifactId && (mode === "runtimes" || r.installed),
+    );
+  const allowed =
+    ready &&
+    (mode === "runtimes" ||
+      ((project.trusted || trust) && !!review.plan?.commands.length));
+  return (
+    <dialog ref={dialog} className="modal" onCancel={onClose}>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (allowed && review.plan) onProceed(review.plan, trust);
+        }}
+      >
+        <div className="modal-header">
+          <h2>{mode === "runtimes" ? t("setupRuntime") : t("dependencies")}</h2>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label={t("close")}
+            onClick={onClose}
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <p className="muted">{project.spec.name}</p>
+        <SetupReview {...review} t={t} />
+        {mode === "dependencies" &&
+          review.plan?.requirements.some((r) => !r.installed) && (
+            <p className="error-text">{t("reviewInstallFirst")}</p>
+          )}
+        {mode === "dependencies" && !project.trusted && (
+          <label className="checkbox-label trust-checkbox">
+            <input
+              type="checkbox"
+              checked={trust}
+              disabled={!review.plan}
+              onChange={(e) => setTrust(e.target.checked)}
+            />
+            <span>
+              {t("trust")}
+              <small>{t("trustSub")}</small>
+            </span>
+          </label>
+        )}
+        <div className="modal-footer">
+          <button type="button" className="button secondary" onClick={onClose}>
+            {t("cancel")}
+          </button>
+          <button className="button primary" disabled={!allowed}>
+            {t("reviewContinue")}
+            <ArrowRight size={16} />
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
+}
 function ProjectWizard({
   mode,
   t,
@@ -2012,6 +2129,16 @@ function ProjectWizard({
   const [spec, setSpec] = useState<ProjectSpec>();
   const [archive, setArchive] = useState("");
   const [detecting, setDetecting] = useState(false);
+  const preview = useProjectPlan(
+    mode === "new"
+      ? { preset }
+      : mode === "import" && spec
+        ? { preset, spec, path }
+        : null,
+  );
+  useEffect(() => {
+    setTrusted(false);
+  }, [mode, preset, path, name]);
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -2024,6 +2151,7 @@ function ProjectWizard({
       if (!folder) return;
       setPath(folder);
       if (mode === "import") {
+        setSpec(undefined);
         setDetecting(true);
         const detected = await api.detect(folder);
         setSpec(detected);
@@ -2055,7 +2183,15 @@ function ProjectWizard({
         onSubmit={(event) => {
           event.preventDefault();
           if (valid)
-            void onSubmit({ mode, name, path, preset, trusted, spec, archive });
+            void onSubmit({
+              mode,
+              name,
+              path,
+              preset,
+              trusted: trusted && (mode === "restore" || !!preview.plan),
+              spec,
+              archive,
+            });
         }}
       >
         <div className="modal-header">
@@ -2190,10 +2326,14 @@ function ProjectWizard({
             </div>
           </div>
         )}
+        {mode !== "restore" && (mode === "new" || !!spec) && (
+          <SetupReview {...preview} t={t} />
+        )}
         <label className="checkbox-label trust-checkbox">
           <input
             type="checkbox"
             checked={trusted}
+            disabled={busy || (mode !== "restore" && !preview.plan)}
             onChange={(e) => setTrusted(e.target.checked)}
           />
           <span>

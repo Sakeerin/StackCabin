@@ -78,6 +78,33 @@ pub struct Project {
     pub created_at: String,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct PreparationCommand {
+    pub tool: String,
+    pub args: Vec<String>,
+    pub condition: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRequirement {
+    pub component: String,
+    pub version: String,
+    pub artifact_id: Option<String>,
+    pub installed: bool,
+    #[ts(type = "number")]
+    pub download_bytes: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectPlan {
+    pub requirements: Vec<RuntimeRequirement>,
+    pub commands: Vec<PreparationCommand>,
+    pub processes: Vec<ProcessSpec>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, TS, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ProcessState {

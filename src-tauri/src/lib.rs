@@ -19,6 +19,16 @@ fn project_detect(path: String) -> Result<ProjectSpec, String> {
     stackcabin_core::project::detect(std::path::Path::new(&path)).map_err(message)
 }
 #[tauri::command]
+fn project_plan(
+    core: Core<'_>,
+    path: Option<String>,
+    preset: Preset,
+    spec: Option<ProjectSpec>,
+) -> Result<ProjectPlan, String> {
+    core.project_plan(path.as_deref().map(std::path::Path::new), preset, spec)
+        .map_err(message)
+}
+#[tauri::command]
 fn project_import(
     core: Core<'_>,
     path: String,
@@ -297,6 +307,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             snapshot,
             project_detect,
+            project_plan,
             project_import,
             project_create,
             project_save,

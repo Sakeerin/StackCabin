@@ -7,6 +7,7 @@ import type {
   Diagnostic,
   Preset,
   Project,
+  ProjectPlan,
   ProjectSpec,
   ProjectStatus,
   Settings,
@@ -27,6 +28,11 @@ export async function call<T>(
 export const api = {
   snapshot: () => call<Snapshot>("snapshot"),
   detect: (path: string) => call<ProjectSpec>("project_detect", { path }),
+  plan: (
+    preset: Preset,
+    spec: ProjectSpec | null = null,
+    path: string | null = null,
+  ) => call<ProjectPlan>("project_plan", { preset, spec, path }),
   create: (parent: string, name: string, preset: Preset, trusted: boolean) =>
     call<Project>("project_create", { parent, name, preset, trusted }),
   import: (path: string, spec: ProjectSpec, trusted: boolean) =>

@@ -29,10 +29,31 @@ describe("StackCabin native desktop", () => {
     await $("dialog").waitForDisplayed();
     assert.equal((await $$(".preset-choice")).length, 9);
     assert.equal(await $("dialog input[type=checkbox]").isSelected(), false);
+    await browser.waitUntil(async () =>
+      (await $("dialog .setup-review").getText()).includes("npm install"),
+    );
+    await $("dialog .setup-review").scrollIntoView();
+    await browser.saveScreenshot(
+      path.resolve("artifacts/project-wizard-review.png"),
+    );
+    assert.equal(await $("dialog input[type=checkbox]").isSelected(), false);
+    await $("dialog").$("button=Cancel").scrollIntoView();
     await $("dialog").$("button=Cancel").click();
     await $("dialog").waitForDisplayed({ reverse: true });
   });
   it("persists a real project through IPC and presents its actual stopped state", async () => {
+    const before = await invoke("snapshot");
+    const plan = await invoke("project_plan", {
+      preset: "laravel",
+      spec: null,
+      path: null,
+    });
+    assert.equal(plan.commands[0].tool, "composer");
+    assert.equal(plan.processes.length, 2);
+    assert.equal(
+      (await invoke("snapshot")).projects.length,
+      before.projects.length,
+    );
     const created = await invoke("project_create", {
       parent: process.env.STACKCABIN_E2E_PROJECTS,
       name: "desktop-integration",
@@ -46,6 +67,36 @@ describe("StackCabin native desktop", () => {
     assert.equal(await $(".project-card .status-badge").getText(), "Stopped");
     const state = await invoke("snapshot");
     assert.ok(state.projects.some((p) => p.id === created.id));
+    await $(".project-title").click();
+    await $("button=Install dependencies").click();
+    await $("dialog").waitForDisplayed();
+    await browser.waitUntil(async () =>
+      (await $("dialog .setup-review").getText()).includes("npm install"),
+    );
+    assert.equal(await $("dialog input[type=checkbox]").isSelected(), false);
+    assert.equal(
+      await $("dialog .modal-footer button.primary").isEnabled(),
+      false,
+    );
+    assert.equal(
+      (await invoke("snapshot")).projects.find((p) => p.id === created.id)
+        .trusted,
+      false,
+    );
+    await browser.saveScreenshot(
+      path.resolve("artifacts/project-setup-review.png"),
+    );
+    await $("dialog").$("button=Cancel").click();
+    await $("dialog").waitForDisplayed({ reverse: true });
+    const afterReview = await invoke("snapshot");
+    assert.deepEqual(
+      afterReview.projects.find((p) => p.id === created.id),
+      created,
+    );
+    assert.deepEqual(
+      afterReview.runtimes.map((r) => r.installed),
+      before.runtimes.map((r) => r.installed),
+    );
   });
   it("switches theme and language and persists both in the native database", async () => {
     await $(".sidebar-bottom button").click();
