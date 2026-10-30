@@ -163,6 +163,7 @@ generated lockfile. Dependency preparation waits for explicit trust to be saved.
 
 ```sh
 npm test
+node --test scripts/test-windows-offline-bundle.mjs
 cargo test -p stackcabin-core
 npm run types
 npm run desktop:test:build

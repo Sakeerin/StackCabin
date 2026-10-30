@@ -8,14 +8,16 @@ Required machines are Windows 10 22H2 x64, Windows 11 x64, macOS 14 Intel and
 Apple Silicon, and Ubuntu Desktop 22.04/24.04 x64. Rosetta checks supplement a
 native Intel VM; they do not replace it.
 
-Current normal preview installers from source `483ee55` are available in
-[run 40812811594](https://github.com/Sakeerin/StackCabin/actions/runs/40812811594)
+Current normal preview installers from source `7b4dbda` are available in
+[run 41081836769](https://github.com/Sakeerin/StackCabin/actions/runs/41081836769)
 for Windows x64, Ubuntu x64 and macOS ARM/Intel. Download the matching
 `development-installers-*` artifact and verify `SHA256SUMS.txt`; retention is
 seven days. The Ubuntu 22.04 deb and AppImage also passed
-[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/40813563458).
+[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/41082940427).
 These are normal builds without E2E instrumentation and retain the signed
-development catalog. Existing macOS 14 evidence is from earlier installer builds.
+development catalog. The same installers passed startup on
+[macOS 14 ARM](https://github.com/Sakeerin/StackCabin/actions/runs/41082945443) and
+[macOS 14 x64 through Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/41083846244).
 
 ## Windows runtime test kit
 
@@ -34,7 +36,15 @@ On a clean VM with internet access, use a new dedicated workspace:
 ```
 
 Restore a clean snapshot, copy the complete Windows offline bundle and test kit,
-disconnect networking, run the bundle's `Install.cmd`, then use another workspace:
+disconnect networking, and run its read-only preflight first:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'D:/offline-windows-x64/Install-StackCabin.ps1' -CheckOnly
+```
+
+Record the JSON report and confirm that no app or prerequisite was installed.
+Missing/damaged runtime archives and prerequisites must fail before installation.
+Then run the bundle's `Install.cmd` and use another workspace:
 
 ```powershell
 ./Invoke-StackCabinAcceptance.ps1 -Workspace "$env:LOCALAPPDATA/StackCabin QA/offline ทดสอบ" -OfflinePack 'D:/offline-windows-x64'
