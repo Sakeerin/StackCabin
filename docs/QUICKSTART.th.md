@@ -6,7 +6,7 @@
 ## ติดตั้งบน Windows
 
 ดาวน์โหลดแพ็กเกจวันที่ 30 ตุลาคม 2026 จาก
-[GitHub Actions run นี้](https://github.com/Sakeerin/StackCabin/actions/runs/41021025110)
+[GitHub Actions run นี้](https://github.com/Sakeerin/StackCabin/actions/runs/41081836769)
 เลือก Artifact `development-installers-windows-latest` แล้วแตก ZIP และตรวจไฟล์
 ตาม `SHA256SUMS.txt` ไฟล์ติดตั้งอยู่ในโฟลเดอร์ `nsis/` ส่วนแพ็กเกจจากการ build เอง
 อยู่ใน `target/release/bundle/nsis/` Artifact เก็บไว้ 7 วัน
@@ -74,12 +74,16 @@ dependencies ของ npm/Composer หรือ prerequisite ของ Linux �
 
 1. กด New project เลือกโฟลเดอร์แม่ ชื่อ และ template หรือ Import project เพื่อนำเข้าโฟลเดอร์เดิม
 2. เปิดรายละเอียดโปรเจกต์ เลือก PHP/Node.js ในแท็บ Configuration แล้วบันทึก
-3. เลือก Set up runtimes เพื่อติดตั้งเวอร์ชันที่เลือกและเครื่องมือที่จำเป็น
-4. ตรวจคำสั่งที่จะรันก่อนเปิด Trust project แล้วเลือก Install dependencies
+3. เลือก Set up runtimes ตรวจรายการเวอร์ชันและสถานะ แล้วกด Continue
+   หากยังไม่มีแพ็กเกจบางตัวสำหรับระบบนี้ แอปจะไม่เริ่มดาวน์โหลดส่วนที่เหลือไปก่อน
+4. เลือก Install dependencies ตรวจคำสั่งและโฟลเดอร์ที่จะรัน ให้ Trust หากยังไม่ได้ให้
+   แล้วกด Continue แอปจะบันทึกความเชื่อถือก่อนเริ่มคำสั่ง
 5. กด Start ดูสถานะและ log แล้วเปิด URL ของโปรเจกต์
 6. หากชื่อ `.localhost` ใช้งานไม่ได้ ใช้ URL สำรอง `http://127.0.0.1:...` ในรายละเอียดโปรเจกต์
 
 การติดตั้ง dependencies ของ Laravel/npm/Composer อาจต้องใช้อินเทอร์เน็ต
+โปรเจกต์ที่ไม่ต้องติดตั้ง dependencies เช่น Static สามารถให้ Trust ในแท็บ Configuration
+ก่อนกด Start การเปิดดูแผนตั้งค่าหรือกด Cancel จะไม่รันสคริปต์หรือติดตั้งเครื่องมือ
 ชุดออฟไลน์มี runtime และบริการ ส่วน dependencies ต้องติดตั้งไว้สำหรับระบบนั้น
 หรือมี cache ที่พร้อมใช้ โปรเจกต์ที่นำเข้าอาจรันคำสั่งด้วยสิทธิ์ของผู้ใช้ จึงควรตรวจโค้ดก่อนให้ความเชื่อถือ
 

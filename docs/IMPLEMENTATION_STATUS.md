@@ -20,6 +20,9 @@ Windows/macOS/Ubuntu production acceptance gate.
 - Shared MariaDB/PostgreSQL instances, separate project accounts, OS keychain
   credentials, per-project SQLite, logical dumps, and verified restore into a new
   project/database. Source folders remain when removing a project.
+- Read-only setup reviews before project trust and runtime/dependency installation:
+  selected versions, installed/unavailable packages, dependency commands and
+  working directories, with complete runtime preflight before the first download.
 - Windows online installer and offline bundle assembly including verified
   Microsoft WebView2/Visual C++ prerequisites. Bundled third-party notice inventory.
 - CI for Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon, Unix native
@@ -35,18 +38,18 @@ Logs and screenshots are generated locally under ignored `artifacts/`.
 | Check                      | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Production frontend        | TypeScript and Vite build                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Frontend tests             | 5 tests: preview honesty, templates/trust, Thai/theme, process state and sizes                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Rust core                  | 37 passed on every CI target; 4 ignored tests are launched child-process fixtures                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Frontend tests             | 14 tests: preview honesty, setup review/trust ordering, stale plans, templates, Thai/theme, process state and sizes                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Rust core                  | 42 passed on every CI target; 4 ignored tests are launched child-process fixtures                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Core edge cases            | Corrupted archives, traversal, signed catalog tampering, interrupted installation, Unicode registration, future schema, port conflicts, secret-free SQLite backup/restore and concurrent destination reservation                                                                                                                                                                                                                                                                                                                    |
 | Native lifecycle           | Real HTTP grandchild, stop of its process tree, and cleanup after its parent exits unexpectedly                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Native Desktop E2E         | 4 cases against real Rust IPC/SQLite; screenshot `stackcabin-desktop.png`                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Native desktop lifecycle   | 20 real application sessions on five CI targets: native close, Tray Open/Quit handlers, repeated Quit and abrupt app termination; owned HTTP stops while an unrelated server stays healthy. Two desktop Rust tests cover exit coordination. OS tray pointer interaction remains a VM check                                                                                                                                                                                                                                          |
-| Cross-platform CI          | [Run 41020997485](https://github.com/Sakeerin/StackCabin/actions/runs/41020997485): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and managed toolchains, including supervisor-owner crash and unreachable-proxy regressions                                                                                                                                                                                                                                     |
-| Normal Windows package     | [Run 41021025110](https://github.com/Sakeerin/StackCabin/actions/runs/41021025110): release NSIS includes the loopback/proxy fix and pinned Microsoft prerequisite; normal application startup initializes isolated SQLite without E2E plugins                                                                                                                                                                                                                                                                                      |
-| Installed preview packages | [Run 41021025110](https://github.com/Sakeerin/StackCabin/actions/runs/41021025110): Windows NSIS, Ubuntu 22.04 deb, and macOS ARM/Intel DMGs built successfully; normal application startup used isolated SQLite metadata. macOS bundle checks reject external non-system library paths and unsupported minimum OS versions                                                                                                                                                                                                         |
+| Cross-platform CI          | [Run 41081825023](https://github.com/Sakeerin/StackCabin/actions/runs/41081825023): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and managed toolchains, including supervisor-owner crash and unreachable-proxy regressions                                                                                                                                                                                                                                     |
+| Normal Windows package     | [Run 41081836769](https://github.com/Sakeerin/StackCabin/actions/runs/41081836769): release NSIS includes the loopback/proxy fix and pinned Microsoft prerequisite; normal application startup initializes isolated SQLite without E2E plugins                                                                                                                                                                                                                                                                                      |
+| Installed preview packages | [Run 41081836769](https://github.com/Sakeerin/StackCabin/actions/runs/41081836769): Windows NSIS, Ubuntu 22.04 deb, and macOS ARM/Intel DMGs built successfully; normal application startup used isolated SQLite metadata. macOS bundle checks reject external non-system library paths and unsupported minimum OS versions                                                                                                                                                                                                         |
 | Windows prerequisites      | The NSIS installer embeds pinned Microsoft Visual C++ 14.51.36247 x64, verifies SHA-256/Authenticode/version, detects existing runtime versions, and elevates only Microsoft's installer when needed. Four read-only integrity tests passed. [Installed-package verification](https://github.com/Sakeerin/StackCabin/actions/runs/40048115886) confirmed the required version and application startup in a Thai/spaced installation path; that runner already had 14.51, so missing-runtime/UAC acceptance remains a clean-VM check |
-| macOS 14 installers        | Fixed the Intel bundle's external Homebrew liblzma dependency by linking xz statically. DMG mount/copy, strict binary dependency/minimum-OS checks and actual application startup passed for [ARM](https://github.com/Sakeerin/StackCabin/actions/runs/41021591506) and [x64 via Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/41021801897)                                                                                                                                                                          |
-| Ubuntu 24.04 installers    | [Run 41021486107](https://github.com/Sakeerin/StackCabin/actions/runs/41021486107): the same Ubuntu 22.04 deb and AppImage passed complete distributed-installer checksums and real application startup on Ubuntu 24.04; AppImage used extract-and-run without FUSE                                                                                                                                                                                                                                                                 |
+| macOS 14 installers        | Fixed the Intel bundle's external Homebrew liblzma dependency by linking xz statically. DMG mount/copy, strict binary dependency/minimum-OS checks and actual application startup passed for [ARM](https://github.com/Sakeerin/StackCabin/actions/runs/41082945443) and [x64 via Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/41083846244)                                                                                                                                                                          |
+| Ubuntu 24.04 installers    | [Run 41082940427](https://github.com/Sakeerin/StackCabin/actions/runs/41082940427): the same Ubuntu 22.04 deb and AppImage passed complete distributed-installer checksums and real application startup on Ubuntu 24.04; AppImage used extract-and-run without FUSE                                                                                                                                                                                                                                                                 |
 | Actual disk exhaustion     | [Ubuntu 24.04 acceptance](https://github.com/Sakeerin/StackCabin/actions/runs/39960665443): dedicated 32 MiB tmpfs produced ENOSPC during installation; no installed receipt or executable resolution, staging cleaned, same archive installed after freeing owned space                                                                                                                                                                                                                                                            |
 | Packaging verification     | 31 cross-platform Python checks cover explicit HTTPS mirror recovery, checksum/HTTPS-downgrade failures, traversal, FastCGI fragmentation, macOS library baseline rejection and complete installer checksum verification. Seven JavaScript stack checks reject incorrect source/architecture/identity, corrupt or truncated archives, duplicates and unsupported macOS requirements                                                                                                                                                 |
 | Framework acceptance       | Express, Vue, React, Nest, Next and Laravel dependency installation and actual HTTP; Laravel runs PHP and Vite together                                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -186,7 +189,7 @@ after 404/410. The existing signed catalog, selected versions and SHA-256 remain
 unchanged; other hosts, credentials, query-bearing URLs and HTTPS downgrades are
 not substituted. Actual downloads of both pinned archives matched their hashes,
 and fresh online installation plus PHP 8.4/8.5 HTTP through Caddy passed on Windows.
-The current Rust suite passes 37 tests (four process-fixture entry points are
+The current Rust suite passes 42 tests (four process-fixture entry points are
 ignored when run directly), and all ten JavaScript catalog regressions pass.
 
 An online macOS smoke observed a truncated Node.js response after a long stalled
@@ -215,7 +218,7 @@ that proxy while all five projects and both database restores ran.
 
 A new real-process owner-crash regression passes on Windows, Ubuntu 22.04/24.04
 and native macOS 15 Intel/Apple Silicon in
-[CI](https://github.com/Sakeerin/StackCabin/actions/runs/41020997485). It starts
+[CI](https://github.com/Sakeerin/StackCabin/actions/runs/41081825023). It starts
 two independent owned launcher/HTTP-worker trees in a Thai/spaced workspace and
 an unrelated HTTP process. The test kills only the owner host, bypassing its Rust
 destructors and shutdown handlers, then observes all four descendants exit and
@@ -228,7 +231,7 @@ clean-VM crash acceptance remain in the VM checklist.
 
 Native desktop lifecycle acceptance passes on Windows, Ubuntu 22.04/24.04 and
 native macOS 15 Intel/Apple Silicon in
-[CI](https://github.com/Sakeerin/StackCabin/actions/runs/41020997485), covering
+[CI](https://github.com/Sakeerin/StackCabin/actions/runs/41081825023), covering
 twenty isolated real-application sessions: close-to-tray with continuing HTTP and
 restoration, close without tray, abrupt application termination, and Quit with
 accepted work still pending. Both normal
@@ -266,22 +269,22 @@ completed, PHP and Vite ran together behind Caddy, real HTTP passed, and shutdow
 stopped the owned processes. Its log is kept locally as
 `artifacts/laravel-prepare-shutdown-20261029.log`.
 
-Normal development installers were rebuilt from the same source `0384d4c` on
-30 October in [run 41021025110](https://github.com/Sakeerin/StackCabin/actions/runs/41021025110).
+Normal development installers were rebuilt from the same source `7b4dbda` on
+30 October in [run 41081836769](https://github.com/Sakeerin/StackCabin/actions/runs/41081836769).
 All four jobs passed: Windows NSIS installation plus Microsoft prerequisite and
 normal-app startup, Ubuntu 22.04 deb installation/startup plus AppImage packaging,
 and native macOS 15 ARM/Intel app startup and DMG packaging. Every build excludes
 E2E features and includes installer SHA-256 checksums. The identical Ubuntu 22.04
 deb and AppImage then passed checksum verification and actual startup on
-[Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/41021486107), using
+[Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/41082940427), using
 extract-and-run without FUSE. Installer artifacts remain available for seven
 days. The downloaded Windows installer was independently checksum-verified in
 the local workspace; its SHA-256 is
-`45564ebf234265cfd4f65402701638074d473633e1ec1d2aa5f930d59f790305`.
+`4f0932e4b3fdf04001c94458042225765ab56dcc7c5d16abf33371a3397dbdc9`.
 The same DMGs also passed mount/copy, binary dependency/minimum-OS checks and
 normal application startup on macOS 14
-[ARM](https://github.com/Sakeerin/StackCabin/actions/runs/41021591506) and
-[x64 through Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/41021801897).
+[ARM](https://github.com/Sakeerin/StackCabin/actions/runs/41082945443) and
+[x64 through Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/41083846244).
 The Intel check still does not replace a native macOS 14 Intel VM.
 
 Backup generation now owns its temporary archive and database snapshot in a
@@ -292,13 +295,33 @@ file without replacing an existing destination, including one created during
 the copy. The same no-overwrite publication applies to managed backup archives.
 Five regressions cover partial-write cleanup, concurrent destination creation,
 completed-file visibility, backup failure/retry and byte-exact exported ZIP
-restore through real project registration. All 37 core tests pass on each CI
-target, including the existing SQLite snapshot/restore checks. Each new
+restore through real project registration. The backup-publication run passed 37
+core tests on each CI target, including the existing SQLite snapshot/restore checks. Each new
 regression passed on all five targets, recorded in
 `artifacts/backup-publication-ci-41020997485.log`. On Windows, real managed
 MariaDB/PostgreSQL backup/restore and concurrent PHP 8.4/8.5 and Node 22/24 HTTP
 also passed; local evidence is kept in
 `artifacts/backup-publication-native-20261030.log`.
+
+Project setup inspection uses typed Rust IPC without creating files, granting
+trust or running project scripts. Creation/import, Configuration and both setup
+dialogs show the backend plan. Composer and Node preparation share their command
+builders with inspection; npm lockfiles, pnpm/Yarn selections and Laravel's
+generated-lockfile alternatives are represented explicitly. Missing packages
+block runtime setup before its first download. Changing templates/folders and
+reopening a review discard older asynchronous results. Preparation waits for an
+explicit trust save before executing commands; cancellation preserves metadata,
+source and installed-runtime state.
+
+Five Rust regressions cover all nine starters, script-free import inspection,
+package-manager detection, unavailable pins and Laravel alternatives. All five
+passed on each CI target, recorded in `artifacts/project-plan-ci-41081825023.log`.
+The full core suite now has 42 passing tests per target. Frontend
+coverage is now fourteen tests, including stale results, bilingual review,
+all-package availability checks and trust-save ordering. The four real Desktop
+E2E cases also exercise the new review through native IPC and verify cancellation
+leaves the created project and runtime state unchanged. Local screenshots are
+`artifacts/project-wizard-review.png` and `artifacts/project-setup-review.png`.
 
 The native Desktop language test dispatches a DOM change event because the
 embedded driver does not implement native option selection. The resulting UI

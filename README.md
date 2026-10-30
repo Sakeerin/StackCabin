@@ -12,11 +12,11 @@ for the tested behavior and the remaining three-platform release gates.
 [คู่มือเริ่มใช้งานภาษาไทย](docs/QUICKSTART.th.md)
 
 Development installers built on 30 October 2026 are available in
-[this verified Actions run](https://github.com/Sakeerin/StackCabin/actions/runs/41021025110):
+[this verified Actions run](https://github.com/Sakeerin/StackCabin/actions/runs/41081836769):
 Windows x64 NSIS, Ubuntu x64 deb/AppImage, and separate macOS Intel/Apple Silicon
 DMGs. Download the matching `development-installers-*` artifact and verify its
 `SHA256SUMS.txt`. These artifacts expire after seven days. Their source is
-`0384d4c`; signing and clean-machine certification remain release gates.
+`7b4dbda`; signing and clean-machine certification remain release gates.
 
 ## Run the application
 
