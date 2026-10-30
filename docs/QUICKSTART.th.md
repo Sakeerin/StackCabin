@@ -5,8 +5,8 @@
 
 ## ติดตั้งบน Windows
 
-ดาวน์โหลดแพ็กเกจวันที่ 29 ตุลาคม 2026 จาก
-[GitHub Actions run นี้](https://github.com/Sakeerin/StackCabin/actions/runs/40812811594)
+ดาวน์โหลดแพ็กเกจวันที่ 30 ตุลาคม 2026 จาก
+[GitHub Actions run นี้](https://github.com/Sakeerin/StackCabin/actions/runs/41021025110)
 เลือก Artifact `development-installers-windows-latest` แล้วแตก ZIP และตรวจไฟล์
 ตาม `SHA256SUMS.txt` ไฟล์ติดตั้งอยู่ในโฟลเดอร์ `nsis/` ส่วนแพ็กเกจจากการ build เอง
 อยู่ใน `target/release/bundle/nsis/` Artifact เก็บไว้ 7 วัน
