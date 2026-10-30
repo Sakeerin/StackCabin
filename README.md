@@ -126,8 +126,25 @@ After building the Windows installer, assemble the complete development bundle:
 
 This adds the installer, Microsoft-signed WebView2 standalone/Visual C++ payloads,
 an integrity manifest, notices, and `Install.cmd`. It prepares files without
-installing software on the build machine. Run `Install.cmd` on the target computer,
-then select the bundle folder in StackCabin's offline runtime picker.
+installing software on the build machine. For a downloaded matching installer,
+pass `-Installer <path>` and optionally `-InstallerSha256 <verified SHA256>`.
+Assembly checks the checkout's signed catalog and every Windows archive, then
+publishes the complete manifest after copying the payloads.
+
+Verify the complete folder without installing anything (Windows PowerShell 5.1):
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./artifacts/offline-windows-x64/Install-StackCabin.ps1 -CheckOnly
+```
+
+This returns JSON with file integrity, runtime count, and installed Visual C++ /
+WebView2 versions. Node.js is not needed on the target computer. Both verification
+and installation reject missing, damaged or mixed payloads before running a
+prerequisite installer. Run `Install.cmd` to install, then select the bundle folder
+in StackCabin's offline runtime picker.
+
+The local hash manifest detects file damage; it is not a release signature.
+The application independently verifies its trusted signed runtime catalog.
 
 ## Review project setup
 

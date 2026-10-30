@@ -113,6 +113,26 @@ Create the offline pack with `scripts/offline-pack.mjs`. On Windows, run
 `scripts/windows-offline-bundle.ps1` after building the installer; it downloads
 and verifies Microsoft's signed full WebView2/Visual C++ payloads and generates
 an offline install script with a checksum manifest. It does not execute installers.
+For a downloaded installer from the matching source/catalog, pass `-Installer`
+and `-InstallerSha256` using the independently verified installer checksum.
+Assembly verifies the pack against the checkout's trusted signed catalog and
+hashes every Windows x64 archive before changing installer files. A refresh
+invalidates its old manifest; failed assembly leaves no completion manifest.
+The replacement manifest covers all control files, prerequisites and archives.
+
+Before installing on a target, use Windows PowerShell 5.1:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./Install-StackCabin.ps1 -CheckOnly
+```
+
+This verifies the complete manifest, binds every selected runtime archive to its
+catalog hash, checks Microsoft's prerequisite signatures and the pinned Visual
+C++ version, and returns a JSON report without launching installers. It requires
+no system Node.js. The install path uses the same preflight and checks the app
+installer's exit status. The unsigned local manifest detects accidental corruption
+and mixed payloads, not a replaced distribution; release signing is still required.
+The app verifies its own trusted signed catalog when installing runtime archives.
 Test the resulting complete folder with networking disabled.
 The offline runtime pack by itself does not install OS prerequisites or arbitrary
 framework dependencies.

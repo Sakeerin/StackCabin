@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **30 October 2026**.
+Development version: **0.1.0**, checked on **31 October 2026**.
 This is a working development preview. It has not passed the plan's simultaneous
 Windows/macOS/Ubuntu production acceptance gate.
 
@@ -25,6 +25,9 @@ Windows/macOS/Ubuntu production acceptance gate.
   working directories, with complete runtime preflight before the first download.
 - Windows online installer and offline bundle assembly including verified
   Microsoft WebView2/Visual C++ prerequisites. Bundled third-party notice inventory.
+- Complete Windows offline preflight with a read-only `-CheckOnly` JSON report:
+  all control files/installers/archives, catalog hash bindings, Microsoft signatures,
+  installed prerequisite versions and failure propagation before installation.
 - CI for Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon, Unix native
   runtime build pipeline, and a release catalog gate.
 - Internal Unix QA desktop packaging with the complete matching offline catalog,
@@ -34,6 +37,21 @@ Windows/macOS/Ubuntu production acceptance gate.
 ## Verification evidence
 
 Logs and screenshots are generated locally under ignored `artifacts/`.
+
+Windows offline assembly was refreshed on 31 October using the verified normal
+installer from [run 41081836769](https://github.com/Sakeerin/StackCabin/actions/runs/41081836769)
+(application source `7b4dbda`, SHA-256
+`4f0932e4b3fdf04001c94458042225765ab56dcc7c5d16abf33371a3397dbdc9`).
+Read-only preflight passed for all 25 manifested files, including 11 runtime
+archives and the signed cached Microsoft prerequisites. Local evidence is
+`artifacts/windows-offline-build-20261031.log` and
+`artifacts/windows-offline-tests-20261031.log`: 18 bundle checks and four pinned
+prerequisite checks. These include Windows PowerShell 5.1, a Thai/space path,
+tampering, missing archives/helpers, duplicate/extra manifest entries, traversal,
+junctions, foreign catalog keys, unsigned payloads and a wrong installer checksum.
+No installer was executed by these checks. Target installation and clean offline
+VM acceptance remain separate release gates; the local unsigned manifest is not
+a production trust root.
 
 | Check                      | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
