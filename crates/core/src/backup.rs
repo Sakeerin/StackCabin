@@ -60,9 +60,10 @@ impl BackupManager {
     }
     pub async fn create(&self, project: &Project, operation: &str) -> Result<BackupInfo> {
         let id = uuid::Uuid::new_v4().to_string();
-        let staging = self.root.join("staging").join(&id);
-        std::fs::create_dir(&staging)?;
-        let result: Result<BackupInfo> = async {
+        let staging = tempfile::Builder::new()
+            .prefix("backup-")
+            .tempdir_in(self.root.join("staging"))?;
+        async {
             let database = project.spec.database.is_some();
             if database {
                 (self.sink)(event(
@@ -73,7 +74,7 @@ impl BackupManager {
                     Some(10.0),
                 ));
                 self.database
-                    .dump(project, &staging.join("database.dump"))
+                    .dump(project, &staging.path().join("database.dump"))
                     .await?;
             }
             (self.sink)(event(
@@ -84,8 +85,8 @@ impl BackupManager {
                 Some(35.0),
             ));
             let path = self.root.join("backups").join(format!("{id}.zip"));
-            let temporary = self.root.join("staging").join(format!("{id}.part"));
-            let mut writer = zip::ZipWriter::new(std::fs::File::create(&temporary)?);
+            let mut temporary = tempfile::NamedTempFile::new_in(staging.path())?;
+            let mut writer = zip::ZipWriter::new(temporary.as_file_mut());
             let options = zip::write::SimpleFileOptions::default()
                 .compression_method(zip::CompressionMethod::Deflated)
                 .unix_permissions(0o600);
@@ -143,7 +144,7 @@ impl BackupManager {
                 hashes.insert(
                     "database.dump".into(),
                     copy_hashed(
-                        std::fs::File::open(staging.join("database.dump"))?,
+                        std::fs::File::open(staging.path().join("database.dump"))?,
                         &mut writer,
                     )?,
                 );
@@ -160,7 +161,10 @@ impl BackupManager {
             writer.start_file("backup.json", options)?;
             writer.write_all(&serde_json::to_vec_pretty(&manifest)?)?;
             writer.finish()?.sync_all()?;
-            std::fs::rename(&temporary, &path)?;
+            temporary
+                .persist_noclobber(&path)
+                .map_err(|error| error.error)
+                .context("Could not publish the completed backup")?;
             Ok(BackupInfo {
                 id,
                 project_name: project.spec.name.clone(),
@@ -170,9 +174,7 @@ impl BackupManager {
                 has_database: database,
             })
         }
-        .await;
-        let _ = std::fs::remove_dir_all(staging);
-        result
+        .await
     }
     pub async fn restore(
         &self,
@@ -283,9 +285,35 @@ impl BackupManager {
             .find(|b| b.id == id)
             .context("Backup not found")?;
         anyhow::ensure!(!destination.exists(), "Export destination already exists");
-        std::fs::copy(backup.path, destination)?;
-        Ok(())
+        write_new_file(destination, |output| {
+            std::io::copy(&mut std::fs::File::open(backup.path)?, output)?;
+            Ok(())
+        })
     }
+}
+fn write_new_file(
+    destination: &Path,
+    write: impl FnOnce(&mut std::fs::File) -> Result<()>,
+) -> Result<()> {
+    let parent = destination
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    // Keep the temporary archive on the destination filesystem. The private
+    // directory also cleans up a retained temporary hard link on Unix.
+    let staging = tempfile::Builder::new()
+        .prefix(".stackcabin-export-")
+        .tempdir_in(parent)?;
+    let mut temporary = tempfile::NamedTempFile::new_in(staging.path())?;
+    write(temporary.as_file_mut())?;
+    temporary.as_file_mut().sync_all()?;
+    // The existence check in export is only for an early, readable error.
+    // Publication itself must refuse a destination created during the copy.
+    temporary
+        .persist_noclobber(destination)
+        .map_err(|error| error.error)
+        .context("Could not publish the completed backup export")?;
+    Ok(())
 }
 fn read_manifest(path: &Path) -> Result<BackupManifest> {
     let mut archive = zip::ZipArchive::new(std::fs::File::open(path)?)?;
@@ -350,4 +378,64 @@ fn copy_directory_contents(source: &Path, destination: &Path) -> Result<()> {
     }
     let _ = directory_size(destination);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn export_publishes_only_completed_bytes_and_cleans_staging() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let destination = temp.path().join("สำรองข้อมูล complete.zip");
+        write_new_file(&destination, |output| {
+            output.write_all(b"first half")?;
+            assert!(!destination.exists());
+            output.write_all(b" and second half")?;
+            assert!(!destination.exists());
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(
+            std::fs::read(&destination).unwrap(),
+            b"first half and second half"
+        );
+        assert_eq!(std::fs::read_dir(temp.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn failed_export_write_keeps_other_files_and_removes_partial_bytes() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let destination = temp.path().join("incomplete.zip");
+        let other = temp.path().join("user-notes.txt");
+        std::fs::write(&other, b"keep my work").unwrap();
+        let result = write_new_file(&destination, |output| {
+            output.write_all(b"partial archive")?;
+            anyhow::bail!("Simulated interrupted copy");
+        });
+        assert!(result.is_err());
+        assert!(!destination.exists());
+        assert_eq!(std::fs::read(other).unwrap(), b"keep my work");
+        assert_eq!(std::fs::read_dir(temp.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn export_preserves_a_destination_created_during_copy() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let destination = temp.path().join("concurrent.zip");
+        let result = write_new_file(&destination, |output| {
+            assert!(!destination.exists());
+            output.write_all(b"new backup bytes")?;
+            // Another application creates the final path after the initial
+            // existence check, before StackCabin commits the completed file.
+            std::fs::write(&destination, b"other application's file")?;
+            Ok(())
+        });
+        assert!(result.is_err());
+        assert_eq!(
+            std::fs::read(destination).unwrap(),
+            b"other application's file"
+        );
+        assert_eq!(std::fs::read_dir(temp.path()).unwrap().count(), 1);
+    }
 }

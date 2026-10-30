@@ -188,6 +188,103 @@ async fn untrusted_project_never_executes_and_missing_runtime_never_reports_runn
     assert!(!core.supervisor.is_active(&project.id).await);
 }
 #[tokio::test]
+async fn failed_backup_cleans_staging_and_can_be_retried_without_losing_source() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    let temp = TempDir::new().unwrap();
+    let source = temp.path().join("source ทดสอบ");
+    let moved = temp.path().join("source moved ทดสอบ");
+    let move_source = source.clone();
+    let move_destination = moved.clone();
+    let fail_once = AtomicBool::new(true);
+    let core = AppCore::new(
+        temp.path().join("app-data"),
+        Arc::new(move |event| {
+            if event.message == "Archiving project files; secrets and dependencies are excluded"
+                && fail_once.swap(false, Ordering::SeqCst)
+            {
+                std::fs::rename(&move_source, &move_destination).unwrap();
+            }
+        }),
+    )
+    .unwrap();
+    let project = core
+        .create(temp.path(), "source ทดสอบ", Preset::Static, true)
+        .unwrap();
+    std::fs::write(source.join("notes.txt"), b"keep my source").unwrap();
+    let other_staging = core.store.root.join("staging/unrelated.part");
+    std::fs::write(&other_staging, b"another operation's data").unwrap();
+
+    assert!(core.backup(&project.id, "failed-backup").await.is_err());
+    assert!(core.backups.list().unwrap().is_empty());
+    assert_eq!(
+        std::fs::read_dir(core.store.root.join("staging"))
+            .unwrap()
+            .count(),
+        1
+    );
+    assert_eq!(
+        std::fs::read(&other_staging).unwrap(),
+        b"another operation's data"
+    );
+    assert_eq!(
+        std::fs::read(moved.join("notes.txt")).unwrap(),
+        b"keep my source"
+    );
+    assert!(core.store.project(&project.id).is_ok());
+
+    std::fs::rename(moved, &source).unwrap();
+    let backup = core.backup(&project.id, "retry-backup").await.unwrap();
+    let mut zip = zip::ZipArchive::new(std::fs::File::open(backup.path).unwrap()).unwrap();
+    let mut content = String::new();
+    zip.by_name("project/notes.txt")
+        .unwrap()
+        .read_to_string(&mut content)
+        .unwrap();
+    assert_eq!(content, "keep my source");
+    assert_eq!(core.backups.list().unwrap().len(), 1);
+    assert_eq!(
+        std::fs::read_dir(core.store.root.join("staging"))
+            .unwrap()
+            .count(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn exported_backup_keeps_exact_bytes_and_can_be_restored() {
+    let temp = TempDir::new().unwrap();
+    let core = core(&temp);
+    let project = core
+        .create(temp.path(), "source", Preset::Static, true)
+        .unwrap();
+    let backup = core.backup(&project.id, "backup-for-export").await.unwrap();
+    let output = temp.path().join("exported ทดสอบ");
+    std::fs::create_dir(&output).unwrap();
+    let destination = output.join("สำรองข้อมูล.zip");
+    core.backups.export(&backup.id, &destination).unwrap();
+    assert_eq!(
+        std::fs::read(&destination).unwrap(),
+        std::fs::read(&backup.path).unwrap()
+    );
+    assert_eq!(std::fs::read_dir(&output).unwrap().count(), 1);
+    assert!(core.backups.export(&backup.id, &destination).is_err());
+    assert_eq!(
+        std::fs::read(&destination).unwrap(),
+        std::fs::read(&backup.path).unwrap()
+    );
+    let restored = core
+        .restore(&destination, &temp.path().join("restored"), false)
+        .await
+        .unwrap();
+    assert!(!restored.trusted);
+    assert_eq!(
+        std::fs::read(std::path::Path::new(&restored.path).join("index.html")).unwrap(),
+        std::fs::read(std::path::Path::new(&project.path).join("index.html")).unwrap()
+    );
+}
+
+#[tokio::test]
 async fn sqlite_backup_is_consistent_excludes_secrets_and_restores_into_a_new_project() {
     let temp = TempDir::new().unwrap();
     let core = core(&temp);
