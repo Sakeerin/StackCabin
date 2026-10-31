@@ -79,7 +79,8 @@ try {
     $env:STACKCABIN_SMOKE_DIR = $fixture
     $env:STACKCABIN_SMOKE_COMPONENTS = 'node,caddy,php,cacert,composer,pnpm,yarn,mariadb,postgres'
     $env:STACKCABIN_OFFLINE_DIR = $bundlePath
-    foreach ($name in @('STACKCABIN_SMOKE_BRANCHES', 'STACKCABIN_PUBLISHER_CACHE', 'STACKCABIN_DATA_DIR')) { [Environment]::SetEnvironmentVariable($name, $null, 'Process') }
+    $env:STACKCABIN_SMOKE_BRANCHES = '22.,24.,8.4.,8.5.'
+    foreach ($name in @('STACKCABIN_PUBLISHER_CACHE', 'STACKCABIN_DATA_DIR')) { [Environment]::SetEnvironmentVariable($name, $null, 'Process') }
     # This rejects accidental online fetches by the native harness. NICs stay enabled;
     # certificate trust and fresh-OS installation still require separate VM checks.
     $env:http_proxy = 'http://127.0.0.1:1'

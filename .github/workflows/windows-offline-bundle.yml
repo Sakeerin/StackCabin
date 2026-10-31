@@ -119,6 +119,8 @@ jobs:
     timeout-minutes: 30
     env:
       PYTHONUTF8: "1"
+      # Acceptance must explicitly select all supported branches, ignoring caller filters.
+      STACKCABIN_SMOKE_BRANCHES: "unsupported-inherited-filter"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
