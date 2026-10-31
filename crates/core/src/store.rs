@@ -100,34 +100,53 @@ impl Store {
 pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
     let parent = path.parent().context("File has no parent")?;
     std::fs::create_dir_all(parent)?;
-    let temp = parent.join(format!(".stackcabin-{}.tmp", uuid::Uuid::new_v4()));
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temp)?;
+    // Stage beside the destination so publication stays on the same filesystem.
+    // The owner removes the staged file on write, sync, and publication errors.
+    let mut file = tempfile::Builder::new()
+        .prefix(".stackcabin-")
+        .suffix(".tmp")
+        .tempfile_in(parent)?;
     use std::io::Write;
     file.write_all(bytes)?;
-    file.sync_all()?;
-    drop(file);
-    // Windows rename cannot replace an existing file; keep the last good file until the new one is fully written.
+    file.as_file().sync_all()?;
+    persist_file(file.into_temp_path(), path)
+        .with_context(|| format!("Could not atomically save {}", path.display()))
+}
+
+fn persist_file(temp: tempfile::TempPath, path: &Path) -> std::io::Result<()> {
     #[cfg(windows)]
-    if path.exists() {
-        use std::os::windows::ffi::OsStrExt;
-        #[link(name = "kernel32")]
-        extern "system" {
-            fn MoveFileExW(existing: *const u16, new: *const u16, flags: u32) -> i32;
+    {
+        use std::time::{Duration, Instant};
+        use windows_sys::Win32::Foundation::{
+            ERROR_ACCESS_DENIED, ERROR_LOCK_VIOLATION, ERROR_SHARING_VIOLATION,
+        };
+
+        let deadline = Instant::now() + Duration::from_secs(1);
+        let mut temp = temp;
+        loop {
+            match temp.persist(path) {
+                Ok(()) => return Ok(()),
+                Err(failed) => {
+                    // Readers and scanners can briefly deny replacement. Never delete
+                    // the destination to work around a lock or retry other I/O errors.
+                    let transient = failed.error.raw_os_error().is_some_and(|code| {
+                        matches!(
+                            code as u32,
+                            ERROR_ACCESS_DENIED | ERROR_SHARING_VIOLATION | ERROR_LOCK_VIOLATION
+                        )
+                    });
+                    let remaining = deadline.saturating_duration_since(Instant::now());
+                    if !transient || remaining.is_zero() {
+                        return Err(failed.error);
+                    }
+                    temp = failed.path;
+                    std::thread::sleep(remaining.min(Duration::from_millis(25)));
+                }
+            }
         }
-        let from: Vec<_> = temp.as_os_str().encode_wide().chain(Some(0)).collect();
-        let to: Vec<_> = path.as_os_str().encode_wide().chain(Some(0)).collect();
-        if unsafe { MoveFileExW(from.as_ptr(), to.as_ptr(), 0x1 | 0x8) } == 0 {
-            let error = std::io::Error::last_os_error();
-            let _ = std::fs::remove_file(temp);
-            return Err(error.into());
-        }
-        return Ok(());
     }
-    std::fs::rename(&temp, path)?;
-    Ok(())
+    #[cfg(not(windows))]
+    temp.persist(path).map_err(|failed| failed.error)
 }
 
 pub fn safe_relative(path: &str) -> Result<PathBuf> {

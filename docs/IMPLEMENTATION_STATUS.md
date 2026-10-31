@@ -17,6 +17,11 @@ Windows/macOS/Ubuntu production acceptance gate.
   process state; streamed logs; Windows Job Objects and Unix group watchdogs.
 - Signature/checksum-verified runtime installation, cancellation, offline archives,
   traversal rejection, incomplete-install recovery and receipt-last publication.
+- Atomic configuration publication stages and syncs a complete document beside
+  its destination, cleans failed staging files, and retries Windows access/sharing
+  locks for at most one second while preserving the last good file. Regression
+  coverage includes real locked/read-only files and concurrent readers; the Linux
+  bounded-tmpfs acceptance also exercises failed settings writes and recovery.
 - Shared MariaDB/PostgreSQL instances, separate project accounts, OS keychain
   credentials, per-project SQLite, logical dumps, and verified restore into a new
   project/database. Source folders remain when removing a project.
@@ -44,6 +49,16 @@ Windows/macOS/Ubuntu production acceptance gate.
 ## Verification evidence
 
 Logs and screenshots are generated locally under ignored `artifacts/`.
+
+The atomic-write hardening passed all 48 Windows core tests (four separately
+invoked process fixtures remain ignored by the ordinary harness), formatting,
+and core/all-target Clippy with warnings denied. Six new regressions cover a
+released sharing lock, a persistent lock and successful retry, read-only files,
+failed publication cleanup, Thai/space paths, and concurrent complete reads.
+Logs: `artifacts/atomic-write-tests-20261031.log` and
+`artifacts/atomic-write-clippy-20261031.log`. Windows access/share/lock error
+identifiers follow [Microsoft's system error reference](https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-).
+Cross-platform CI and rebuilt installer evidence are recorded separately below.
 
 The latest Windows offline run,
 [41167814036](https://github.com/Sakeerin/StackCabin/actions/runs/41167814036), passed

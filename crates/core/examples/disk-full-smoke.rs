@@ -10,7 +10,7 @@ fn main() {
 async fn main() -> anyhow::Result<()> {
     use anyhow::{Context, Result};
     use sha2::{Digest, Sha256};
-    use stackcabin_core::{models::RuntimeArtifact, runtime};
+    use stackcabin_core::{models::RuntimeArtifact, runtime, store::atomic_write};
     use std::{collections::BTreeMap, io::Write, path::PathBuf, sync::Arc};
 
     let volume = PathBuf::from(
@@ -72,6 +72,9 @@ async fn main() -> anyhow::Result<()> {
         source_url: "https://example.invalid/source".into(),
         size: std::fs::metadata(offline.path().join(&checksum))?.len(),
     }];
+    let settings_directory = workspace.path().join("settings ทดสอบ");
+    let settings = settings_directory.join("settings.json");
+    atomic_write(&settings, b"original settings")?;
     let filler = workspace.path().join("owned-space-reservation");
     {
         let mut file = std::fs::File::create(&filler)?;
@@ -80,6 +83,20 @@ async fn main() -> anyhow::Result<()> {
         }
         file.sync_all()?;
     }
+    let replacement = vec![b'x'; 16 * 1024 * 1024];
+    let error = atomic_write(&settings, &replacement)
+        .expect_err("The staged settings file should exhaust the bounded filesystem");
+    anyhow::ensure!(
+        error.chain().any(|cause| cause
+            .downcast_ref::<std::io::Error>()
+            .is_some_and(|e| e.raw_os_error() == Some(libc::ENOSPC))),
+        "Expected a real settings ENOSPC failure, received: {error:#}"
+    );
+    anyhow::ensure!(
+        std::fs::read(&settings)? == b"original settings"
+            && std::fs::read_dir(&settings_directory)?.count() == 1,
+        "Failed settings write changed the last good file or left staged data"
+    );
     let result: Result<()> = manager
         .install(
             "disk-full-fixture",
@@ -107,6 +124,14 @@ async fn main() -> anyhow::Result<()> {
         "Staging files were left behind"
     );
     std::fs::remove_file(filler)?;
+    atomic_write(&settings, &replacement)?;
+    anyhow::ensure!(
+        std::fs::read(&settings)? == replacement,
+        "Settings retry lost content"
+    );
+    // Restore the small test document to leave room for the runtime retry.
+    atomic_write(&settings, b"original settings")?;
+    println!("PASS actual settings ENOSPC: original document preserved, staging cleaned, same write succeeds after freeing owned space");
     manager
         .install(
             "disk-full-fixture",
