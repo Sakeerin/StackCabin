@@ -58,9 +58,64 @@ failed publication cleanup, Thai/space paths, and concurrent complete reads.
 Logs: `artifacts/atomic-write-tests-20261031.log` and
 `artifacts/atomic-write-clippy-20261031.log`. Windows access/share/lock error
 identifiers follow [Microsoft's system error reference](https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-).
-Cross-platform CI and rebuilt installer evidence are recorded separately below.
+Source `2b3836e` passed all ten jobs in
+[CI run 41209951170](https://github.com/Sakeerin/StackCabin/actions/runs/41209951170):
+48 Windows / 44 Unix core tests, the frontend suite, Desktop E2E/lifecycle, and
+native tools across the five targets. The dedicated Ubuntu 24.04 tmpfs acceptance
+produced real ENOSPC, preserved the original settings document, left no staged
+settings files, and completed the same write after freeing only its owned space.
+Runtime extraction also failed cleanly and recovered on that volume. Its log is
+`artifacts/atomic-write-20261031/linux-quota.log`. The first attempt exposed lost
+native I/O codes in the temporary-file wrapper; writes now use its underlying
+`File`, retaining the native code without weakening the ENOSPC assertion. The
+initial failure log remains at `artifacts/atomic-write-linux-quota-first.log`.
 
-The latest Windows offline run,
+All four normal installer jobs passed from this same source in
+[run 41209952479](https://github.com/Sakeerin/StackCabin/actions/runs/41209952479),
+including real startup of installed Windows/deb packages and both macOS bundles.
+The same deb and AppImage also passed on Ubuntu 24.04 in
+[run 41210382919](https://github.com/Sakeerin/StackCabin/actions/runs/41210382919).
+The macOS 14 recheck was cancelled before allocating a runner in
+[run 41210284078](https://github.com/Sakeerin/StackCabin/actions/runs/41210284078).
+GitHub's annotation confirms the scheduled runner brownout, documented in its
+[official retirement schedule](https://github.com/actions/runner-images/issues/13518).
+This is an external verification gap; older macOS 14 evidence below belongs to
+the earlier source and does not certify the newly rebuilt packages on macOS 14.
+
+The downloaded normal Windows installer is 23,017,758 bytes, SHA-256
+`59cc2edc17c451b6e1a4aaed491c3318eb99234cc917fe21fe197e0ac4f60a7e`.
+The existing local offline folder was refreshed with this installer, retaining
+the matching signed runtime catalog and all eleven cached archives. Read-only
+preflight passed all 25 files and Microsoft signature/version checks without
+executing installers on this computer. Evidence:
+`artifacts/atomic-write-20261031/windows-installer.json` and
+`artifacts/atomic-write-20261031/local-offline-preflight.log`.
+All five downloaded installer files independently matched their distributed
+checksums. `artifacts/atomic-write-20261031/BUILD_VERIFICATION.json` binds the exact
+source to all 17 successful CI/package/Ubuntu-baseline/offline jobs and the
+installed catalog, bundle receipt and 78 preserved file hashes.
+
+The latest Windows offline bundle from
+[run 41210773901](https://github.com/Sakeerin/StackCabin/actions/runs/41210773901)
+passed both package and actual installation jobs from source `2b3836e`, using
+the new normal installer rather than reusing an earlier app binary. The complete
+ZIP is 881,309,997 bytes, SHA-256
+`fb5ea21785d1e8c3f88c2acc5e5bb6c4a588d388ac49ba56678eda0ddc4a5850`.
+Its upload receipt matches GitHub's artifact metadata; the full ZIP was not
+downloaded locally. The installed normal executable has SHA-256
+`da2aacec8997993485d8835965a1a21351135a0a2c8d1980001fc8c2112ebbd8`.
+The installed catalog, signature and trust root match the bundle; all eleven
+tools installed from the downloaded payload with a system-only PATH and blocked
+online proxies. Five static/Node/PHP projects remained reachable concurrently;
+MariaDB/PostgreSQL SQL, logical dump and restore passed. Ten persisted projects
+and five databases retained identities, settings, trust, runtime pins, source
+files and backups across normal app startup under the restricted standard-user
+token. Proof is in `artifacts/atomic-write-20261031/offline/installation/`;
+the package receipt/provenance and local installer checks are alongside it.
+This hosted runner already had Microsoft prerequisites and enabled network
+interfaces. Missing-prerequisite and clean-machine certification remain pending.
+
+The previous Windows offline run,
 [41167814036](https://github.com/Sakeerin/StackCabin/actions/runs/41167814036), passed
 both packaging and actual installation from source `f632a7d`. The downloaded ZIP
 installed through the real wrapper/NSIS at a Thai/space path. The installed 0.1.0
@@ -450,8 +505,8 @@ source and installed-runtime state.
 Five Rust regressions cover all nine starters, script-free import inspection,
 package-manager detection, unavailable pins and Laravel alternatives. All five
 passed on each CI target, recorded in `artifacts/project-plan-ci-41081825023.log`.
-The full core suite now has 42 passing tests per target. Frontend
-coverage is now fourteen tests, including stale results, bilingual review,
+At that source, the Windows core suite had 42 passing tests. Frontend
+coverage is fourteen tests, including stale results, bilingual review,
 all-package availability checks and trust-save ordering. The four real Desktop
 E2E cases also exercise the new review through native IPC and verify cancellation
 leaves the created project and runtime state unchanged. Local screenshots are

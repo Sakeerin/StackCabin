@@ -5,7 +5,7 @@ on:
       installer_run:
         description: Successful normal installer build with unchanged app inputs
         type: string
-        default: "41081836769"
+        default: "41209952479"
         required: true
 permissions:
   contents: read

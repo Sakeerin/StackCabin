@@ -5,8 +5,8 @@
 
 ## ติดตั้งบน Windows
 
-ดาวน์โหลดแพ็กเกจวันที่ 30 ตุลาคม 2026 จาก
-[GitHub Actions run นี้](https://github.com/Sakeerin/StackCabin/actions/runs/41081836769)
+ดาวน์โหลดแพ็กเกจวันที่ 31 ตุลาคม 2026 จาก
+[GitHub Actions run นี้](https://github.com/Sakeerin/StackCabin/actions/runs/41209952479)
 เลือก Artifact `development-installers-windows-latest` แล้วแตก ZIP และตรวจไฟล์
 ตาม `SHA256SUMS.txt` ไฟล์ติดตั้งอยู่ในโฟลเดอร์ `nsis/` ส่วนแพ็กเกจจากการ build เอง
 อยู่ใน `target/release/bundle/nsis/` Artifact เก็บไว้ 7 วัน
@@ -33,14 +33,14 @@ Visual C++ กับ WebView2 ที่จำเป็น แล้วเปิ�
 Windows อาจขอสิทธิ์ผู้ดูแลระบบสำหรับส่วนประกอบของ Microsoft
 หลังเปิดแอป เลือก Runtimes → Install from offline pack แล้วเลือกโฟลเดอร์ชุดออฟไลน์
 
-ชุดใน workspace อัปเดตเมื่อ 31 ตุลาคม 2026 ใช้ตัวติดตั้งที่ผ่านการทดสอบวันที่
-30 ตุลาคม และตรวจครบ 11 runtime แล้ว การตรวจ checksum นี้ตรวจความครบถ้วนของไฟล์
+ชุดใน workspace อัปเดตเมื่อ 31 ตุลาคม 2026 ใช้ตัวติดตั้งจาก source `2b3836e`
+และตรวจครบ 11 runtime แล้ว การตรวจ checksum นี้ตรวจความครบถ้วนของไฟล์
 ส่วนการตรวจลายเซ็น catalog ของ runtime จะทำอีกครั้งโดยแอปก่อนติดตั้ง
 
 ชุดออฟไลน์วันที่ 31 ตุลาคม ดาวน์โหลดได้จาก
-[run 41167814036](https://github.com/Sakeerin/StackCabin/actions/runs/41167814036)
+[run 41210773901](https://github.com/Sakeerin/StackCabin/actions/runs/41210773901)
 เลือก `development-offline-windows-x64` แล้วใช้โฟลเดอร์ `offline-windows-x64/`
-หลังแตก ZIP ชุดนี้ใช้ตัวแอปที่ผ่านการทดสอบวันที่ 30 ตุลาคมเหมือนเดิม
+หลังแตก ZIP ชุดนี้ใช้ตัวแอป source `2b3836e` ที่แก้การบันทึกไฟล์เมื่อล็อกชั่วคราวหรือพื้นที่เต็ม
 และผ่านการติดตั้งจริงพร้อมเปิดข้อมูลเดิมบน GitHub runner แล้ว ผลทดสอบอยู่ใน
 `windows-offline-installation-evidence` โดยยังไม่ถือเป็นการรับรองเครื่องสะอาด
 
@@ -81,8 +81,9 @@ chmod +x StackCabin_*.AppImage
 APPIMAGE_EXTRACT_AND_RUN=1 ./StackCabin_*.AppImage
 ```
 
-macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 29 ตุลาคมผ่านการเปิดแอป
-บน macOS 15 ทั้งสองสถาปัตยกรรม ผลทดสอบ macOS 14 ของแพ็กเกจรุ่นก่อนหน้ารวมไว้ใน
+macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 31 ตุลาคมผ่านการเปิดแอป
+บน macOS 15 ทั้งสองสถาปัตยกรรม การตรวจแพ็กเกจใหม่นี้บน macOS 14 ถูก GitHub ยกเลิก
+ตามช่วงหยุดให้บริการ runner จึงยังต้องตรวจซ้ำ ผลทดสอบ macOS 14 ของแพ็กเกจรุ่นก่อนหน้ารวมไว้ใน
 [รายงานสถานะ](IMPLEMENTATION_STATUS.md)
 Node.js และเว็บ Static ใช้ catalog ปัจจุบันได้
 ส่วน PHP/ฐานข้อมูลบน Unix จะเพิ่มเข้า catalog หลังแพ็กเกจผ่านการตรวจและมีแหล่งดาวน์โหลดจริง

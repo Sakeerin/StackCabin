@@ -11,21 +11,22 @@ for the tested behavior and the remaining three-platform release gates.
 
 [คู่มือเริ่มใช้งานภาษาไทย](docs/QUICKSTART.th.md)
 
-Development installers built on 30 October 2026 are available in
-[this verified Actions run](https://github.com/Sakeerin/StackCabin/actions/runs/41081836769):
+Development installers built on 31 October 2026 are available in
+[this verified Actions run](https://github.com/Sakeerin/StackCabin/actions/runs/41209952479):
 Windows x64 NSIS, Ubuntu x64 deb/AppImage, and separate macOS Intel/Apple Silicon
 DMGs. Download the matching `development-installers-*` artifact and verify its
 `SHA256SUMS.txt`. These artifacts expire after seven days. Their source is
-`7b4dbda`; signing and clean-machine certification remain release gates.
+`2b3836e`, including atomic settings recovery after file locks or disk exhaustion;
+signing and clean-machine certification remain release gates.
 
 The complete Windows offline development bundle built on 31 October is available
-in [this verified installation run](https://github.com/Sakeerin/StackCabin/actions/runs/41167814036).
+in [this verified installation run](https://github.com/Sakeerin/StackCabin/actions/runs/41210773901).
 Download `development-offline-windows-x64` and extract it; use its
 `offline-windows-x64/` folder. The separate `windows-offline-verification`
 artifact contains the source/preflight reports and ZIP checksum. Retention is
 seven days. `windows-offline-installation-evidence` records real installation,
 all managed tools, database backup/restore and preserved app data on a hosted
-Windows runner. This package uses the same verified `7b4dbda` application binary.
+Windows runner. This package uses the newly verified `2b3836e` application binary.
 
 ## Run the application
 
