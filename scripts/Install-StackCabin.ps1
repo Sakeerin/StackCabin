@@ -1,9 +1,26 @@
-param([switch]$CheckOnly)
+param(
+    [switch]$CheckOnly,
+    [switch]$Silent,
+    [string]$InstallDirectory
+)
 $ErrorActionPreference = 'Stop'
 foreach ($module in @('Microsoft.PowerShell.Management', 'Microsoft.PowerShell.Utility', 'Microsoft.PowerShell.Security')) {
     Import-Module (Join-Path $PSHOME "Modules/$module")
 }
 if (![Environment]::Is64BitOperatingSystem) { throw 'This bundle requires Windows x64' }
+if ($CheckOnly -and ($Silent -or $PSBoundParameters.ContainsKey('InstallDirectory'))) { throw 'CheckOnly cannot be combined with installation options' }
+$setupArguments = @()
+if ($Silent) { $setupArguments += '/S' }
+if ($PSBoundParameters.ContainsKey('InstallDirectory')) {
+    if ([string]::IsNullOrWhiteSpace($InstallDirectory) -or $InstallDirectory -cnotmatch '^[A-Za-z]:[\\/]' -or $InstallDirectory -match '["<>|?*\x00-\x1f]' -or $InstallDirectory.Substring(2).Contains(':')) {
+        throw 'InstallDirectory must be an absolute local Windows directory without quotes, wildcards or control characters'
+    }
+    $InstallDirectory = [IO.Path]::GetFullPath($InstallDirectory)
+    if ($InstallDirectory.TrimEnd('\', '/') -eq [IO.Path]::GetPathRoot($InstallDirectory).TrimEnd('\', '/')) { throw 'InstallDirectory must not be a drive root' }
+    if (Test-Path -LiteralPath $InstallDirectory -PathType Leaf) { throw 'InstallDirectory must be a directory, not a file' }
+    # NSIS requires /D last, with an unquoted absolute path even when it has spaces.
+    $setupArguments += "/D=$InstallDirectory"
+}
 
 function Get-BundleFile([string]$Relative) {
     if ($Relative -cnotmatch '^[a-zA-Z0-9._-]+(/[a-zA-Z0-9._-]+)*$' -or @($Relative.Split('/') | Where-Object { $_ -in @('.', '..') }).Count) {
@@ -99,7 +116,10 @@ if (!$webViewVersion) {
     if ($webview.ExitCode -ne 0) { throw "WebView2 installer failed: $($webview.ExitCode)" }
     if (!(Get-WebViewVersion)) { throw 'WebView2 installation did not register a runtime' }
 }
-Write-Output 'Opening the StackCabin installer.'
-$setup = Start-Process -FilePath (Join-Path $PSScriptRoot 'StackCabin-setup.exe') -Wait -PassThru
+Write-Output 'Running the StackCabin installer.'
+$setupOptions = @{ FilePath = (Join-Path $PSScriptRoot 'StackCabin-setup.exe'); Wait = $true; PassThru = $true }
+if ($setupArguments.Count) { $setupOptions.ArgumentList = $setupArguments }
+if ($Silent) { $setupOptions.WindowStyle = 'Hidden' }
+$setup = Start-Process @setupOptions
 if ($setup.ExitCode -ne 0) { throw "StackCabin installer failed or was cancelled: $($setup.ExitCode)" }
 if ($vcExitCode -eq 3010) { Write-Output 'Windows requested a restart after installing Visual C++. Restart before launching runtimes.' }

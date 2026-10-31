@@ -31,6 +31,10 @@ Windows/macOS/Ubuntu production acceptance gate.
 - Manual Windows offline artifact workflow with installer-run provenance,
   unchanged-application checks, matching catalog/prerequisite metadata, full
   payload verification and a system-only PATH preflight before artifact upload.
+- Separate hosted Windows offline installation acceptance: real wrapper/NSIS,
+  normal app startup, all managed runtimes and databases, and preserved project
+  data under a restricted standard-user token. Silent setup supports an explicit
+  validated installation directory; clean-OS VM certification remains separate.
 - CI for Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon, Unix native
   runtime build pipeline, and a release catalog gate.
 - Internal Unix QA desktop packaging with the complete matching offline catalog,

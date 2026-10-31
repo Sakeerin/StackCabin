@@ -140,6 +140,53 @@ test("installer upgrade acceptance refuses local and self-hosted machines", asyn
   }
 });
 
+test("offline installation acceptance refuses local, self-hosted and non-Windows machines", async () => {
+  for (const environment of [
+    {
+      GITHUB_ACTIONS: "false",
+      RUNNER_ENVIRONMENT: "github-hosted",
+      RUNNER_OS: "Windows",
+    },
+    {
+      GITHUB_ACTIONS: "true",
+      RUNNER_ENVIRONMENT: "self-hosted",
+      RUNNER_OS: "Windows",
+    },
+    {
+      GITHUB_ACTIONS: "true",
+      RUNNER_ENVIRONMENT: "github-hosted",
+      RUNNER_OS: "Linux",
+    },
+  ]) {
+    const result = spawnSync(
+      powershell,
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        path.join(root, "scripts/verify-windows-offline.ps1"),
+        "-Bundle",
+        "must-not-be-resolved",
+        "-Python",
+        process.execPath,
+      ],
+      {
+        encoding: "utf8",
+        env: { ...process.env, ...environment },
+        timeout: 30_000,
+      },
+    );
+    if (result.error) throw result.error;
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.stdout + result.stderr,
+      /requires a disposable GitHub-hosted Windows runner/,
+    );
+  }
+});
+
 test("standard-user acceptance retains identity and round-trips literal Windows arguments", async () => {
   const kit = await fixture();
   const argumentsFile = path.join(kit, "arguments.json");

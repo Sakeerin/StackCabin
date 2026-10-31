@@ -75,7 +75,9 @@ jobs:
             source = $source
             manifestSha256 = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash.ToLowerInvariant()
             preflight = $check
+            scope = 'package-job'
             installerExecuted = $false
+            installationEvidenceArtifact = 'windows-offline-installation-evidence'
             cleanMachineAcceptance = 'pending'
           } | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath artifacts/offline-evidence/BUILD_VERIFICATION.json -Encoding utf8
       - uses: actions/upload-artifact@v4
@@ -111,3 +113,32 @@ jobs:
           name: offline-bundle-failure-evidence
           retention-days: 7
           path: artifacts/offline-evidence/
+  install:
+    needs: package
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: development-offline-windows-x64
+          path: artifacts/downloaded-offline/
+      - name: Build the real native acceptance harness
+        run: cargo build -p stackcabin-core --example native-smoke
+      - name: Install the downloaded offline bundle and verify real application data
+        shell: pwsh
+        run: ./scripts/verify-windows-offline.ps1 -Bundle artifacts/downloaded-offline/offline-windows-x64 -Python (Get-Command python).Source
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-offline-installation-evidence
+          retention-days: 7
+          if-no-files-found: error
+          path: artifacts/offline-installation-evidence/

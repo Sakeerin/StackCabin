@@ -147,11 +147,29 @@ archives/prerequisites and runs the real target `-CheckOnly` under Windows
 PowerShell 5.1 with system-only PATH. Its seven-day
 `development-offline-windows-x64` artifact contains `offline-windows-x64/` and a
 sibling `offline-evidence/` with both source commits, manifest hash and preflight.
-No installer is executed; this is distribution integrity evidence, not clean-VM
-installation certification. Expired source artifacts require a new installer run.
+No installer is executed by the packaging job. Its `installerExecuted: false`
+record is scoped to that job. Expired source artifacts require a new installer run.
 The separate small `windows-offline-verification` artifact includes an
 `ARTIFACT_RECEIPT.json` with the uploaded bundle ID, URL and ZIP SHA-256 reported
 by [GitHub's artifact action](https://github.com/actions/upload-artifact/tree/v4#outputs).
+
+A second job downloads the produced ZIP and runs `verify-windows-offline.ps1`
+only on a disposable GitHub-hosted Windows runner. The actual wrapper installs
+silently at a new Thai/space path, checks the installed version/catalog/trust
+root, then opens the normal application through a restricted standard-user
+launcher. All eleven managed tools install from that same pack; concurrent
+PHP/Node HTTP, authenticated MariaDB/PostgreSQL dump/restore, and unchanged
+project/database persistence are checked with system-only PATH and unreachable
+online proxies. Evidence is in `windows-offline-installation-evidence`.
+The script refuses local/self-hosted use before resolving payload paths.
+These runners have preinstalled tools and enabled network interfaces; this does
+not certify a fresh OS or physically disconnected VM.
+
+The wrapper's `-Silent` passes NSIS `/S`; `-InstallDirectory` validates a local
+absolute path and passes `/D` last, following the
+[NSIS installer argument rules](https://nsis.sourceforge.io/Docs/Chapter3.html#installerusage).
+Prerequisites retain their own UAC/restart behavior. Read-only verification rejects
+installation options instead of silently ignoring them.
 The offline runtime pack by itself does not install OS prerequisites or arbitrary
 framework dependencies.
 

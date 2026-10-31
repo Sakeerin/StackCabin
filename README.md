@@ -159,7 +159,14 @@ of a successful **Build and verify development installers** run. The workflow
 rejects a different catalog, fork, failed build or changed application inputs,
 then verifies the downloaded installer checksum and all offline payloads.
 It runs `-CheckOnly` under Windows PowerShell 5.1 with no developer tools on PATH.
-It does not execute installers.
+The packaging job does not execute installers. A separate disposable Windows
+job downloads the produced artifact, installs it at a Thai/space path, and opens
+the normal application as a standard user. It installs all managed tools from
+the downloaded pack, checks concurrent PHP/Node HTTP and database dump/restore,
+then verifies the installed app preserves the existing project/database fixture.
+The job uses system-only PATH and unreachable online proxies. Hosted runners
+have preinstalled software; clean-machine and disconnected-VM acceptance remain
+release gates. Evidence is in `windows-offline-installation-evidence`.
 
 Download `development-offline-windows-x64` from the completed run; retention is
 seven days. Extract it and keep `offline-windows-x64/` together. Its sibling
@@ -168,6 +175,11 @@ preflight report. If the original installer artifact expired or application inpu
 changed, build a new normal Windows installer and use that new run ID.
 The small `windows-offline-verification` artifact also includes
 `ARTIFACT_RECEIPT.json` with the complete downloadable ZIP's SHA-256 and URL.
+
+To install to a chosen local Windows folder, the bundle wrapper accepts
+`-InstallDirectory <absolute path>` and `-Silent`. Silent applies to the StackCabin
+setup; Microsoft prerequisites can still request administrator approval or a
+restart. `-CheckOnly` cannot be combined with installation options.
 
 ## Review project setup
 

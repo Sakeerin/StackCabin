@@ -1,5 +1,6 @@
 param([string]$Installer = '', [string]$InstallerSha256 = '')
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 foreach ($module in @('Microsoft.PowerShell.Management', 'Microsoft.PowerShell.Utility', 'Microsoft.PowerShell.Security')) {
     Import-Module (Join-Path $PSHOME "Modules/$module")
 }
@@ -93,6 +94,10 @@ This returns JSON with payload integrity and installed prerequisite versions.
 It does not launch installers, install runtimes or change the machine.
 The local hash manifest detects damaged/mixed files; it is not a release signature.
 The application separately verifies its trusted signed catalog before installing runtimes.
+
+Optional setup flags: -Silent -InstallDirectory C:\chosen\folder
+Use an absolute local Windows folder. Microsoft prerequisites may still need UAC
+or a restart. Do not combine setup flags with -CheckOnly.
 '@ | Set-Content -LiteralPath (Join-Path $bundle 'README.txt') -Encoding UTF8
     & node $manifestTool --write $bundle
     if ($LASTEXITCODE -ne 0) { throw 'Offline bundle manifest generation failed' }

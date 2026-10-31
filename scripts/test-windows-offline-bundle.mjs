@@ -97,7 +97,7 @@ async function save(pack, manifest) {
     JSON.stringify(manifest),
   );
 }
-async function rejected(pack, expected, checkOnly = true) {
+async function rejected(pack, expected, checkOnly = true, options = []) {
   const result = spawnSync(
     "powershell.exe",
     [
@@ -108,6 +108,7 @@ async function rejected(pack, expected, checkOnly = true) {
       "-File",
       path.join(pack, "Install-StackCabin.ps1"),
       ...(checkOnly ? ["-CheckOnly"] : []),
+      ...options,
     ],
     { encoding: "utf8", timeout: 30_000 },
   );
@@ -162,6 +163,68 @@ test("builder refuses linked bundle directories", async () => {
 });
 
 const windows = process.platform === "win32" ? test : test.skip;
+windows(
+  "CheckOnly rejects installation flags before reading or executing payloads",
+  async () => {
+    const { pack } = await fixture();
+    for (const options of [["-Silent"], ["-InstallDirectory", "C:\\example"]]) {
+      await rejected(
+        pack,
+        /CheckOnly cannot be combined with installation options/,
+        true,
+        options,
+      );
+    }
+  },
+);
+windows(
+  "silent installation rejects unsafe or relative destinations before executing payloads",
+  async () => {
+    const { pack } = await fixture();
+    for (const destination of [
+      "relative folder",
+      "C:relative",
+      "C:\\",
+      "C:\\folder\\..",
+      "C:\\folder\ninvalid",
+      'C:\\folder"quote',
+      "C:\\folder\\*",
+      "C:\\folder:stream",
+    ]) {
+      await rejected(pack, /InstallDirectory must/, false, [
+        "-Silent",
+        "-InstallDirectory",
+        destination,
+      ]);
+    }
+  },
+);
+windows(
+  "silent installation rejects file destinations without modifying the file",
+  async () => {
+    const { pack } = await fixture();
+    const destination = path.join(pack, "keep.txt");
+    await writeFile(destination, "keep my data");
+    await rejected(pack, /InstallDirectory must be a directory/, false, [
+      "-Silent",
+      "-InstallDirectory",
+      destination,
+    ]);
+    assert.equal(await readFile(destination, "utf8"), "keep my data");
+  },
+);
+windows(
+  "silent installation still verifies every archive before running helpers",
+  async () => {
+    const { pack, digest } = await fixture();
+    await writeFile(path.join(pack, digest), "truncated");
+    await rejected(pack, /Bundle checksum mismatch/, false, [
+      "-Silent",
+      "-InstallDirectory",
+      path.join(pack, "new application ทดสอบ"),
+    ]);
+  },
+);
 for (const checkOnly of [true, false]) {
   windows(
     `Windows ${checkOnly ? "CheckOnly" : "install"} preflight rejects a truncated archive before executing helpers`,
