@@ -107,7 +107,8 @@ pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
         .suffix(".tmp")
         .tempfile_in(parent)?;
     use std::io::Write;
-    file.write_all(bytes)?;
+    // Use the underlying File so callers can still inspect native I/O codes.
+    file.as_file_mut().write_all(bytes)?;
     file.as_file().sync_all()?;
     persist_file(file.into_temp_path(), path)
         .with_context(|| format!("Could not atomically save {}", path.display()))
