@@ -18,6 +18,13 @@ DMGs. Download the matching `development-installers-*` artifact and verify its
 `SHA256SUMS.txt`. These artifacts expire after seven days. Their source is
 `7b4dbda`; signing and clean-machine certification remain release gates.
 
+The complete Windows offline development bundle built on 31 October is available
+in [this packaging run](https://github.com/Sakeerin/StackCabin/actions/runs/41163890446).
+Download `development-offline-windows-x64` and extract it; use its
+`offline-windows-x64/` folder. The separate `windows-offline-verification`
+artifact contains the source/preflight reports and ZIP checksum. Retention is
+seven days. This package uses the same verified `7b4dbda` application binary.
+
 ## Run the application
 
 Development prerequisites: Node.js 22.16+ or 24 LTS, npm, stable Rust, and the

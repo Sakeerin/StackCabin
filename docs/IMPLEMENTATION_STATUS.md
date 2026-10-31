@@ -73,6 +73,36 @@ only Windows system directories on `PATH` and an empty `PSModulePath`. Evidence:
 `artifacts/windows-offline-thai-path-20261031.json`. The temporary hardlink fixture
 was removed after verification; the original installer and all archives remain.
 
+The complete Windows development offline bundle was assembled and uploaded by
+[run 41163890446](https://github.com/Sakeerin/StackCabin/actions/runs/41163890446)
+from packaging source `0e296ec`, reusing the unchanged normal `7b4dbda` installer.
+All 26 packaging/provenance/preflight regressions passed. The job downloaded the
+11 pinned runtime archives and Microsoft prerequisites, verified the source run,
+unchanged application inputs, all five catalog/prerequisite metadata files, and
+the original installer checksum, then passed the real Windows PowerShell 5.1
+target preflight with system-only PATH. No installer was executed.
+
+The downloadable `development-offline-windows-x64` ZIP is 881,310,340 bytes,
+SHA-256 `3baaece81287eaefe4acdb49b9e73ca7bd054087107318c06fc8881578176028`.
+Its `offline-windows-x64/` contains the complete bundle; `offline-evidence/`
+contains source and preflight reports. The separate small
+`windows-offline-verification` artifact also contains the upload receipt. That
+receipt's ID and digest were checked against GitHub's artifact API. Local evidence
+is in `artifacts/offline-distribution-41163890446/` and
+`artifacts/offline-publishing-tests-20261031.log`. Both hosted artifacts expire
+after seven days (7 November for this run). Their integrity checks do not certify
+clean-machine installation or production release signing.
+
+Packaging source `0e296ec` also passed all 10 jobs in
+[CI run 41163890221](https://github.com/Sakeerin/StackCabin/actions/runs/41163890221):
+Windows, Ubuntu 22.04/24.04, and native macOS ARM/Intel. The combined packaging
+test step passed 26 checks on Windows and 13 shared checks on each Unix target
+(13 Windows-only checks skipped). The original 14 frontend tests, 42 core tests,
+Desktop E2E/lifecycle and real native-tool smoke suites also passed. Eight new
+source-policy regressions cover failed builds, other workflows, repository/fork
+identity, malformed run/commit IDs, catalog/prerequisite bytes, and app input
+changes requiring a fresh installer even without a version bump.
+
 | Check                      | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Production frontend        | TypeScript and Vite build                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -82,7 +112,7 @@ was removed after verification; the original installer and all archives remain.
 | Native lifecycle           | Real HTTP grandchild, stop of its process tree, and cleanup after its parent exits unexpectedly                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Native Desktop E2E         | 4 cases against real Rust IPC/SQLite; screenshot `stackcabin-desktop.png`                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Native desktop lifecycle   | 20 real application sessions on five CI targets: native close, Tray Open/Quit handlers, repeated Quit and abrupt app termination; owned HTTP stops while an unrelated server stays healthy. Two desktop Rust tests cover exit coordination. OS tray pointer interaction remains a VM check                                                                                                                                                                                                                                          |
-| Cross-platform CI          | [Run 41146418041](https://github.com/Sakeerin/StackCabin/actions/runs/41146418041): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and managed toolchains, including supervisor-owner crash and unreachable-proxy regressions                                                                                                                                                                                                                                     |
+| Cross-platform CI          | [Run 41163890221](https://github.com/Sakeerin/StackCabin/actions/runs/41163890221): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and managed toolchains, including supervisor-owner crash and unreachable-proxy regressions                                                                                                                                                                                                                                     |
 | Normal Windows package     | [Run 41081836769](https://github.com/Sakeerin/StackCabin/actions/runs/41081836769): release NSIS includes the loopback/proxy fix and pinned Microsoft prerequisite; normal application startup initializes isolated SQLite without E2E plugins                                                                                                                                                                                                                                                                                      |
 | Installed preview packages | [Run 41081836769](https://github.com/Sakeerin/StackCabin/actions/runs/41081836769): Windows NSIS, Ubuntu 22.04 deb, and macOS ARM/Intel DMGs built successfully; normal application startup used isolated SQLite metadata. macOS bundle checks reject external non-system library paths and unsupported minimum OS versions                                                                                                                                                                                                         |
 | Windows prerequisites      | The NSIS installer embeds pinned Microsoft Visual C++ 14.51.36247 x64, verifies SHA-256/Authenticode/version, detects existing runtime versions, and elevates only Microsoft's installer when needed. Four read-only integrity tests passed. [Installed-package verification](https://github.com/Sakeerin/StackCabin/actions/runs/40048115886) confirmed the required version and application startup in a Thai/spaced installation path; that runner already had 14.51, so missing-runtime/UAC acceptance remains a clean-VM check |

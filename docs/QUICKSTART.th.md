@@ -37,7 +37,12 @@ Windows อาจขอสิทธิ์ผู้ดูแลระบบสำ
 30 ตุลาคม และตรวจครบ 11 runtime แล้ว การตรวจ checksum นี้ตรวจความครบถ้วนของไฟล์
 ส่วนการตรวจลายเซ็น catalog ของ runtime จะทำอีกครั้งโดยแอปก่อนติดตั้ง
 
-สร้างชุดออฟไลน์ที่ดาวน์โหลดจาก GitHub ได้ด้วย workflow
+ชุดออฟไลน์วันที่ 31 ตุลาคม ดาวน์โหลดได้จาก
+[run 41163890446](https://github.com/Sakeerin/StackCabin/actions/runs/41163890446)
+เลือก `development-offline-windows-x64` แล้วใช้โฟลเดอร์ `offline-windows-x64/`
+หลังแตก ZIP ชุดนี้ใช้ตัวแอปที่ผ่านการทดสอบวันที่ 30 ตุลาคมเหมือนเดิม
+
+สร้างชุดออฟไลน์ใหม่ที่ดาวน์โหลดจาก GitHub ได้ด้วย workflow
 **Build and verify the Windows offline bundle** โดยกรอก run ID ของ
 **Build and verify development installers** ที่สำเร็จแล้วและโค้ดแอปยังตรงกัน
 เมื่อ workflow สำเร็จ ดาวน์โหลด Artifact `development-offline-windows-x64`
