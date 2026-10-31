@@ -134,6 +134,24 @@ installer's exit status. The unsigned local manifest detects accidental corrupti
 and mixed payloads, not a replaced distribution; release signing is still required.
 The app verifies its own trusted signed catalog when installing runtime archives.
 Test the resulting complete folder with networking disabled.
+
+For a downloadable development pack, dispatch **Build and verify the Windows
+offline bundle** with a successful normal installer's Actions run ID. It verifies
+the run identity, workflow, repository/head repository, and source commit before
+downloading payloads. Reuse is allowed only for a closed set of packaging,
+test/documentation changes; application input changes require a fresh normal
+installer even when the application version is unchanged. Catalog, signature,
+trust root, provenance and pinned prerequisite metadata must match byte for byte.
+The workflow verifies the distributed installer checksum, assembles all Windows
+archives/prerequisites and runs the real target `-CheckOnly` under Windows
+PowerShell 5.1 with system-only PATH. Its seven-day
+`development-offline-windows-x64` artifact contains `offline-windows-x64/` and a
+sibling `offline-evidence/` with both source commits, manifest hash and preflight.
+No installer is executed; this is distribution integrity evidence, not clean-VM
+installation certification. Expired source artifacts require a new installer run.
+The separate small `windows-offline-verification` artifact includes an
+`ARTIFACT_RECEIPT.json` with the uploaded bundle ID, URL and ZIP SHA-256 reported
+by [GitHub's artifact action](https://github.com/actions/upload-artifact/tree/v4#outputs).
 The offline runtime pack by itself does not install OS prerequisites or arbitrary
 framework dependencies.
 

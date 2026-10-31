@@ -146,6 +146,22 @@ in StackCabin's offline runtime picker.
 The local hash manifest detects file damage; it is not a release signature.
 The application independently verifies its trusted signed runtime catalog.
 
+To create a downloadable complete folder on GitHub, run
+**Build and verify the Windows offline bundle** in Actions and enter the run ID
+of a successful **Build and verify development installers** run. The workflow
+rejects a different catalog, fork, failed build or changed application inputs,
+then verifies the downloaded installer checksum and all offline payloads.
+It runs `-CheckOnly` under Windows PowerShell 5.1 with no developer tools on PATH.
+It does not execute installers.
+
+Download `development-offline-windows-x64` from the completed run; retention is
+seven days. Extract it and keep `offline-windows-x64/` together. Its sibling
+`offline-evidence/` records both source commits, the manifest checksum and the
+preflight report. If the original installer artifact expired or application inputs
+changed, build a new normal Windows installer and use that new run ID.
+The small `windows-offline-verification` artifact also includes
+`ARTIFACT_RECEIPT.json` with the complete downloadable ZIP's SHA-256 and URL.
+
 ## Review project setup
 
 Creating or importing a project shows its selected runtime versions, dependency
@@ -164,6 +180,7 @@ generated lockfile. Dependency preparation waits for explicit trust to be saved.
 ```sh
 npm test
 node --test scripts/test-windows-offline-bundle.mjs
+node --test scripts/test-offline-installer-source.mjs
 cargo test -p stackcabin-core
 npm run types
 npm run desktop:test:build

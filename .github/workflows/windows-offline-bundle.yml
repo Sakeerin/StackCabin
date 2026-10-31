@@ -1,0 +1,113 @@
+name: Build and verify the Windows offline bundle
+on:
+  workflow_dispatch:
+    inputs:
+      installer_run:
+        description: Successful normal installer build with unchanged app inputs
+        type: string
+        default: "41081836769"
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify packaging safeguards
+        run: node --test scripts/test-offline-installer-source.mjs scripts/test-windows-offline-bundle.mjs
+      - name: Verify installer source and catalog compatibility
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INSTALLER_RUN: ${{ inputs.installer_run }}
+        shell: pwsh
+        run: |
+          if ($env:INSTALLER_RUN -notmatch '^\d+$') { throw 'A numeric installer run ID is required' }
+          New-Item -ItemType Directory -Force -Path artifacts/offline-evidence | Out-Null
+          gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:INSTALLER_RUN" > artifacts/offline-evidence/run.json
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot read installer build metadata' }
+          node scripts/verify-offline-installer-source.mjs artifacts/offline-evidence/run.json $env:GITHUB_REPOSITORY $env:INSTALLER_RUN > artifacts/offline-evidence/source.json
+          if ($LASTEXITCODE -ne 0) { throw 'Installer is incompatible; build a new normal installer first' }
+      - uses: actions/download-artifact@v4
+        with:
+          name: development-installers-windows-latest
+          run-id: ${{ inputs.installer_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/source-installer/
+      - name: Verify the distributed installer checksum
+        run: python scripts/verify-installer-checksums.py artifacts/source-installer --platform Windows
+      - name: Assemble matching runtime archives
+        run: node scripts/offline-pack.mjs --platform=windows --arch=x64 --dev
+      - name: Assemble the complete bundle without executing installers
+        shell: pwsh
+        run: |
+          $installer = @(Get-ChildItem -LiteralPath artifacts/source-installer/nsis -File -Filter '*-setup.exe')
+          if ($installer.Count -ne 1) { throw 'Expected one verified normal installer' }
+          $hash = (Get-FileHash -LiteralPath $installer[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts/windows-offline-bundle.ps1 -Installer $installer[0].FullName -InstallerSha256 $hash
+          if ($LASTEXITCODE -ne 0) { throw 'Offline bundle assembly failed' }
+      - name: Verify the complete bundle without system development tools
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          $env:PSModulePath = ''
+          & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File artifacts/offline-windows-x64/Install-StackCabin.ps1 -CheckOnly > artifacts/offline-evidence/preflight.json
+          if ($LASTEXITCODE -ne 0) { throw 'Read-only target preflight failed' }
+      - name: Record the verified bundle identity
+        shell: pwsh
+        run: |
+          $manifest = 'artifacts/offline-windows-x64/installer-manifest.json'
+          $source = Get-Content -LiteralPath artifacts/offline-evidence/source.json -Raw | ConvertFrom-Json
+          $check = Get-Content -LiteralPath artifacts/offline-evidence/preflight.json -Raw | ConvertFrom-Json
+          if (!$check.bundleVerified -or $check.runtimeCount -lt 1) { throw 'Missing successful preflight report' }
+          [ordered]@{
+            schemaVersion = 1
+            source = $source
+            manifestSha256 = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash.ToLowerInvariant()
+            preflight = $check
+            installerExecuted = $false
+            cleanMachineAcceptance = 'pending'
+          } | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath artifacts/offline-evidence/BUILD_VERIFICATION.json -Encoding utf8
+      - uses: actions/upload-artifact@v4
+        id: bundle
+        with:
+          name: development-offline-windows-x64
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            artifacts/offline-windows-x64/
+            artifacts/offline-evidence/source.json
+            artifacts/offline-evidence/preflight.json
+            artifacts/offline-evidence/BUILD_VERIFICATION.json
+      - name: Record the uploaded archive checksum
+        env:
+          BUNDLE_ID: ${{ steps.bundle.outputs.artifact-id }}
+          BUNDLE_URL: ${{ steps.bundle.outputs.artifact-url }}
+          BUNDLE_SHA256: ${{ steps.bundle.outputs.artifact-digest }}
+        shell: pwsh
+        run: |
+          if ($env:BUNDLE_ID -notmatch '^\d+$' -or $env:BUNDLE_SHA256 -cnotmatch '^[a-f0-9]{64}$') { throw 'Missing uploaded artifact identity' }
+          [ordered]@{ artifactId = $env:BUNDLE_ID; url = $env:BUNDLE_URL; sha256 = $env:BUNDLE_SHA256 } | ConvertTo-Json | Set-Content -LiteralPath artifacts/offline-evidence/ARTIFACT_RECEIPT.json -Encoding utf8
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-offline-verification
+          retention-days: 7
+          if-no-files-found: error
+          path: artifacts/offline-evidence/
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: offline-bundle-failure-evidence
+          retention-days: 7
+          path: artifacts/offline-evidence/

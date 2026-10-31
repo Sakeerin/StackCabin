@@ -28,6 +28,9 @@ Windows/macOS/Ubuntu production acceptance gate.
 - Complete Windows offline preflight with a read-only `-CheckOnly` JSON report:
   all control files/installers/archives, catalog hash bindings, Microsoft signatures,
   installed prerequisite versions and failure propagation before installation.
+- Manual Windows offline artifact workflow with installer-run provenance,
+  unchanged-application checks, matching catalog/prerequisite metadata, full
+  payload verification and a system-only PATH preflight before artifact upload.
 - CI for Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon, Unix native
   runtime build pipeline, and a release catalog gate.
 - Internal Unix QA desktop packaging with the complete matching offline catalog,

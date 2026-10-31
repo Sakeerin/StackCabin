@@ -273,6 +273,17 @@ windows(
   "builder rejects an installer with the wrong expected checksum before refreshing a bundle",
   async () => {
     const { pack } = await fixture();
+    const checkout = path.dirname(pack);
+    await mkdir(path.join(checkout, "scripts"));
+    const builder = path.join(checkout, "scripts/windows-offline-bundle.ps1");
+    await copyFile(
+      path.join(root, "scripts/windows-offline-bundle.ps1"),
+      builder,
+    );
+    await writeFile(
+      path.join(checkout, "package.json"),
+      JSON.stringify({ version: "0.1.0" }),
+    );
     const result = spawnSync(
       "powershell.exe",
       [
@@ -281,7 +292,7 @@ windows(
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        path.join(root, "scripts/windows-offline-bundle.ps1"),
+        builder,
         "-Installer",
         path.join(pack, "StackCabin-setup.exe"),
         "-InstallerSha256",

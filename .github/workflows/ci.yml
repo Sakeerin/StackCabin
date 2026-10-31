@@ -37,7 +37,7 @@ jobs:
       - run: node --test scripts/test-native-stack.mjs
       - run: node --test scripts/test-qa-desktop.mjs
       - name: Offline bundle integrity and read-only Windows preflight
-        run: node --test scripts/test-windows-offline-bundle.mjs
+        run: node --test scripts/test-windows-offline-bundle.mjs scripts/test-offline-installer-source.mjs
       - name: Unix acceptance wrapper isolation
         if: runner.os != 'Windows'
         run: bash scripts/test-native-qa.sh
