@@ -19,11 +19,13 @@ DMGs. Download the matching `development-installers-*` artifact and verify its
 `7b4dbda`; signing and clean-machine certification remain release gates.
 
 The complete Windows offline development bundle built on 31 October is available
-in [this packaging run](https://github.com/Sakeerin/StackCabin/actions/runs/41163890446).
+in [this verified installation run](https://github.com/Sakeerin/StackCabin/actions/runs/41167814036).
 Download `development-offline-windows-x64` and extract it; use its
 `offline-windows-x64/` folder. The separate `windows-offline-verification`
 artifact contains the source/preflight reports and ZIP checksum. Retention is
-seven days. This package uses the same verified `7b4dbda` application binary.
+seven days. `windows-offline-installation-evidence` records real installation,
+all managed tools, database backup/restore and preserved app data on a hosted
+Windows runner. This package uses the same verified `7b4dbda` application binary.
 
 ## Run the application
 

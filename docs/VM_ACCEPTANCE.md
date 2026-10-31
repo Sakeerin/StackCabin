@@ -21,6 +21,19 @@ development catalog. The same installers passed startup on
 
 ## Windows runtime test kit
 
+The **Build and verify the Windows offline bundle** workflow now has a separate
+hosted installation job. It downloads the produced artifact and invokes its
+actual wrapper with `-Silent -InstallDirectory`, checks the installed version and
+catalog/trust root, then runs the normal app against an existing ten-project
+fixture under a restricted standard-user token. All eleven managed tools come
+from the same offline pack. Concurrent PHP 8.4/8.5 and Node 22/24 HTTP, logical
+database backup/restore, and preservation before/after app startup are verified.
+The `windows-offline-installation-evidence` artifact includes the transcript,
+pre/post prerequisite checks, native logs and `acceptance.json` with the runner
+image/OS and binary/manifest hashes. Hosted images have preinstalled software;
+system-only PATH and unreachable online proxies do not replace the fresh-OS,
+disconnected-network and interactive desktop checks below.
+
 The manual **Build the Windows VM acceptance tool** workflow packages the existing
 Rust `native-smoke` acceptance executable with a PowerShell wrapper. This is an
 internal QA harness, separate from the product UI. It needs no system Rust, npm,

@@ -38,9 +38,11 @@ Windows อาจขอสิทธิ์ผู้ดูแลระบบสำ
 ส่วนการตรวจลายเซ็น catalog ของ runtime จะทำอีกครั้งโดยแอปก่อนติดตั้ง
 
 ชุดออฟไลน์วันที่ 31 ตุลาคม ดาวน์โหลดได้จาก
-[run 41163890446](https://github.com/Sakeerin/StackCabin/actions/runs/41163890446)
+[run 41167814036](https://github.com/Sakeerin/StackCabin/actions/runs/41167814036)
 เลือก `development-offline-windows-x64` แล้วใช้โฟลเดอร์ `offline-windows-x64/`
 หลังแตก ZIP ชุดนี้ใช้ตัวแอปที่ผ่านการทดสอบวันที่ 30 ตุลาคมเหมือนเดิม
+และผ่านการติดตั้งจริงพร้อมเปิดข้อมูลเดิมบน GitHub runner แล้ว ผลทดสอบอยู่ใน
+`windows-offline-installation-evidence` โดยยังไม่ถือเป็นการรับรองเครื่องสะอาด
 
 สร้างชุดออฟไลน์ใหม่ที่ดาวน์โหลดจาก GitHub ได้ด้วย workflow
 **Build and verify the Windows offline bundle** โดยกรอก run ID ของ

@@ -45,6 +45,53 @@ Windows/macOS/Ubuntu production acceptance gate.
 
 Logs and screenshots are generated locally under ignored `artifacts/`.
 
+The latest Windows offline run,
+[41167814036](https://github.com/Sakeerin/StackCabin/actions/runs/41167814036), passed
+both packaging and actual installation from source `f632a7d`. The downloaded ZIP
+installed through the real wrapper/NSIS at a Thai/space path. The installed 0.1.0
+normal binary has SHA-256
+`0affa5e0adea6687355d9e9c8c28291506ba0a3a6bb25623eb6f8922ea25a6f4`;
+its catalog/signature/trust-root resources matched the verified bundle.
+All eleven tools installed from that pack under system-only PATH and unreachable
+online proxies. Static, Node 22/24 and PHP 8.4/8.5 stayed reachable concurrently;
+npm/pnpm/Yarn ran with both managed Node versions. MariaDB/PostgreSQL provisioning,
+SQL read/write and dump/restore passed. The installed app opened and held the
+existing ten-project SQLite metadata; all ten projects, five databases, runtime
+pins, trust, settings, source files and backups remained valid afterward under a
+restricted standard-user token.
+
+Evidence is in `artifacts/offline-installed-41167814036/installation/`, including
+`acceptance.json`, the native/application logs and the preservation baseline.
+The runner image was `win25-vs2026` (Windows build 26100); its preinstalled
+Visual C++/WebView2 were present before installation, and its NICs remained
+enabled. This does not certify missing-prerequisite installation on a fresh
+Windows 10/11 desktop or a physically disconnected VM.
+
+The new complete ZIP is 881,312,165 bytes, SHA-256
+`5e0f032b88114c4b1485562a88382be20bf48c683358265d7ff41552415f3283`.
+Its upload receipt was cross-checked against GitHub artifact metadata, saved in
+`artifacts/offline-installed-41167814036/`. Local parameter/provenance/guard checks
+passed 38 tests (`artifacts/offline-installation-tests-20261031.log`). These cover
+invalid/root/file destinations, CheckOnly/install option conflicts, complete
+preflight before silent installation, and refusal to install on local/self-hosted
+machines. Acceptance explicitly selects all four PHP/Node branches and overrides
+an intentionally unsupported inherited filter. Its first incomplete-fixture run
+was rejected; that failure evidence is retained in
+`artifacts/offline-installation-first-run-41166974794/`.
+
+Source `f632a7d` passed all 10 jobs in
+[CI run 41167813068](https://github.com/Sakeerin/StackCabin/actions/runs/41167813068).
+The combined packaging checks passed 30 cases on Windows and 13 shared cases on
+each Unix target (17 Windows-only cases skipped); Windows acceptance safeguards
+passed eight more checks. Frontend/core suites, Desktop E2E/lifecycle and the
+five native-tool jobs all passed. The preservation baseline confirms 10 projects,
+five databases, 11 tools and 78 file hashes. Evidence is in
+`artifacts/offline-installed-41167814036/ci.json` and `ci-packaging-tests.log`.
+An earlier Windows lifecycle probe encountered a denied write to its test-only
+evidence file; its log is retained at
+`artifacts/offline-installation-windows-ci-failure.log`. That failure did not recur
+on the fresh full run; no lifecycle assertions or production code were bypassed.
+
 Windows offline assembly was refreshed on 31 October using the verified normal
 installer from [run 41081836769](https://github.com/Sakeerin/StackCabin/actions/runs/41081836769)
 (application source `7b4dbda`, SHA-256
@@ -116,7 +163,7 @@ changes requiring a fresh installer even without a version bump.
 | Native lifecycle           | Real HTTP grandchild, stop of its process tree, and cleanup after its parent exits unexpectedly                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Native Desktop E2E         | 4 cases against real Rust IPC/SQLite; screenshot `stackcabin-desktop.png`                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Native desktop lifecycle   | 20 real application sessions on five CI targets: native close, Tray Open/Quit handlers, repeated Quit and abrupt app termination; owned HTTP stops while an unrelated server stays healthy. Two desktop Rust tests cover exit coordination. OS tray pointer interaction remains a VM check                                                                                                                                                                                                                                          |
-| Cross-platform CI          | [Run 41163890221](https://github.com/Sakeerin/StackCabin/actions/runs/41163890221): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and managed toolchains, including supervisor-owner crash and unreachable-proxy regressions                                                                                                                                                                                                                                     |
+| Cross-platform CI          | [Run 41167813068](https://github.com/Sakeerin/StackCabin/actions/runs/41167813068): Windows, Ubuntu 22.04/24.04 and macOS Intel/Apple Silicon passed frontend/core tests, native builds, Desktop E2E and managed toolchains, including supervisor-owner crash and unreachable-proxy regressions                                                                                                                                                                                                                                     |
 | Normal Windows package     | [Run 41081836769](https://github.com/Sakeerin/StackCabin/actions/runs/41081836769): release NSIS includes the loopback/proxy fix and pinned Microsoft prerequisite; normal application startup initializes isolated SQLite without E2E plugins                                                                                                                                                                                                                                                                                      |
 | Installed preview packages | [Run 41081836769](https://github.com/Sakeerin/StackCabin/actions/runs/41081836769): Windows NSIS, Ubuntu 22.04 deb, and macOS ARM/Intel DMGs built successfully; normal application startup used isolated SQLite metadata. macOS bundle checks reject external non-system library paths and unsupported minimum OS versions                                                                                                                                                                                                         |
 | Windows prerequisites      | The NSIS installer embeds pinned Microsoft Visual C++ 14.51.36247 x64, verifies SHA-256/Authenticode/version, detects existing runtime versions, and elevates only Microsoft's installer when needed. Four read-only integrity tests passed. [Installed-package verification](https://github.com/Sakeerin/StackCabin/actions/runs/40048115886) confirmed the required version and application startup in a Thai/spaced installation path; that runner already had 14.51, so missing-runtime/UAC acceptance remains a clean-VM check |
