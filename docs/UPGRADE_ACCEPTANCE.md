@@ -98,6 +98,11 @@ unpublished normal 0.1.1 NSIS candidate without E2E plugins. The source version 
 catalog remain unchanged. Actual installer hashes and both source commits are logged.
 The `data_location` input selects `custom`, `default`, or `both` (the default).
 Each location runs on a separate disposable hosted machine.
+The wrapper explicitly selects Node 22/24 and PHP 8.4/8.5 and restores the
+caller's branch filter afterward. Both hosted jobs inherit an intentionally
+unsupported filter, so an omitted override cannot pass with only a static
+project. The prior-installer input defaults to verified build `41081836769`;
+choose another compatible successful build when its artifact expires.
 
 The old installer runs first so that its Microsoft prerequisites are available.
 Both installed versions must report the expected version and contain exactly the

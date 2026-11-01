@@ -38,7 +38,7 @@ $evidence = Join-Path $workspace 'artifacts'
 New-Item -ItemType Directory -Path $evidence -Force | Out-Null
 Start-Transcript -LiteralPath (Join-Path $evidence "windows-upgrade-$DataLocation.log") -Force | Out-Null
 $savedEnvironment = @{}
-foreach ($name in @('STACKCABIN_SMOKE_DIR', 'STACKCABIN_SMOKE_COMPONENTS', 'STACKCABIN_OFFLINE_DIR')) {
+foreach ($name in @('STACKCABIN_SMOKE_DIR', 'STACKCABIN_SMOKE_COMPONENTS', 'STACKCABIN_SMOKE_BRANCHES', 'STACKCABIN_OFFLINE_DIR')) {
     $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
 }
 try {
@@ -121,6 +121,7 @@ try {
     }
     $env:STACKCABIN_SMOKE_DIR = $fixture
     $env:STACKCABIN_SMOKE_COMPONENTS = 'node,caddy,php,cacert,composer,pnpm,yarn,mariadb,postgres'
+    $env:STACKCABIN_SMOKE_BRANCHES = '22.,24.,8.4.,8.5.'
     $env:STACKCABIN_OFFLINE_DIR = $offline
     Invoke-Core
     Invoke-Core 'record-persistence'

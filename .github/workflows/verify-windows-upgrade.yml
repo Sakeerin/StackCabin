@@ -5,7 +5,7 @@ on:
       source_run:
         description: Successful normal Windows 0.1.0 installer build run
         type: string
-        default: "40056742523"
+        default: "41081836769"
         required: true
       data_location:
         description: Application data location to preserve across installation
@@ -91,6 +91,7 @@ jobs:
         shell: pwsh
         env:
           DATA_LOCATION: ${{ matrix.data_location }}
+          STACKCABIN_SMOKE_BRANCHES: unsupported-inherited-filter
         run: |
           $previous = @(Get-ChildItem artifacts/previous-windows/nsis/*-setup.exe)
           $candidate = @(Get-ChildItem target/release/bundle/nsis/*-setup.exe)

@@ -75,6 +75,7 @@ test("permits reviewed packaging, test and documentation changes when reusing an
     "scripts/windows-offline-manifest.mjs",
     "scripts/verify-offline-installer-source.mjs",
     "scripts/verify-windows-offline.ps1",
+    "scripts/verify-windows-upgrade.ps1",
     "scripts/offline-pack.mjs",
     "scripts/test-windows-offline-bundle.mjs",
   ]);

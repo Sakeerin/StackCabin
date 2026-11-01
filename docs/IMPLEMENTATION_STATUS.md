@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **31 October 2026**.
+Development version: **0.1.0**, checked on **1 November 2026**.
 This is a working development preview. It has not passed the plan's simultaneous
 Windows/macOS/Ubuntu production acceptance gate.
 
@@ -75,12 +75,20 @@ All four normal installer jobs passed from this same source in
 including real startup of installed Windows/deb packages and both macOS bundles.
 The same deb and AppImage also passed on Ubuntu 24.04 in
 [run 41210382919](https://github.com/Sakeerin/StackCabin/actions/runs/41210382919).
-The macOS 14 recheck was cancelled before allocating a runner in
-[run 41210284078](https://github.com/Sakeerin/StackCabin/actions/runs/41210284078).
-GitHub's annotation confirms the scheduled runner brownout, documented in its
-[official retirement schedule](https://github.com/actions/runner-images/issues/13518).
-This is an external verification gap; older macOS 14 evidence below belongs to
-the earlier source and does not certify the newly rebuilt packages on macOS 14.
+The same DMGs passed their macOS 14 recheck on 1 November: native Apple Silicon
+[run 41270976722](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722)
+and x64 through Rosetta
+[run 41270979416](https://github.com/Sakeerin/StackCabin/actions/runs/41270979416).
+Both verified the distributed checksums, mounted/copied the DMG to a Thai/spaced
+path, checked Mach-O dependencies/minimum OS, and started the normal app with
+real SQLite metadata. Logs/metadata are in
+`artifacts/baseline-upgrade-20261101/macos14-*`. Rosetta remains supplementary;
+native Intel macOS 14 clean-machine acceptance is still pending. The earlier
+cancelled [run 41210284078](https://github.com/Sakeerin/StackCabin/actions/runs/41210284078)
+was GitHub's scheduled runner brownout. Its
+[official schedule](https://github.com/actions/runner-images/issues/13518)
+retires the hosted macOS 14 image on 2 November, so future baseline checks need
+a maintained macOS 14 machine rather than substituting a newer OS result.
 
 The downloaded normal Windows installer is 23,017,758 bytes, SHA-256
 `59cc2edc17c451b6e1a4aaed491c3318eb99234cc917fe21fe197e0ac4f60a7e`.
