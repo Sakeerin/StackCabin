@@ -91,6 +91,16 @@ and catalog private keys. The candidate installers are not published.
 
 ## Windows NSIS acceptance
 
+The latest repeat on **1 November 2026** passed both data locations in
+[run 41271196566](https://github.com/Sakeerin/StackCabin/actions/runs/41271196566).
+The previous normal installer is source `7b4dbda` from build `41081836769`; the
+unpublished 0.1.1 candidate is source `44a082b`. Each job preserved ten projects,
+five existing databases, eleven tools and 78 file hashes, with actual metadata
+file use by both installed versions and core HTTP/runtime/SQL checks afterward.
+Both jobs also proved that the complete PHP/Node fixture overrides an unsupported
+inherited branch filter. Transcripts and baseline hashes are retained locally in
+`artifacts/baseline-upgrade-20261101/windows/` and in that run's evidence artifacts.
+
 The Windows workflow downloads and checksums an existing normal 0.1.0 installer
 (the successful build run is an explicit input). It assembles the eleven matching
 Windows offline runtimes from the shipping development catalog and builds an
