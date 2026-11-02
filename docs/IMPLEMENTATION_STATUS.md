@@ -50,14 +50,14 @@ QA build/upgrade workflows require an explicit producer `source_run` instead of
 expired hardcoded IDs. Old native/QA artifact selections need reviewed rebuilds
 before full Unix QA runs; these changes do not replace or certify those packages.
 
-The distributed normal application is source `2b3836e`. The current acceptance
-harness is source `44a082b`; its changes are confined to documentation, workflows
-and reviewed test/packaging helpers. The real source/catalog compatibility check
-passed in `artifacts/baseline-upgrade-20261101/current-installer-compatibility.json`.
+The distributed normal application is source `2b3836e`. Current workflow/toolchain
+verification is source `5f81b7b`; its changes are confined to documentation and
+Actions definitions/tests. The real source/catalog compatibility check passed in
+`artifacts/hosted-runners-20261102/installer-compatibility.json`.
 
 | Check | Latest evidence and scope |
 | --- | --- |
-| Cross-platform CI | [41271196197](https://github.com/Sakeerin/StackCabin/actions/runs/41271196197): all ten jobs passed on Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. |
+| Cross-platform CI | [41379279641](https://github.com/Sakeerin/StackCabin/actions/runs/41379279641): all eleven jobs passed, including workflow lint/routing checks, on Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. |
 | Core/frontend | 48 Windows / 44 Unix core tests; four ignored entries are separately invoked child-process fixtures. Fourteen frontend tests, formatting, Clippy and generated IPC checks passed. |
 | Desktop | Four real IPC/SQLite E2E cases and four lifecycle sessions on each CI target, plus two desktop exit-coordination tests. Actual tray pointer interaction remains a clean-VM check. |
 | Native tools | Managed Node 22/24, npm/pnpm/Yarn, Caddy and concurrent HTTP passed on all five targets; Windows also exercises PHP 8.4/8.5. Unreachable machine proxies do not redirect loopback health checks. |
@@ -72,6 +72,20 @@ Six atomic-write regressions exercise released/persistent Windows sharing locks,
 read-only files, failed publication cleanup, Thai/space paths and complete reads
 during replacement. The disk-full probe retains the native I/O error code rather
 than weakening its ENOSPC assertion.
+
+The migrated managed-tool workflow passed on native ARM
+[41379324406](https://github.com/Sakeerin/StackCabin/actions/runs/41379324406),
+x64 through Rosetta
+[41379327016](https://github.com/Sakeerin/StackCabin/actions/runs/41379327016),
+and native Intel
+[41379329653](https://github.com/Sakeerin/StackCabin/actions/runs/41379329653).
+Each ran npm/pnpm/Yarn with managed Node 22/24 and kept all three static/Node
+projects reachable. The native Intel installer check
+[41379332348](https://github.com/Sakeerin/StackCabin/actions/runs/41379332348)
+used the default `arch=arm64` dispatch value, correctly downloaded the x64 DMG,
+verified it and started the normal app on the Intel host. Its compatibility step
+does not use Rosetta on native Intel. Logs/metadata are retained under
+`artifacts/hosted-runners-20261102/`.
 
 Lifecycle coverage includes native close/restore, close without tray, abrupt
 app termination and repeated Quit while accepted work is pending. Owned process
@@ -132,10 +146,12 @@ locally. The installed normal executable SHA-256 is
 `da2aacec8997993485d8835965a1a21351135a0a2c8d1980001fc8c2112ebbd8`.
 These development artifacts have seven-day retention.
 
-Local logs and metadata are ignored under `artifacts/`: current CI/macOS evidence
-in `baseline-upgrade-20261101/`; installer/offline/disk-full evidence in
-`atomic-write-20261031/`. The current fourteen-job summary is
-`baseline-upgrade-20261101/BUILD_VERIFICATION.json`. The older aggregate binds its seventeen successful jobs
+Local logs and metadata are ignored under `artifacts/`: current workflow/macOS
+evidence in `hosted-runners-20261102/`; prior macOS 14/Windows-upgrade evidence in
+`baseline-upgrade-20261101/`; installer/offline/disk-full evidence in
+`atomic-write-20261031/`. The current fifteen-job summary is
+`hosted-runners-20261102/BUILD_VERIFICATION.json`. The earlier baseline summary
+records fourteen jobs, and the installer/offline aggregate binds seventeen successful jobs
 to the exact app source and bundle/catalog hashes. The local offline folder also
 passed complete read-only verification of 25 files, eleven runtimes and Microsoft
 signature/version checks without executing an installer on this computer.
