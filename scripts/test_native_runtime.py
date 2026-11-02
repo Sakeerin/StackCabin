@@ -31,6 +31,26 @@ packaged_spec.loader.exec_module(packaged_smoke)
 
 
 class PackagedMetadataTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "Windows handle and file attributes")
+    def test_metadata_access_diagnostics_never_repair_or_create_files(self):
+        import stat
+        with tempfile.TemporaryDirectory() as directory:
+            database = self.fixture(Path(directory))
+            before = database.read_bytes()
+            original = database.stat().st_mode
+            try:
+                database.chmod(stat.S_IREAD)
+                info = {item["name"]: item for item in packaged_smoke.windows_data_access(directory)}
+                self.assertFalse(info["stackcabin.sqlite"]["writeHandle"])
+                self.assertEqual(info["stackcabin.sqlite"]["writeHandleError"], 5)
+                self.assertTrue(info["stackcabin.sqlite"]["attributes"] & 1)
+                self.assertEqual(database.read_bytes(), before)
+                self.assertTrue(database.stat().st_file_attributes & 1)
+                for suffix in ("-wal", "-shm"):
+                    self.assertFalse(database.with_name(database.name + suffix).exists())
+            finally:
+                database.chmod(original)
+
     def fixture(self, root, schema=1, count=10):
         database = root / "stackcabin.sqlite"
         with closing(sqlite3.connect(database)) as connection:

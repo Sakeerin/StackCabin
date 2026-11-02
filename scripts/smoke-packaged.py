@@ -1,5 +1,6 @@
 """Start the normal packaged executable with disposable metadata, without E2E IPC."""
 import argparse
+import json
 from contextlib import closing, nullcontext
 import os
 from pathlib import Path
@@ -93,6 +94,33 @@ def has_metadata_handle(pid, database):
     return False
 
 
+def windows_data_access(directory):
+    """Inspect handles/attributes with the caller's token; never write or repair files."""
+    import ctypes
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL("kernel32.dll", use_last_error=True)
+    kernel.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                                  wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    kernel.CreateFileW.restype = wintypes.HANDLE
+    kernel.GetFileAttributesW.argtypes = [wintypes.LPCWSTR]
+    kernel.GetFileAttributesW.restype = wintypes.DWORD
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    result = []
+    for path in [Path(directory), *(Path(directory) / name for name in
+                  ("stackcabin.sqlite", "stackcabin.sqlite-wal", "stackcabin.sqlite-shm"))]:
+        attributes = kernel.GetFileAttributesW(str(path))
+        attribute_error = ctypes.get_last_error() if attributes == 0xFFFFFFFF else None
+        handle = kernel.CreateFileW(str(path), 0x40000000, 7, None, 3, 0x02000000, None)
+        failed = handle == wintypes.HANDLE(-1).value
+        error = ctypes.get_last_error() if failed else None
+        if not failed:
+            kernel.CloseHandle(handle)
+        result.append({"name": path.name, "attributes": attributes,
+                       "attributeError": attribute_error, "writeHandle": not failed,
+                       "writeHandleError": error})
+    return result
+
+
 def verify(application, data_directory=None, use_default_data_directory=False):
     application = Path(application).resolve(strict=True)
     if not application.is_file():
@@ -124,6 +152,8 @@ def verify(application, data_directory=None, use_default_data_directory=False):
             while time.monotonic() < deadline:
                 if child.poll() is not None:
                     stdout, stderr = child.communicate()
+                    if os.name == "nt":
+                        print("Metadata access diagnostics: " + json.dumps(windows_data_access(directory)), file=sys.stderr)
                     raise RuntimeError(f"Packaged application exited: {child.returncode}\n"
                                        + (stdout + stderr).decode(errors="replace")[-6000:])
                 if database.is_file():

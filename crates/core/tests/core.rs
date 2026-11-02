@@ -10,6 +10,38 @@ fn core(temp: &TempDir) -> AppCore {
     AppCore::new(temp.path().join("app-data"), Arc::new(|_| {})).unwrap()
 }
 
+#[cfg(windows)]
+#[test]
+fn readonly_metadata_keeps_data_and_reports_the_sqlite_error_code() {
+    let temp = TempDir::new().unwrap();
+    let root = temp.path().join("metadata ทดสอบ");
+    let store = store::Store::open(&root).unwrap();
+    store
+        .save_settings(&Settings {
+            language: "th".into(),
+            ..Settings::default()
+        })
+        .unwrap();
+    drop(store);
+    let database = root.join("stackcabin.sqlite");
+    let before = std::fs::read(&database).unwrap();
+    let original = std::fs::metadata(&database).unwrap().permissions();
+    let mut readonly = original.clone();
+    readonly.set_readonly(true);
+    std::fs::set_permissions(&database, readonly).unwrap();
+    let error = store::Store::open(&root).err();
+    std::fs::set_permissions(&database, original).unwrap();
+    let message = error
+        .expect("A readonly database must not be reinitialized")
+        .to_string();
+    assert!(message.contains("metadata ทดสอบ"), "{message}");
+    assert!(
+        message.contains("ReadOnly") && message.contains("extended_code:"),
+        "{message}"
+    );
+    assert_eq!(std::fs::read(database).unwrap(), before);
+}
+
 #[test]
 fn every_starter_can_be_detected_without_executing_code() {
     let temp = TempDir::new().unwrap();

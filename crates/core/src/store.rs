@@ -32,7 +32,8 @@ impl Store {
         connection.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; BEGIN IMMEDIATE;
             CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, path TEXT UNIQUE NOT NULL, payload TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL);
-            PRAGMA user_version=1; COMMIT;")?;
+            PRAGMA user_version=1; COMMIT;")
+            .map_err(|error| anyhow::anyhow!("Cannot initialize metadata at {}: {error:?}", root.join("stackcabin.sqlite").display()))?;
         Ok(Self {
             connection: Mutex::new(connection),
             root: root.into(),
