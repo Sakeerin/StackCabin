@@ -16,9 +16,8 @@ on:
         options: [arm64, x64]
         default: arm64
       normal_installer_run:
-        description: Normal preview build for Linux coexistence verification
+        description: Required on Linux; successful normal preview build for coexistence
         type: string
-        default: "41209952479"
 permissions:
   contents: read
   actions: read
@@ -28,6 +27,15 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Require an explicit normal build for Linux coexistence
+        if: runner.os == 'Linux'
+        env:
+          NORMAL_INSTALLER_RUN: ${{ inputs.normal_installer_run }}
+        run: |
+          if [[ ! "$NORMAL_INSTALLER_RUN" =~ ^[1-9][0-9]*$ ]]; then
+            echo 'Linux coexistence requires a successful normal_installer_run.' >&2
+            exit 1
+          fi
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

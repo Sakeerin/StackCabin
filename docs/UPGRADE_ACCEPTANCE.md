@@ -19,6 +19,14 @@ uses normal Windows installers and the normal credential namespace. It is limite
 to disposable GitHub-hosted runners; local and self-hosted execution is rejected
 before an installer can run.
 
+The current Unix QA repeat on 2 November passed all three targets in both
+[default](https://github.com/Sakeerin/StackCabin/actions/runs/41390907584) and
+[custom](https://github.com/Sakeerin/StackCabin/actions/runs/41390910274) mode.
+Previous QA 0.1.0 installers came from
+[41389144691](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691),
+source `6de306d`; unpublished 0.1.1 candidates used `57c61a4`. All six retained
+ten projects, five databases, eleven tools and 78 file hashes per baseline.
+
 ## Existing data fixture
 
 The workflow verifies a previous QA pack's checksums, signature and every matching
@@ -93,15 +101,28 @@ and catalog private keys. The candidate installers are not published.
 
 ## Windows NSIS acceptance
 
-The latest repeat on **1 November 2026** passed both data locations in
-[run 41271196566](https://github.com/Sakeerin/StackCabin/actions/runs/41271196566).
-The previous normal installer is source `7b4dbda` from build `41081836769`; the
-unpublished 0.1.1 candidate is source `44a082b`. Each job preserved ten projects,
+The latest repeat on **2 November 2026** passed both data locations in
+[run 41390154940](https://github.com/Sakeerin/StackCabin/actions/runs/41390154940).
+The previous normal installer is source `2b3836e` from build `41209952479`; the
+unpublished 0.1.1 candidate is source `57c61a4`. Each job preserved ten projects,
 five existing databases, eleven tools and 78 file hashes, with actual metadata
 file use by both installed versions and core HTTP/runtime/SQL checks afterward.
 Both jobs also proved that the complete PHP/Node fixture overrides an unsupported
 inherited branch filter. Transcripts and baseline hashes are retained locally in
-`artifacts/baseline-upgrade-20261101/windows/` and in that run's evidence artifacts.
+`artifacts/native-refresh-20261102/windows-soak/` and in that run's evidence artifacts.
+After replacement, each job required ten consecutive successful packaged-app
+startups against the populated database. The first failed launch aborts the job;
+a later success cannot replace it. All twenty launches passed before the final
+core HTTP/SQL and identity/hash verification.
+
+An earlier [default-data run](https://github.com/Sakeerin/StackCabin/actions/runs/41386419016)
+reported SQLite readonly during candidate startup after its preceding data checks
+passed. Its cause remains unconfirmed. The app now preserves the SQLite extended
+error and metadata path, and failure-only Windows diagnostics inspect file
+attributes/write-handle access without repairing permissions or creating files.
+The diagnostic default repeat and both ten-start runs passed. The original failed
+log is retained in `artifacts/native-refresh-20261102/windows-upgrade-failed.log`
+for further maintained-VM soak work.
 
 The Windows workflow downloads and checksums an existing normal 0.1.0 installer
 (the successful build run is an explicit input). It assembles the eleven matching
@@ -113,8 +134,8 @@ Each location runs on a separate disposable hosted machine.
 The wrapper explicitly selects Node 22/24 and PHP 8.4/8.5 and restores the
 caller's branch filter afterward. Both hosted jobs inherit an intentionally
 unsupported filter, so an omitted override cannot pass with only a static
-project. The prior-installer input defaults to verified build `41081836769`;
-choose another compatible successful build when its artifact expires.
+project. Supply the prior installer's successful run ID explicitly; refresh that
+selection when its artifact expires.
 
 The old installer runs first so that its Microsoft prerequisites are available.
 Both installed versions must report the expected version and contain exactly the

@@ -8,18 +8,19 @@ Required machines are Windows 10 22H2 x64, Windows 11 x64, macOS 14 Intel and
 Apple Silicon, and Ubuntu Desktop 22.04/24.04 x64. Rosetta checks supplement a
 native Intel VM; they do not replace it.
 
-Current normal preview installers from source `2b3836e` are available in
-[run 41209952479](https://github.com/Sakeerin/StackCabin/actions/runs/41209952479)
+Current normal preview installers from source `57c61a4` are available in
+[run 41390157810](https://github.com/Sakeerin/StackCabin/actions/runs/41390157810)
 for Windows x64, Ubuntu x64 and macOS ARM/Intel. Download the matching
 `development-installers-*` artifact and verify `SHA256SUMS.txt`; retention is
 seven days. The Ubuntu 22.04 deb and AppImage also passed
-[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/41210382919).
+[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/41391208968).
 These are normal builds without E2E instrumentation and retain the signed
-development catalog. The same installers passed startup on
+development catalog. Earlier `2b3836e` installers passed startup on
 [macOS 14 ARM](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722) and
 [macOS 14 x64 through Rosetta](https://github.com/Sakeerin/StackCabin/actions/runs/41270979416)
-on 1 November 2026. These hosted/Rosetta results do not replace native clean-machine
-checks on the listed OS/architecture combinations.
+on 1 November 2026. Current macOS 14 installers still need maintained-machine
+execution. These hosted/Rosetta results do not replace native clean-machine checks
+on the listed OS/architecture combinations.
 
 ## Windows runtime test kit
 

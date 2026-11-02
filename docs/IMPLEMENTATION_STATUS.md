@@ -43,35 +43,69 @@ production acceptance gate remains open.
 
 Hosted verification now uses macOS 15 ARM/Intel after the macOS 14 image's
 retirement. Rosetta remains an explicit x64 compatibility check on ARM hosts;
-Intel hosts always select x64 installer artifacts. Four workflow-contract checks
+Intel hosts always select x64 installer artifacts. Six workflow-contract checks
 cover platform selection and kit/desktop/upgrade artifact wiring. CI also runs
 checksum-pinned actionlint 1.7.12 and rejects retired hosted runner labels.
 QA build/upgrade workflows require an explicit producer `source_run` instead of
-expired hardcoded IDs. Old native/QA artifact selections need reviewed rebuilds
-before full Unix QA runs; these changes do not replace or certify those packages.
+expired hardcoded IDs. Windows offline/upgrade and Linux coexistence inputs also
+require explicit current producer selections. The reviewed Unix packages were rebuilt on 2 November:
+all sixteen source-build/integration jobs passed, and all twelve downloaded
+runtime/source pairs passed checksum and provenance checks. CI selections now
+live in `.github/native-test-builds.json`, outside desktop resources. Temporary
+QA catalog signing requires a passed relocation probe for the exact version and
+the reviewed publisher source bytes. Twelve native-stack regression tests cover
+corrupt/substituted archives, missing provenance and incompatible macOS baselines.
 
-The distributed normal application is source `2b3836e`. Current workflow/toolchain
-verification is source `5f81b7b`; its changes are confined to documentation and
-Actions definitions/tests. The real source/catalog compatibility check passed in
-`artifacts/hosted-runners-20261102/installer-compatibility.json`.
+The rebuilt normal application is source `57c61a4`; current code CI is `6de306d`,
+followed by the Windows startup-soak helper change. The reviewed QA selection is
+`6dc51e6`. The app retains the same signed development catalog and now reports
+the metadata path and SQLite extended error code on initialization failure.
+Its resource set excludes the unused CI selection file. The real source/catalog
+compatibility check passed in
+`artifacts/native-refresh-20261102/current-installer-compatibility.json`. The macOS 14
+execution rows below explicitly concern the earlier `2b3836e` installers.
 
 | Check | Latest evidence and scope |
 | --- | --- |
-| Cross-platform CI | [41379279641](https://github.com/Sakeerin/StackCabin/actions/runs/41379279641): all eleven jobs passed, including workflow lint/routing checks, on Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. |
-| Core/frontend | 48 Windows / 44 Unix core tests; four ignored entries are separately invoked child-process fixtures. Fourteen frontend tests, formatting, Clippy and generated IPC checks passed. |
+| Cross-platform CI | [41388637897](https://github.com/Sakeerin/StackCabin/actions/runs/41388637897): all eleven jobs passed on Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. Subsequent workflow-only defaults/routing checks passed six local contracts and actionlint 1.7.12. |
+| Core/frontend | 49 Windows / 44 Unix core tests; four ignored entries are separately invoked child-process fixtures. Fourteen frontend tests, formatting, Clippy and generated IPC checks passed. Thirty-two packaging helper cases include a Windows-specific non-mutating access probe. |
 | Desktop | Four real IPC/SQLite E2E cases and four lifecycle sessions on each CI target, plus two desktop exit-coordination tests. Actual tray pointer interaction remains a clean-VM check. |
 | Native tools | Managed Node 22/24, npm/pnpm/Yarn, Caddy and concurrent HTTP passed on all five targets; Windows also exercises PHP 8.4/8.5. Unreachable machine proxies do not redirect loopback health checks. |
-| Normal installers | [41209952479](https://github.com/Sakeerin/StackCabin/actions/runs/41209952479): all four packaging jobs passed, with actual installed Windows/deb startup and both macOS bundles. Builds exclude E2E features. |
-| Ubuntu 24.04 | [41210382919](https://github.com/Sakeerin/StackCabin/actions/runs/41210382919): the same Ubuntu 22.04 deb/AppImage passed checksums and real startup; AppImage used extract-and-run without FUSE. |
-| macOS 14 ARM | [41270976722](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722): the same ARM DMG passed checksums, mount/copy, binary dependency/minimum-OS checks and normal app startup on macOS 14.8.9. |
-| macOS 14 x64 | [41270979416](https://github.com/Sakeerin/StackCabin/actions/runs/41270979416): the same Intel DMG passed those checks through Rosetta on the ARM runner. Native Intel macOS 14 remains a separate gate. |
+| Normal installers | [41390157810](https://github.com/Sakeerin/StackCabin/actions/runs/41390157810): all four packaging jobs passed, with actual installed Windows/deb startup and both macOS bundles. Builds exclude E2E features. |
+| Ubuntu 24.04 | [41391208968](https://github.com/Sakeerin/StackCabin/actions/runs/41391208968): the same Ubuntu 22.04 deb/AppImage passed checksums and real startup; AppImage used extract-and-run without FUSE. |
+| Reviewed Unix packages | PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41382380346)/[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41382383140), [MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41382386213) and [PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41382389092): sixteen jobs passed across Linux x64, macOS ARM/Intel and Ubuntu 24.04 package compatibility. Every source-built macOS runtime and its bundled libraries measured at most 14.0. |
+| Combined Unix stack | [41387839639](https://github.com/Sakeerin/StackCabin/actions/runs/41387839639): all five jobs passed on both Ubuntu versions, native ARM/Intel macOS 15 and x64 through Rosetta. Each checked eleven tools, five simultaneous web projects and both database dump/restores, then extracted and ran the packaged release harness again. |
+| Unix QA desktop | [41389144691](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691): all three desktop/runtime/database E2E and packaging jobs passed. QA installers exclude E2E plugins and retain a separate identity. [41391205967](https://github.com/Sakeerin/StackCabin/actions/runs/41391205967) verified Ubuntu 24.04 deb/AppImage startup and coexistence without changing the normal executable. |
+| Unix upgrades | [Default](https://github.com/Sakeerin/StackCabin/actions/runs/41390907584) and [custom](https://github.com/Sakeerin/StackCabin/actions/runs/41390910274) data locations: all six jobs passed on Ubuntu 22.04, native macOS 15 ARM and Intel. Real previous QA 0.1.0 installers were replaced with unpublished 0.1.1 candidates while preserving ten projects, five databases, eleven tools and 78 hashes per fixture. |
+| Earlier macOS 14 ARM | [41270976722](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722): the `2b3836e` ARM DMG passed checksums, mount/copy, dependency/minimum-OS checks and startup on macOS 14.8.9. |
+| Earlier macOS 14 x64 | [41270979416](https://github.com/Sakeerin/StackCabin/actions/runs/41270979416): the `2b3836e` Intel DMG passed those checks through Rosetta on the ARM runner. Current installers and native Intel macOS 14 still need maintained-machine acceptance. |
 | Actual disk exhaustion | [41209951170](https://github.com/Sakeerin/StackCabin/actions/runs/41209951170), Ubuntu 24.04: bounded 32 MiB tmpfs produced real ENOSPC for settings writes and runtime extraction; old data survived, staging was cleaned, and retries succeeded after freeing owned space. |
-| Windows offline installation | [41210773901](https://github.com/Sakeerin/StackCabin/actions/runs/41210773901): real wrapper/NSIS installation, eleven tools, five concurrent HTTP projects, both database dump/restores and existing-data preservation passed under a restricted standard-user token. |
+| Windows offline installation | [41391203265](https://github.com/Sakeerin/StackCabin/actions/runs/41391203265): both jobs passed: real wrapper/NSIS installation, eleven tools, five concurrent HTTP projects, both database dump/restores and existing-data preservation under a restricted standard-user token. |
 
 Six atomic-write regressions exercise released/persistent Windows sharing locks,
 read-only files, failed publication cleanup, Thai/space paths and complete reads
 during replacement. The disk-full probe retains the native I/O error code rather
 than weakening its ENOSPC assertion.
+
+The prebuilt Linux kits also passed with only loopback networking inside isolated
+network namespaces on [Ubuntu 22.04](https://github.com/Sakeerin/StackCabin/actions/runs/41389157621)
+and [24.04](https://github.com/Sakeerin/StackCabin/actions/runs/41389160575), as an
+ordinary user. Three independent native Intel kit repeats passed:
+[41389148214](https://github.com/Sakeerin/StackCabin/actions/runs/41389148214),
+[41389151417](https://github.com/Sakeerin/StackCabin/actions/runs/41389151417) and
+[41389154642](https://github.com/Sakeerin/StackCabin/actions/runs/41389154642).
+
+Two earlier attempts are retained as intermittent findings. The first combined
+run [41386358538](https://github.com/Sakeerin/StackCabin/actions/runs/41386358538)
+had one native Intel HTTP recheck timeout after successful web/database checks.
+Windows [41386419016](https://github.com/Sakeerin/StackCabin/actions/runs/41386419016)
+had one default-data candidate startup report SQLite readonly; its preceding
+HTTP/SQL/data checks passed. Their causes are unconfirmed. Bounded live Caddy/
+process/raw-HTTP diagnostics and non-mutating Windows file-access diagnostics
+were added without relaxing assertions. The subsequent full native suite,
+three Intel repeats and twenty Windows candidate startups passed. A local real
+Rust Store stress probe also passed 1,000 reopen/migrations alongside 5,530
+read-only checks from a separate process. Keep both observations in VM soak work.
 
 The migrated managed-tool workflow passed on native ARM
 [41379324406](https://github.com/Sakeerin/StackCabin/actions/runs/41379324406),
@@ -92,9 +126,11 @@ app termination and repeated Quit while accepted work is pending. Owned process
 trees stop while an unrelated HTTP server stays healthy. Real owner-crash tests
 bypass Rust destructors and verify descendant exit and closed ports.
 
-The local acceptance guards and source-policy suite passed sixteen checks on
-1 November. App-input changes still require a new normal installer; the explicit
-allowlist now includes the upgrade-only Windows test helper.
+Eight local Windows acceptance safeguards, six workflow contracts and
+checksum-pinned actionlint passed. The source policy still requires new normal
+installers for changed application inputs; no source-policy exception was added
+for this rebuild. All five current downloaded installer files matched their
+published checksums.
 
 ## Windows installation and upgrade
 
@@ -114,9 +150,9 @@ This establishes hosted installation/preservation rather than fresh-OS or
 physically disconnected-machine certification.
 
 Both Windows upgrade jobs passed in
-[41271196566](https://github.com/Sakeerin/StackCabin/actions/runs/41271196566).
-It uses previous normal source `7b4dbda` from installer run `41081836769` and an
-unpublished 0.1.1 test candidate from source `44a082b`. The distributed version
+[41390154940](https://github.com/Sakeerin/StackCabin/actions/runs/41390154940).
+It uses previous normal source `2b3836e` from installer run `41209952479` and an
+unpublished 0.1.1 test candidate from source `57c61a4`. The distributed version
 remains 0.1.0. Separate hosted jobs verified the physical default application-data
 directory and a custom Thai/spaced directory. Both old/new installed apps held
 the original metadata database open; all ten projects, five databases, eleven
@@ -125,36 +161,43 @@ and existing SQL rows. The core harness performs HTTP/SQL verification; packaged
 apps are checked for real startup and metadata-file use. Default mode also proved
 that both apps resolve Windows' real application-data directory without an
 override. See [upgrade scope](UPGRADE_ACCEPTANCE.md).
+Each mode required ten consecutive successful post-upgrade candidate starts;
+any failed launch would stop the job. All twenty passed before final core checks.
 The wrapper explicitly selects all four PHP/Node branches despite an intentionally
 unsupported inherited filter, then restores the caller's environment. Curated
-transcripts/baselines are in `artifacts/baseline-upgrade-20261101/windows/`.
+transcripts/baselines are in `artifacts/native-refresh-20261102/windows-soak/`.
 
 ## Downloads and retained evidence
 
 Download the normal `development-installers-*` artifacts from
-[41209952479](https://github.com/Sakeerin/StackCabin/actions/runs/41209952479)
+[41390157810](https://github.com/Sakeerin/StackCabin/actions/runs/41390157810)
 and verify their `SHA256SUMS.txt`. All five downloaded installer files also
-matched those checksums locally. Windows NSIS is 23,017,758 bytes, SHA-256
-`59cc2edc17c451b6e1a4aaed491c3318eb99234cc917fe21fe197e0ac4f60a7e`.
+matched those checksums locally. Windows NSIS is 23,023,689 bytes, SHA-256
+`8b00a05700bd4748c9802c9ad7541af03b5cf1707d5b13b922562df333f41ccd`.
 
 The complete `development-offline-windows-x64` ZIP is in
-[41210773901](https://github.com/Sakeerin/StackCabin/actions/runs/41210773901),
-881,309,997 bytes, SHA-256
-`fb5ea21785d1e8c3f88c2acc5e5bb6c4a588d388ac49ba56678eda0ddc4a5850`.
+[41391203265](https://github.com/Sakeerin/StackCabin/actions/runs/41391203265),
+881,315,928 bytes, SHA-256
+`585e467e4213fd0192eecd136873314a3615752f8180c7fc6b0600eddf6916fe`.
 Its receipt matched GitHub artifact metadata; the full ZIP was not downloaded
 locally. The installed normal executable SHA-256 is
-`da2aacec8997993485d8835965a1a21351135a0a2c8d1980001fc8c2112ebbd8`.
+`35ab2fbf384926a140ae2d3797e50adf31484503c93219e229de06ec8c2e7edc`.
 These development artifacts have seven-day retention.
 
-Local logs and metadata are ignored under `artifacts/`: current workflow/macOS
-evidence in `hosted-runners-20261102/`; prior macOS 14/Windows-upgrade evidence in
-`baseline-upgrade-20261101/`; installer/offline/disk-full evidence in
-`atomic-write-20261031/`. The current fifteen-job summary is
-`hosted-runners-20261102/BUILD_VERIFICATION.json`. The earlier baseline summary
-records fourteen jobs, and the installer/offline aggregate binds seventeen successful jobs
-to the exact app source and bundle/catalog hashes. The local offline folder also
-passed complete read-only verification of 25 files, eleven runtimes and Microsoft
-signature/version checks without executing an installer on this computer.
+Download current Unix offline desktops from
+[41389144691](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691);
+the [QA guide](QA_DESKTOP.md) identifies their three artifacts and source commits.
+
+Local logs and metadata are ignored under `artifacts/`. The current
+`native-refresh-20261102/ACCEPTANCE_SUMMARY.json` binds **56 successful jobs in
+19 canonical runs**, twelve verified runtime/source pairs and nine preservation
+baselines to the exact commits and hashes. Earlier failed attempts remain separate
+in the report; they are not counted as successful runs. Current installer bytes
+and checksums are retained in `development-installers-41390157810/`. The local
+offline folder passed read-only verification of 25 files, eleven runtimes and
+Microsoft signature/version checks with the new installer, without executing it.
+Prior runner, macOS 14, disk-full and upgrade evidence remains in
+`hosted-runners-20261102/`, `baseline-upgrade-20261101/` and `atomic-write-20261031/`.
 
 Earlier framework, HMR, full Unix PHP/database, QA-desktop and upgrade results are
 retained in the

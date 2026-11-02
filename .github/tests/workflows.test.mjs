@@ -30,6 +30,38 @@ function installerArtifact(name, inputs) {
   return entry[1] + evaluate(entry[2], inputs);
 }
 
+test("artifact consumers require explicit producer runs instead of expiring defaults", () => {
+  for (const [name, input] of [
+    ["windows-offline-bundle", "installer_run"],
+    ["verify-windows-upgrade", "source_run"],
+    ["qa-desktop", "source_run"],
+    ["verify-preview-upgrade", "source_run"],
+    ["verify-preview-installer", "source_run"],
+    ["verify-qa-desktop", "source_run"],
+    ["verify-unix-qa", "source_run"],
+  ]) {
+    const section = workflow(name).match(
+      new RegExp(
+        `^      ${input}:\\r?\\n([\\s\\S]*?)(?=^      \\w+:|^permissions:)`,
+        "m",
+      ),
+    )?.[1];
+    assert.ok(section, `${name}/${input}`);
+    assert.match(section, /required: true/, `${name}/${input}`);
+    assert.doesNotMatch(section, /default:/, `${name}/${input}`);
+  }
+  const coexistence = workflow("verify-qa-desktop");
+  assert.doesNotMatch(coexistence, /default: ["']?\d/);
+  assert.match(
+    coexistence,
+    /NORMAL_INSTALLER_RUN: \$\{\{ inputs.normal_installer_run \}\}/,
+  );
+  assert.match(
+    coexistence,
+    /Linux coexistence requires a successful normal_installer_run/,
+  );
+});
+
 test("reviewed native selections stay outside desktop resources and reach every QA consumer", () => {
   const selections = JSON.parse(
     readFileSync(

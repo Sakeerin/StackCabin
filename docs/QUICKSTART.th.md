@@ -5,8 +5,8 @@
 
 ## ติดตั้งบน Windows
 
-ดาวน์โหลดแพ็กเกจวันที่ 31 ตุลาคม 2026 จาก
-[GitHub Actions run นี้](https://github.com/Sakeerin/StackCabin/actions/runs/41209952479)
+ดาวน์โหลดแพ็กเกจวันที่ 2 พฤศจิกายน 2026 จาก
+[GitHub Actions run นี้](https://github.com/Sakeerin/StackCabin/actions/runs/41390157810)
 เลือก Artifact `development-installers-windows-latest` แล้วแตก ZIP และตรวจไฟล์
 ตาม `SHA256SUMS.txt` ไฟล์ติดตั้งอยู่ในโฟลเดอร์ `nsis/` ส่วนแพ็กเกจจากการ build เอง
 อยู่ใน `target/release/bundle/nsis/` Artifact เก็บไว้ 7 วัน
@@ -33,14 +33,14 @@ Visual C++ กับ WebView2 ที่จำเป็น แล้วเปิ�
 Windows อาจขอสิทธิ์ผู้ดูแลระบบสำหรับส่วนประกอบของ Microsoft
 หลังเปิดแอป เลือก Runtimes → Install from offline pack แล้วเลือกโฟลเดอร์ชุดออฟไลน์
 
-ชุดใน workspace อัปเดตเมื่อ 31 ตุลาคม 2026 ใช้ตัวติดตั้งจาก source `2b3836e`
+ชุดใน workspace อัปเดตเมื่อ 2 พฤศจิกายน 2026 ใช้ตัวติดตั้งจาก source `57c61a4`
 และตรวจครบ 11 runtime แล้ว การตรวจ checksum นี้ตรวจความครบถ้วนของไฟล์
 ส่วนการตรวจลายเซ็น catalog ของ runtime จะทำอีกครั้งโดยแอปก่อนติดตั้ง
 
-ชุดออฟไลน์วันที่ 31 ตุลาคม ดาวน์โหลดได้จาก
-[run 41210773901](https://github.com/Sakeerin/StackCabin/actions/runs/41210773901)
+ชุดออฟไลน์วันที่ 2 พฤศจิกายน ดาวน์โหลดได้จาก
+[run 41391203265](https://github.com/Sakeerin/StackCabin/actions/runs/41391203265)
 เลือก `development-offline-windows-x64` แล้วใช้โฟลเดอร์ `offline-windows-x64/`
-หลังแตก ZIP ชุดนี้ใช้ตัวแอป source `2b3836e` ที่แก้การบันทึกไฟล์เมื่อล็อกชั่วคราวหรือพื้นที่เต็ม
+หลังแตก ZIP ชุดนี้ใช้ตัวแอป source `57c61a4` พร้อมข้อมูลวินิจฉัยการเปิด metadata เพิ่มเติม
 และผ่านการติดตั้งจริงพร้อมเปิดข้อมูลเดิมบน GitHub runner แล้ว ผลทดสอบอยู่ใน
 `windows-offline-installation-evidence` โดยยังไม่ถือเป็นการรับรองเครื่องสะอาด
 
@@ -81,9 +81,10 @@ chmod +x StackCabin_*.AppImage
 APPIMAGE_EXTRACT_AND_RUN=1 ./StackCabin_*.AppImage
 ```
 
-macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 31 ตุลาคมผ่านการเปิดแอป
-บน macOS 15 ทั้งสองสถาปัตยกรรม และผ่านการตรวจซ้ำบน macOS 14 เมื่อ 1 พฤศจิกายน
-ทั้ง Apple Silicon และแพ็กเกจ Intel ผ่าน Rosetta โดยยังต้องทดสอบ Intel บนเครื่องจริง
+macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 2 พฤศจิกายนผ่านการเปิดแอป
+บน macOS 15 ทั้งสองสถาปัตยกรรม ส่วนผล macOS 14 เมื่อ 1 พฤศจิกายนเป็นของแพ็กเกจ
+source `2b3836e` รุ่นก่อน ทั้ง Apple Silicon และแพ็กเกจ Intel ผ่าน Rosetta
+แพ็กเกจปัจจุบันยังต้องตรวจ macOS 14 บนเครื่องทดสอบที่ดูแลเอง
 ผลทดสอบพร้อมขอบเขตรวมไว้ใน
 [รายงานสถานะ](IMPLEMENTATION_STATUS.md)
 Node.js และเว็บ Static ใช้ catalog ปัจจุบันได้
@@ -91,10 +92,13 @@ Node.js และเว็บ Static ใช้ catalog ปัจจุบัน�
 
 ## ทดสอบ PHP และฐานข้อมูลบน Linux/macOS ด้วย StackCabin QA
 
-ใช้ workflow **Build Unix QA desktop installers with offline runtimes** เพื่อสร้าง
+ดาวน์โหลดชุดวันที่ 2 พฤศจิกายนจาก
+[QA build นี้](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691)
+หรือใช้ workflow **Build Unix QA desktop installers with offline runtimes** เพื่อสร้าง
 **StackCabin QA** พร้อม PHP 8.4/8.5, Node.js 22/24, MariaDB, PostgreSQL และเครื่องมือที่ตรงกัน
 ระบุ `source_run` ของ **Verify the combined native stack** ที่เปิด `package_qa=true`
-และมีชุดทดสอบครบสำหรับระบบที่เลือก โดยต้อง build แพ็กเกจ native ที่หมดอายุใหม่ก่อน
+และมีชุดทดสอบครบสำหรับระบบที่เลือก ชุดปัจจุบันใช้ producer `41387839639`
+เมื่อแพ็กเกจ native หมดอายุ ให้ build ใหม่และปรับ `.github/native-test-builds.json` ก่อน
 เลือก `linux`, `macos-arm64` หรือ `macos-x64` ให้ตรงกับเครื่อง ไฟล์อยู่ใน Artifact
 ชื่อ `desktop-qa-*` และเก็บไว้ 7 วัน
 งานบน GitHub ใช้ macOS 15 สำหรับทั้งสองสถาปัตยกรรม ส่วน macOS 14 ต้องตรวจบนเครื่องทดสอบที่ดูแลเอง

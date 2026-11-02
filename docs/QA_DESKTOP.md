@@ -6,7 +6,23 @@ application identity `dev.stackcabin.qa`, its own default metadata directory and
 its own OS credential namespace. The normal StackCabin application keeps its
 existing identity and catalog. The QA interface displays an English/Thai banner.
 
-Historical builds checked on 24 October 2026 (their seven-day artifacts have expired):
+Current packs built on 2 November 2026:
+
+| Target | Build | Artifact |
+| --- | --- | --- |
+| Ubuntu 22.04/24.04 x64 | [Unix QA installers](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691) | `desktop-qa-ubuntu-22.04` |
+| macOS Apple Silicon | [Unix QA installers](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691) | `desktop-qa-macos-15` |
+| macOS Intel | [Unix QA installers](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691) | `desktop-qa-macos-15-intel` |
+
+All three packaging jobs passed real desktop/runtime/database E2E and normal QA
+installer startup. App source is `6de306d`; the matching runtime-kit producer is
+[41387839639](https://github.com/Sakeerin/StackCabin/actions/runs/41387839639),
+source `54a62a6`. That producer passed all five Linux/native ARM/native Intel/
+Rosetta jobs. Its source packages are the reviewed 2 November builds. These
+artifacts have seven-day retention; hosted macOS execution used 15, so execution
+on native macOS 14 remains a maintained-machine acceptance gate.
+
+The historical 24 October builds below have expired:
 
 | Target                  | Build                                                                                                | Artifact                    |
 | ----------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------- |
