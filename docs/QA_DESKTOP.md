@@ -15,13 +15,21 @@ Historical builds checked on 24 October 2026 (their seven-day artifacts have exp
 | macOS 14+ Intel         | [Intel QA build](https://github.com/Sakeerin/StackCabin/actions/runs/40075333416)                    | `desktop-qa-macos-15-intel` |
 
 To create a current pack, rebuild the reviewed native packages and update
-`runtime-catalog/native-test-builds.json`, then run **Verify the combined native
+`.github/native-test-builds.json`, then run **Verify the combined native
 stack** with `package_qa=true`. Supply that successful run ID as `source_run` to
 **Build Unix QA desktop installers with offline runtimes**. `target=all` requires
 all three producer kits in that same source run; single-platform builds need only
 their matching kit. Current macOS jobs use 15 ARM/Intel; macOS 14 execution belongs
 on a maintained test machine. Expired/missing archives fail rather than being
 replaced with unrelated builds.
+
+Before signing a temporary QA catalog, the combined-stack check hashes both the
+runtime and its accompanying publisher source archive. The source must match
+the reviewed URL/SHA-256, and provenance must record a passed relocation probe
+for the exact component/version. Missing source/provenance, failed probes and
+packages above the macOS 14 deployment baseline stop the QA build.
+The CI artifact selection lives under `.github` and is copied into acceptance
+kits as `NATIVE_BUILD_SELECTIONS.json`; normal desktop resources do not include it.
 
 Use the new Actions run's Artifacts section to download the matching pack.
 Baseline execution evidence and remaining certification are recorded in

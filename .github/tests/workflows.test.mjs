@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const workflow = (name) =>
   readFileSync(new URL(`../workflows/${name}.yml`, import.meta.url), "utf8");
@@ -29,6 +29,57 @@ function installerArtifact(name, inputs) {
   assert.ok(entry, `Missing artifact selector in ${name}`);
   return entry[1] + evaluate(entry[2], inputs);
 }
+
+test("reviewed native selections stay outside desktop resources and reach every QA consumer", () => {
+  const selections = JSON.parse(
+    readFileSync(
+      new URL("../native-test-builds.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const { sources } = JSON.parse(
+    readFileSync(
+      new URL("../../runtime-catalog/source-archives.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.equal(
+    existsSync(
+      new URL("../../runtime-catalog/native-test-builds.json", import.meta.url),
+    ),
+    false,
+  );
+  for (const [target, runner] of Object.entries({
+    "linux-x64": "ubuntu-22.04",
+    "macos-arm64": "macos-15",
+    "macos-x64": "macos-15-intel",
+  })) {
+    const builds = selections.targets[target];
+    assert.deepEqual(
+      builds.map(({ component, version }) => `${component}-${version}`).sort(),
+      sources.map(({ component, version }) => `${component}-${version}`).sort(),
+    );
+    for (const { component, version, run, artifact } of builds) {
+      assert.match(run, /^[1-9]\d*$/);
+      assert.equal(artifact, `${component}-${version}-${runner}`);
+    }
+  }
+  for (const file of [
+    ".github/workflows/verify-native-stack.yml",
+    "scripts/prepare-native-stack.mjs",
+    "scripts/package-native-qa.mjs",
+  ]) {
+    const content = readFileSync(
+      new URL(`../../${file}`, import.meta.url),
+      "utf8",
+    );
+    assert.ok(content.includes(".github/native-test-builds.json"), file);
+    assert.ok(
+      !content.includes("runtime-catalog/native-test-builds.json"),
+      file,
+    );
+  }
+});
 
 test("combined stack retains Linux, native ARM/Intel and x64 compatibility coverage", () => {
   const all = matrix("verify-native-stack", "all");

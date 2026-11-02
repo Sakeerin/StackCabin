@@ -178,7 +178,7 @@ QA installers. These QA catalogs remain separate from the shipping catalog.
    mark missing PHP/MariaDB/PostgreSQL packages unavailable. Publish reviewed Unix
    packs at stable HTTPS URLs and certify them before signing the complete
    production catalog. Source/checksum pins are in
-   `runtime-catalog/source-archives.json`; `native-test-builds.json` selects
+   `runtime-catalog/source-archives.json`; `.github/native-test-builds.json` selects
    temporary CI archives for internal tests. Every macOS library must measure at
    most 14.0; earlier incompatible PHP/Intel MariaDB archives stay excluded.
    Native MariaDB omits optional Mroonga/CONNECT ODBC; its reviewed replacement

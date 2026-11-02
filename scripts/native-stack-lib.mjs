@@ -3,6 +3,12 @@ import { createReadStream } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
+async function fileSha256(file) {
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(file)) hash.update(chunk);
+  return hash.digest("hex");
+}
+
 // Verify all downloaded native bytes before signing the combined CI-only catalog.
 export async function verifyNativeStack(
   folder,
@@ -38,6 +44,7 @@ export async function verifyNativeStack(
       (major < 14 || (major === 14 && minor === 0 && patch === 0));
     if (
       !source ||
+      !/^[a-f0-9]{64}$/.test(source.sourceSha256 || "") ||
       metadata.id !== id ||
       metadata.component !== component ||
       metadata.version !== version ||
@@ -51,12 +58,30 @@ export async function verifyNativeStack(
       throw new Error(
         `Native metadata does not match reviewed selection: ${id}`,
       );
+    const provenance = JSON.parse(
+      await readFile(path.join(folder, id + "-provenance.json"), "utf8"),
+    );
+    if (
+      provenance.sourceUrl !== source.sourceUrl ||
+      provenance.sourceSha256 !== source.sourceSha256 ||
+      provenance.verification?.component !== component ||
+      provenance.verification?.version !== version ||
+      provenance.verification?.result !== "passed" ||
+      (platform === "macos" &&
+        provenance.minimumOsVersion !== metadata.minimumOsVersion)
+    )
+      throw new Error(
+        `Native provenance does not match reviewed selection: ${id}`,
+      );
+    if (
+      (await fileSha256(path.join(folder, id + "-source.tar.gz"))) !==
+      source.sourceSha256
+    )
+      throw new Error(`Native source archive checksum mismatch: ${id}`);
     const archive = path.join(folder, id + ".tar.gz");
     if ((await stat(archive)).size !== metadata.size)
       throw new Error(`Native archive size mismatch: ${id}`);
-    const hash = createHash("sha256");
-    for await (const chunk of createReadStream(archive)) hash.update(chunk);
-    if (hash.digest("hex") !== metadata.sha256)
+    if ((await fileSha256(archive)) !== metadata.sha256)
       throw new Error(`Native archive checksum mismatch: ${id}`);
     verified.push(metadata);
   }

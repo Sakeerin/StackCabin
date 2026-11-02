@@ -35,7 +35,7 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           import { readFile, appendFile } from 'node:fs/promises';
-          const selection = JSON.parse(await readFile('runtime-catalog/native-test-builds.json', 'utf8')).targets[process.env.STACKCABIN_TARGET];
+          const selection = JSON.parse(await readFile('.github/native-test-builds.json', 'utf8')).targets[process.env.STACKCABIN_TARGET];
           if (selection.length !== 4) throw new Error('Expected four reviewed native packages');
           for (let i = 0; i < selection.length; i++) {
             const pack = selection[i];
@@ -67,7 +67,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: artifacts/runtimes/
       - uses: dtolnay/rust-toolchain@stable
-      - name: Select x64 compatibility on macOS 14
+      - name: Select x64 compatibility on the ARM host
         if: matrix.os == 'macos-15' && matrix.arch == 'x64'
         run: |
           arch -x86_64 /usr/bin/true

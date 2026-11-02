@@ -38,7 +38,7 @@ for (const [source, destination] of [
   ["docs/VM_ACCEPTANCE.md", "VM_ACCEPTANCE.md"],
   ["LICENSE", "LICENSE"],
   ["resources/THIRD_PARTY_NOTICES.txt", "THIRD_PARTY_NOTICES.txt"],
-  ["runtime-catalog/native-test-builds.json", "NATIVE_BUILD_SELECTIONS.json"],
+  [".github/native-test-builds.json", "NATIVE_BUILD_SELECTIONS.json"],
 ])
   await copyFile(path.join(root, source), path.join(directory, destination));
 await chmod(path.join(directory, "Run-StackCabinAcceptance.sh"), 0o755);
@@ -55,10 +55,7 @@ for (const name of await readdir(path.join(root, "artifacts/runtimes"))) {
     );
 }
 const selection = JSON.parse(
-  await readFile(
-    path.join(root, "runtime-catalog/native-test-builds.json"),
-    "utf8",
-  ),
+  await readFile(path.join(root, ".github/native-test-builds.json"), "utf8"),
 );
 await writeFile(
   path.join(directory, "NATIVE_SOURCES.txt"),

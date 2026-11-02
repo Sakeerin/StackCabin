@@ -1,5 +1,5 @@
 {
-  "purpose": "Internal integration tests only. These CI artifacts are not published runtime URLs.",
+  "purpose": "Internal CI selections only; excluded from desktop resources. These artifacts are not published runtime URLs.",
   "targets": {
     "linux-x64": [
       {

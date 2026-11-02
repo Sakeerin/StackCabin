@@ -14,10 +14,7 @@ if (process.env.GITHUB_ACTIONS !== "true" || !process.env.GITHUB_ENV)
 const platform = process.platform === "darwin" ? "macos" : "linux";
 const arch = process.env.STACKCABIN_TEST_ARCH || process.arch;
 const selections = JSON.parse(
-  await readFile(
-    path.join(root, "runtime-catalog/native-test-builds.json"),
-    "utf8",
-  ),
+  await readFile(path.join(root, ".github/native-test-builds.json"), "utf8"),
 );
 const builds = selections.targets[`${platform}-${arch}`];
 if (!builds || builds.length !== 4)

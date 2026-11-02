@@ -75,7 +75,7 @@ not delete an existing workspace or install system development tools.
 ## Combined Unix runtime verification
 
 The manual **Verify the combined native stack** workflow downloads the four
-reviewed native packages listed in `runtime-catalog/native-test-builds.json`.
+reviewed native packages listed in `.github/native-test-builds.json`.
 It verifies component/version/platform/architecture/source identity, archive size
 and SHA-256, and the macOS 14.0 minimum before signing a temporary test catalog.
 Both Ubuntu versions use the same Ubuntu 22.04 packages. Hosted macOS checks run
