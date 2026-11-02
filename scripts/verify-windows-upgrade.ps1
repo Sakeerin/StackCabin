@@ -131,7 +131,12 @@ try {
     Invoke-Core 'verify-persistence'
 
     Install-Version $candidate '0.1.1'
-    Invoke-InstalledApplication
+    # Each launch must pass. Stop on the first failure; a successful later launch
+    # must never hide an intermittent metadata initialization failure.
+    foreach ($launch in 1..10) {
+        Write-Output "Verify candidate startup $launch/10 ($DataLocation data location)"
+        Invoke-InstalledApplication
+    }
     Invoke-Core 'verify-persistence'
     Write-Output "PASS actual Windows NSIS 0.1.0 -> unpublished 0.1.1 upgrade preserves all real fixture data ($DataLocation data location)"
 } finally {
