@@ -93,8 +93,11 @@ Node.js และเว็บ Static ใช้ catalog ปัจจุบัน�
 
 ใช้ workflow **Build Unix QA desktop installers with offline runtimes** เพื่อสร้าง
 **StackCabin QA** พร้อม PHP 8.4/8.5, Node.js 22/24, MariaDB, PostgreSQL และเครื่องมือที่ตรงกัน
+ระบุ `source_run` ของ **Verify the combined native stack** ที่เปิด `package_qa=true`
+และมีชุดทดสอบครบสำหรับระบบที่เลือก โดยต้อง build แพ็กเกจ native ที่หมดอายุใหม่ก่อน
 เลือก `linux`, `macos-arm64` หรือ `macos-x64` ให้ตรงกับเครื่อง ไฟล์อยู่ใน Artifact
 ชื่อ `desktop-qa-*` และเก็บไว้ 7 วัน
+งานบน GitHub ใช้ macOS 15 สำหรับทั้งสองสถาปัตยกรรม ส่วน macOS 14 ต้องตรวจบนเครื่องทดสอบที่ดูแลเอง
 
 1. ดาวน์โหลด `.tar.gz` พร้อม `.sha256` ตรวจ checksum แล้วแตกไฟล์
 2. ตรวจไฟล์ติดตั้งตาม `installers/SHA256SUMS.txt` จากนั้นติดตั้ง `.deb`/เปิด AppImage

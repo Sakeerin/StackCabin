@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **1 November 2026**.
+Development version: **0.1.0**, checked on **2 November 2026**.
 This is a working development preview. The simultaneous Windows/macOS/Ubuntu
 production acceptance gate remains open.
 
@@ -40,6 +40,15 @@ production acceptance gate remains open.
   runtime packs; distributed QA apps exclude E2E plugins. See [QA usage](QA_DESKTOP.md).
 
 ## Current verification
+
+Hosted verification now uses macOS 15 ARM/Intel after the macOS 14 image's
+retirement. Rosetta remains an explicit x64 compatibility check on ARM hosts;
+Intel hosts always select x64 installer artifacts. Four workflow-contract checks
+cover platform selection and kit/desktop/upgrade artifact wiring. CI also runs
+checksum-pinned actionlint 1.7.12 and rejects retired hosted runner labels.
+QA build/upgrade workflows require an explicit producer `source_run` instead of
+expired hardcoded IDs. Old native/QA artifact selections need reviewed rebuilds
+before full Unix QA runs; these changes do not replace or certify those packages.
 
 The distributed normal application is source `2b3836e`. The current acceptance
 harness is source `44a082b`; its changes are confined to documentation, workflows

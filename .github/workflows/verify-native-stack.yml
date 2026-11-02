@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.target == 'linux-baseline' && '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"}]' || inputs.target == 'linux' && '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"},{"os":"ubuntu-24.04","platform":"linux","arch":"x64"}]' || inputs.target == 'macos-arm64' && '[{"os":"macos-14","platform":"macos","arch":"arm64"}]' || inputs.target == 'macos-x64' && '[{"os":"macos-14","platform":"macos","arch":"x64"},{"os":"macos-15-intel","platform":"macos","arch":"x64"}]' || '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"},{"os":"ubuntu-24.04","platform":"linux","arch":"x64"},{"os":"macos-14","platform":"macos","arch":"arm64"},{"os":"macos-14","platform":"macos","arch":"x64"},{"os":"macos-15-intel","platform":"macos","arch":"x64"}]') }}
+        include: ${{ fromJSON(inputs.target == 'linux-baseline' && '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"}]' || inputs.target == 'linux' && '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"},{"os":"ubuntu-24.04","platform":"linux","arch":"x64"}]' || inputs.target == 'macos-arm64' && '[{"os":"macos-15","platform":"macos","arch":"arm64"}]' || inputs.target == 'macos-x64' && '[{"os":"macos-15","platform":"macos","arch":"x64"},{"os":"macos-15-intel","platform":"macos","arch":"x64"}]' || '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"},{"os":"ubuntu-24.04","platform":"linux","arch":"x64"},{"os":"macos-15","platform":"macos","arch":"arm64"},{"os":"macos-15","platform":"macos","arch":"x64"},{"os":"macos-15-intel","platform":"macos","arch":"x64"}]') }}
     runs-on: ${{ matrix.os }}
     env:
       STACKCABIN_TEST_ARCH: ${{ matrix.arch }}
@@ -68,7 +68,7 @@ jobs:
           path: artifacts/runtimes/
       - uses: dtolnay/rust-toolchain@stable
       - name: Select x64 compatibility on macOS 14
-        if: matrix.os == 'macos-14' && matrix.arch == 'x64'
+        if: matrix.os == 'macos-15' && matrix.arch == 'x64'
         run: |
           arch -x86_64 /usr/bin/true
           rustup target add x86_64-apple-darwin

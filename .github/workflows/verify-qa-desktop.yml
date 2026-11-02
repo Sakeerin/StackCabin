@@ -1,4 +1,4 @@
-name: Verify an existing QA desktop installer on the baseline
+name: Verify an existing QA desktop installer on a hosted runner
 on:
   workflow_dispatch:
     inputs:
@@ -8,12 +8,17 @@ on:
         required: true
       runner:
         type: choice
-        options: [ubuntu-24.04, macos-14]
+        options: [ubuntu-24.04, macos-15, macos-15-intel]
         required: true
       arch:
+        description: ARM runner package architecture; Intel runners always use x64
         type: choice
         options: [arm64, x64]
         default: arm64
+      normal_installer_run:
+        description: Normal preview build for Linux coexistence verification
+        type: string
+        default: "41209952479"
 permissions:
   contents: read
   actions: read
@@ -28,7 +33,7 @@ jobs:
           python-version: "3.12"
       - uses: actions/download-artifact@v4
         with:
-          name: desktop-qa-${{ startsWith(inputs.runner, 'ubuntu') && 'ubuntu-22.04' || inputs.arch == 'x64' && 'macos-15-intel' || 'macos-15' }}
+          name: desktop-qa-${{ startsWith(inputs.runner, 'ubuntu') && 'ubuntu-22.04' || (inputs.runner == 'macos-15-intel' || inputs.arch == 'x64') && 'macos-15-intel' || 'macos-15' }}
           run-id: ${{ inputs.source_run }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: artifacts/qa-desktop/
@@ -46,7 +51,7 @@ jobs:
         if: runner.os == 'Linux'
         with:
           name: development-installers-ubuntu-22.04
-          run-id: "40047451505"
+          run-id: ${{ inputs.normal_installer_run }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: artifacts/normal/
       - name: Install the normal preview before QA to verify coexistence
@@ -73,9 +78,9 @@ jobs:
           chmod +x "${images[0]}"
           APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a dbus-run-session -- python scripts/smoke-packaged.py "${images[0]}"
       - name: Check preinstalled x64 compatibility
-        if: runner.os == 'macOS' && inputs.arch == 'x64'
+        if: inputs.runner == 'macos-15' && inputs.arch == 'x64'
         run: arch -x86_64 /usr/bin/true
-      - name: Mount and verify the QA app on macOS 14
+      - name: Mount and verify the QA app on the selected macOS runner
         if: runner.os == 'macOS'
         run: |
           images=("$RUNNER_TEMP/desktop QA pack/installers/dmg/"*.dmg)

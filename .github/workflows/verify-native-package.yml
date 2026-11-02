@@ -22,9 +22,9 @@ on:
         type: boolean
         default: false
       runner:
-        description: macOS 14 hosted runners retire on 2 November 2026; use a maintained VM after that date
+        description: Current hosted runner; verify macOS 14 separately on a maintained machine
         type: choice
-        options: [macos-14, macos-15, macos-15-intel, ubuntu-24.04]
+        options: [macos-15, macos-15-intel, ubuntu-24.04]
         required: true
       arch:
         description: macOS package architecture; x64 uses preinstalled Rosetta on ARM runners
@@ -71,7 +71,7 @@ jobs:
           node-version: "24"
       - uses: dtolnay/rust-toolchain@stable
       - name: Select the x64 compatibility target
-        if: runner.os == 'macOS' && inputs.arch == 'x64'
+        if: inputs.runner == 'macos-15' && inputs.arch == 'x64'
         run: |
           arch -x86_64 /usr/bin/true
           rustup target add x86_64-apple-darwin

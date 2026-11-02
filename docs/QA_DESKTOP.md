@@ -6,7 +6,7 @@ application identity `dev.stackcabin.qa`, its own default metadata directory and
 its own OS credential namespace. The normal StackCabin application keeps its
 existing identity and catalog. The QA interface displays an English/Thai banner.
 
-Internal build artifacts checked on 24 October 2026 (seven-day retention):
+Historical builds checked on 24 October 2026 (their seven-day artifacts have expired):
 
 | Target                  | Build                                                                                                | Artifact                    |
 | ----------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------- |
@@ -14,7 +14,16 @@ Internal build artifacts checked on 24 October 2026 (seven-day retention):
 | macOS 14+ Apple Silicon | [ARM QA build job](https://github.com/Sakeerin/StackCabin/actions/runs/40074337734/job/120814387895) | `desktop-qa-macos-15`       |
 | macOS 14+ Intel         | [Intel QA build](https://github.com/Sakeerin/StackCabin/actions/runs/40075333416)                    | `desktop-qa-macos-15-intel` |
 
-Use the Actions run's Artifacts section to download the matching pack.
+To create a current pack, rebuild the reviewed native packages and update
+`runtime-catalog/native-test-builds.json`, then run **Verify the combined native
+stack** with `package_qa=true`. Supply that successful run ID as `source_run` to
+**Build Unix QA desktop installers with offline runtimes**. `target=all` requires
+all three producer kits in that same source run; single-platform builds need only
+their matching kit. Current macOS jobs use 15 ARM/Intel; macOS 14 execution belongs
+on a maintained test machine. Expired/missing archives fail rather than being
+replaced with unrelated builds.
+
+Use the new Actions run's Artifacts section to download the matching pack.
 Baseline execution evidence and remaining certification are recorded in
 [the implementation status](https://github.com/Sakeerin/StackCabin/blob/main/docs/IMPLEMENTATION_STATUS.md)
 in the source repository.

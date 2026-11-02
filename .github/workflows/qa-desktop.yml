@@ -2,6 +2,10 @@ name: Build Unix QA desktop installers with offline runtimes
 on:
   workflow_dispatch:
     inputs:
+      source_run:
+        description: Successful combined-stack build with package_qa enabled
+        type: string
+        required: true
       target:
         type: choice
         options: [all, linux, macos-arm64, macos-x64]
@@ -15,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.target == 'linux' && '[{"os":"ubuntu-22.04","run":"40057065876","artifact":"native-qa-ubuntu-22.04-x64"}]' || inputs.target == 'macos-arm64' && '[{"os":"macos-15","run":"40057001216","artifact":"native-qa-macos-14-arm64"}]' || inputs.target == 'macos-x64' && '[{"os":"macos-15-intel","run":"40057509499","artifact":"native-qa-macos-14-x64"}]' || '[{"os":"ubuntu-22.04","run":"40057065876","artifact":"native-qa-ubuntu-22.04-x64"},{"os":"macos-15","run":"40057001216","artifact":"native-qa-macos-14-arm64"},{"os":"macos-15-intel","run":"40057509499","artifact":"native-qa-macos-14-x64"}]') }}
+        include: ${{ fromJSON(inputs.target == 'linux' && '[{"os":"ubuntu-22.04","artifact":"native-qa-ubuntu-22.04-x64"}]' || inputs.target == 'macos-arm64' && '[{"os":"macos-15","artifact":"native-qa-macos-15-arm64"}]' || inputs.target == 'macos-x64' && '[{"os":"macos-15-intel","artifact":"native-qa-macos-15-intel-x64"}]' || '[{"os":"ubuntu-22.04","artifact":"native-qa-ubuntu-22.04-x64"},{"os":"macos-15","artifact":"native-qa-macos-15-arm64"},{"os":"macos-15-intel","artifact":"native-qa-macos-15-intel-x64"}]') }}
     runs-on: ${{ matrix.os }}
     env:
       STACKCABIN_QA_KIT_DIR: ${{ github.workspace }}/.local/desktop-runtime-kit
@@ -33,7 +37,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          run-id: ${{ matrix.run }}
+          run-id: ${{ inputs.source_run }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: artifacts/runtime-kit/
       - name: Verify the immutable kit archive and extract

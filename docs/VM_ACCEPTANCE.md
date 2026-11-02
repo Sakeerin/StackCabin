@@ -78,8 +78,9 @@ The manual **Verify the combined native stack** workflow downloads the four
 reviewed native packages listed in `runtime-catalog/native-test-builds.json`.
 It verifies component/version/platform/architecture/source identity, archive size
 and SHA-256, and the macOS 14.0 minimum before signing a temporary test catalog.
-Both Ubuntu versions use the same Ubuntu 22.04 packages. macOS checks run on
-14 ARM, 14 x64 through preinstalled Rosetta, and native Intel 15.
+Both Ubuntu versions use the same Ubuntu 22.04 packages. Hosted macOS checks run
+on 15 ARM, 15 x64 through preinstalled Rosetta, and native Intel 15. macOS 14
+execution uses a maintained test machine after GitHub's hosted-image retirement.
 
 In an ephemeral checkout, it assembles matching offline runtime archives and
 runs the real core with those archives in a new Thai/spaced workspace. Static,
@@ -158,7 +159,10 @@ its own binary, application ID, metadata and OS credential namespace, with a QA
 banner. Its development catalog does not change the normal preview catalog.
 
 **Verify an existing QA desktop installer on the baseline** reuses these exact
-installer files on Ubuntu 24.04 or macOS 14 without rebuilding the application.
+installer files on Ubuntu 24.04 or current macOS 15 ARM/Intel without rebuilding
+the application. For Linux, `normal_installer_run` selects the successful normal
+preview build used for coexistence checks. macOS 14 must be checked separately
+on a maintained machine.
 It checks checksums, package identity and actual normal application startup in
 an isolated data directory. On Linux it first installs the normal preview and
 confirms the QA installation preserves that executable, then starts the QA deb

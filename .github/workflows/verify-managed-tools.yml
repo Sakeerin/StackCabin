@@ -3,12 +3,12 @@ on:
   workflow_dispatch:
     inputs:
       runner:
-        description: macos-14 is the temporary baseline; use macos-15 for current Apple Silicon
+        description: Current Apple Silicon or native Intel hosted runner
         type: choice
-        options: [macos-15, macos-14]
+        options: [macos-15, macos-15-intel]
         default: macos-15
       arch:
-        description: x64 runs through the runner's preinstalled Rosetta
+        description: ARM runner target; x64 uses Rosetta, Intel runners always use x64
         type: choice
         options: [arm64, x64]
         default: arm64
@@ -16,14 +16,13 @@ permissions:
   contents: read
 jobs:
   verify:
-    # This hosted image retires on 2 November 2026; replace with a maintained VM.
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: Select the x64 compatibility target
-        if: inputs.arch == 'x64'
+        if: inputs.runner == 'macos-15' && inputs.arch == 'x64'
         run: |
           arch -x86_64 /usr/bin/true
           rustup target add x86_64-apple-darwin
