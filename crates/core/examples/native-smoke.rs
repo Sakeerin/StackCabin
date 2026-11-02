@@ -23,7 +23,8 @@ async fn assert_project_response(url: &str, host: &str, runtime: Option<&str>) -
         .header("Host", host)
         .timeout(Duration::from_secs(15))
         .send()
-        .await?
+        .await
+        .with_context(|| format!("GET {url}, Host={host}, selected runtime={runtime:?}"))?
         .error_for_status()?;
     if let Some(runtime) = runtime {
         anyhow::ensure!(
@@ -40,6 +41,74 @@ async fn assert_project_response(url: &str, host: &str, runtime: Option<&str>) -
         "Server at {url} returned a different project"
     );
     Ok(())
+}
+
+// Capture live evidence before dropping the owned processes. Diagnostic probes
+// never replace the failed assertion, even when a later request succeeds.
+async fn diagnose_http_failure(core: &AppCore, routed: &str, host: &str, fallback: &str) {
+    eprintln!("HTTP FAILURE: routed={routed}, Host={host}, fallback={fallback}");
+    match tokio::time::timeout(Duration::from_secs(3), core.supervisor.statuses()).await {
+        Ok(statuses) => eprintln!("Owned project process states: {statuses:?}"),
+        Err(_) => eprintln!("Process status collection timed out"),
+    }
+    for event in core
+        .logs(Some("service:caddy"))
+        .into_iter()
+        .rev()
+        .take(40)
+        .rev()
+    {
+        eprintln!("Caddy: {}", event.message);
+    }
+    let mut probes = vec![
+        (routed.to_string(), host.to_string()),
+        (fallback.to_string(), "127.0.0.1".into()),
+    ];
+    if let Ok(config) = std::fs::read(core.store.root.join("services/caddy.json")) {
+        if let Ok(config) = serde_json::from_slice::<serde_json::Value>(&config) {
+            if let Some(admin) = config["admin"]["listen"].as_str() {
+                probes.push((format!("http://{admin}/"), "127.0.0.1".into()));
+            }
+        }
+    }
+    for (url, host) in probes {
+        let probe = async {
+            use tokio::io::{AsyncReadExt, AsyncWriteExt};
+            let parsed = reqwest::Url::parse(&url)?;
+            anyhow::ensure!(
+                parsed.host_str() == Some("127.0.0.1"),
+                "Probe must use loopback"
+            );
+            let mut stream = tokio::net::TcpStream::connect((
+                "127.0.0.1",
+                parsed.port_or_known_default().context("No probe port")?,
+            ))
+            .await?;
+            stream
+                .write_all(
+                    format!("GET / HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n")
+                        .as_bytes(),
+                )
+                .await?;
+            let mut bytes = [0; 128];
+            let length = stream.read(&mut bytes).await?;
+            let response = String::from_utf8_lossy(&bytes[..length]);
+            let status = if response.starts_with("HTTP/") {
+                response
+                    .split_whitespace()
+                    .take(2)
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            } else {
+                format!("non-HTTP response ({length} bytes)")
+            };
+            Ok::<_, anyhow::Error>(status)
+        };
+        eprintln!(
+            "Raw HTTP probe {url}, Host={host}: {:?}",
+            tokio::time::timeout(Duration::from_secs(3), probe).await
+        );
+    }
 }
 
 #[tokio::main]
@@ -283,8 +352,13 @@ async fn main() -> Result<()> {
         }
     }
     for (routed, host, fallback, runtime) in observations {
-        assert_project_response(&routed, &host, runtime.as_deref()).await?;
-        assert_project_response(&fallback, "127.0.0.1", runtime.as_deref()).await?;
+        println!("Rechecking {host} with selected runtime {runtime:?}");
+        for (url, probe_host) in [(&routed, host.as_str()), (&fallback, "127.0.0.1")] {
+            if let Err(error) = assert_project_response(url, probe_host, runtime.as_deref()).await {
+                diagnose_http_failure(&core, &routed, &host, &fallback).await;
+                return Err(error);
+            }
+        }
     }
     println!(
         "PASS all {} projects remain reachable with their selected runtime",
