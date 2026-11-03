@@ -107,6 +107,14 @@ node scripts/prepare-native-release.mjs --input=inputs.json --output=new-review-
 Local verification on 3 November assembled twelve real runtimes, eighteen unique
 source archives and 67 files; all 66 checksum records passed independently.
 The payload is retained in `artifacts/native-release-review-20261103/payload/`.
+The same preparation passed on GitHub in
+[41563796600](https://github.com/Sakeerin/StackCabin/actions/runs/41563796600).
+Its [reviewed native candidate](https://github.com/Sakeerin/StackCabin/actions/runs/41563796600/artifacts/13197263186)
+has seven-day retention, 1,108,967,151 ZIP bytes and SHA-256
+`2d0e7a16c09f9e87a66ab73e3a143ccd0dfe7ec6c91a694e1c798541cbd86cde`.
+That ZIP digest is GitHub artifact metadata; the large ZIP was not downloaded
+again locally. CI independently rechecked all staged files, including the
+completion manifest. Logs/metadata are retained alongside the local payload.
 This is preparation evidence. Review all bundled-library licenses and the full
 corresponding-source closure, including Linux system libraries, before public
 distribution. Baseline machine certification, actual immutable asset publication,
