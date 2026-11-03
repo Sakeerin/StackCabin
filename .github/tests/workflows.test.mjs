@@ -5,6 +5,15 @@ import { existsSync, readFileSync } from "node:fs";
 const workflow = (name) =>
   readFileSync(new URL(`../workflows/${name}.yml`, import.meta.url), "utf8");
 
+test("normal Windows installer checks require ten consecutive fresh metadata startups", () => {
+  for (const name of ["preview-installers", "verify-preview-installer"]) {
+    const windows = workflow(name);
+    assert.match(windows, /foreach \(\$launch in 1\.\.10\)/);
+    assert.match(windows, /Fresh metadata startup \$launch\/10/);
+    assert.match(windows, /smoke-packaged-windows\.ps1 -Application/);
+  }
+});
+
 test("native release preparation uses reviewed producers and has no publishing or signing permission", () => {
   const prepare = workflow("prepare-native-release");
   assert.match(prepare, /contents: read/);

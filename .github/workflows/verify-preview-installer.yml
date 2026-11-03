@@ -56,7 +56,10 @@ jobs:
           $after = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./src-tauri/windows/install-vc-runtime.ps1 -PayloadDirectory ./artifacts/windows-prerequisites -Manifest ./runtime-catalog/windows-prerequisites.json -CheckOnly | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0 -or $after.installationNeeded) { throw 'Installer did not provide the required Visual C++ version' }
           Write-Output "PASS Visual C++ before=$($before.installedVersion), needed=$($before.installationNeeded), after=$($after.installedVersion)"
-          ./scripts/smoke-packaged-windows.ps1 -Application (Join-Path $destination 'stackcabin.exe') -Python (Get-Command python).Source
+          foreach ($launch in 1..10) {
+            Write-Output "Fresh metadata startup $launch/10"
+            ./scripts/smoke-packaged-windows.ps1 -Application (Join-Path $destination 'stackcabin.exe') -Python (Get-Command python).Source
+          }
       - name: Install the Ubuntu 22.04 deb on Ubuntu 24.04
         if: runner.os == 'Linux'
         shell: bash

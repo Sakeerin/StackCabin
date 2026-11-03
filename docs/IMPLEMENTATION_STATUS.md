@@ -107,6 +107,17 @@ three Intel repeats and twenty Windows candidate startups passed. A local real
 Rust Store stress probe also passed 1,000 reopen/migrations alongside 5,530
 read-only checks from a separate process. Keep both observations in VM soak work.
 
+The 3 November normal installer attempt
+[41563800420](https://github.com/Sakeerin/StackCabin/actions/runs/41563800420)
+adds a third observation: Windows NSIS/prerequisite installation succeeded but
+fresh metadata readiness timed out after 45 seconds. The three Unix packaging
+jobs and all eleven code-CI jobs passed. The timeout's cause is unconfirmed.
+Failure-only file/process/SQLite diagnostics now retain bounded application
+output. The harness uses file-backed stdout/stderr to prevent an unread output
+pipe from blocking startup; a real child emitting 512 KiB before creating metadata
+regresses that separate harness defect. Assertions retain the 45-second deadline.
+Normal Windows installer checks now require ten consecutive fresh-metadata starts.
+
 The migrated managed-tool workflow passed on native ARM
 [41379324406](https://github.com/Sakeerin/StackCabin/actions/runs/41379324406),
 x64 through Rosetta
@@ -217,7 +228,7 @@ QA installers. These QA catalogs remain separate from the shipping catalog.
 
 Native release preparation now has a read-only Actions workflow and a local
 assembly helper. Twelve preparation regressions, twelve existing native-stack
-checks, seven workflow contracts, 33 Windows packaging-helper cases and actionlint
+checks, eight workflow contracts, 35 Windows packaging-helper cases and actionlint
 passed locally. The real twelve reviewed runtimes assembled into 67 candidate
 files with eighteen unique source archives; all 66 checksum records passed an
 independent recheck. Original producer metadata remains intact; the candidate

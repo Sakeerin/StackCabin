@@ -44,6 +44,36 @@ class NativeReleasePinsTests(unittest.TestCase):
 
 
 class PackagedMetadataTests(unittest.TestCase):
+    def test_verbose_startup_cannot_block_on_unread_output_pipes(self):
+        real_popen = subprocess.Popen
+        application = """import os, sqlite3, sys, time
+sys.stdout.write('o' * 262144); sys.stdout.flush()
+sys.stderr.write('e' * 262144); sys.stderr.flush()
+with sqlite3.connect(os.path.join(os.environ['STACKCABIN_DATA_DIR'], 'stackcabin.sqlite')) as connection:
+    connection.executescript('CREATE TABLE projects(id,path,payload); CREATE TABLE settings(id,payload); PRAGMA user_version=1;')
+time.sleep(30)
+"""
+        def start(arguments, **options):
+            return real_popen([sys.executable, "-c", application], **options)
+        with patch.object(packaged_smoke.subprocess, "Popen", side_effect=start):
+            packaged_smoke.verify(sys.executable)
+
+    def test_startup_failure_keeps_bounded_output_and_read_only_diagnostics(self):
+        real_popen = subprocess.Popen
+        def start(arguments, **options):
+            process = real_popen([sys.executable, "-c", "import sys; sys.stderr.write('known startup failure'); sys.exit(7)"], **options)
+            process.wait(timeout=5)
+            return process
+        output = io.StringIO()
+        with patch.object(packaged_smoke.subprocess, "Popen", side_effect=start), patch.object(packaged_smoke.sys, "stderr", output):
+            with self.assertRaisesRegex(RuntimeError, "exited: 7"):
+                packaged_smoke.verify(sys.executable)
+        text = output.getvalue()
+        self.assertIn('"returncode": 7', text)
+        self.assertIn('"files": []', text)
+        self.assertIn("known startup failure", text)
+        self.assertLess(len(text), 10000)
+
     @unittest.skipUnless(os.name == "nt", "Windows handle and file attributes")
     def test_metadata_access_diagnostics_never_repair_or_create_files(self):
         import stat

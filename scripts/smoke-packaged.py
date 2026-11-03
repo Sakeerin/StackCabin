@@ -121,6 +121,33 @@ def windows_data_access(directory):
     return result
 
 
+def startup_diagnostics(directory, child, last_error, observed):
+    """Read bounded failure evidence without repairing or initializing metadata."""
+    result = {"pid": child.pid, "returncode": child.poll(),
+              "lastSqliteError": last_error, "lastObservedMetadata": observed}
+    try:
+        result["files"] = [{"name": entry.name, "size": entry.stat().st_size}
+                           for entry in Path(directory).iterdir() if entry.is_file()][:20]
+        if os.name == "nt":
+            result["access"] = windows_data_access(directory)
+            if child.poll() is None:
+                command = (f"Get-Process -Id {int(child.pid)} -ErrorAction Stop | "
+                           "Select-Object Id,Responding,MainWindowHandle,MainWindowTitle,CPU | ConvertTo-Json -Compress")
+                process = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
+                                         capture_output=True, text=True, timeout=5,
+                                         creationflags=subprocess.CREATE_NO_WINDOW, check=False)
+                result["process"] = (process.stdout + process.stderr)[-2000:]
+    except Exception as error:
+        result["diagnosticError"] = str(error)
+    return result
+
+
+def output_tail(stream, limit=6000):
+    stream.seek(0, os.SEEK_END)
+    stream.seek(max(0, stream.tell() - limit))
+    return stream.read().decode(errors="replace")
+
+
 def verify(application, data_directory=None, use_default_data_directory=False):
     application = Path(application).resolve(strict=True)
     if not application.is_file():
@@ -132,7 +159,8 @@ def verify(application, data_directory=None, use_default_data_directory=False):
     if existing and (expected["schema"] != 1 or len(expected["projects"]) != 10 or not expected["settings"]):
         raise RuntimeError("An existing ten-project preservation fixture is required")
     context = nullcontext(str(existing)) if existing else tempfile.TemporaryDirectory(prefix="stackcabin packaged ทดสอบ ")
-    with context as directory:
+    # File-backed output cannot block the app on an unread pipe during startup.
+    with context as directory, tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
         environment = {key: value for key, value in os.environ.items()
                        if key.upper() != "STACKCABIN_DATA_DIR"}
         if not use_default_data_directory:
@@ -144,28 +172,28 @@ def verify(application, data_directory=None, use_default_data_directory=False):
             hidden.wShowWindow = 0
             launch = {"startupinfo": hidden, "creationflags": subprocess.CREATE_NO_WINDOW}
         child = subprocess.Popen([str(application)], env=environment,
-                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, **launch)
+                                 stdout=stdout, stderr=stderr, **launch)
+        last_error, observed = None, None
         try:
             database = Path(directory) / "stackcabin.sqlite"
             deadline = time.monotonic() + 45
             ready = False
             while time.monotonic() < deadline:
                 if child.poll() is not None:
-                    stdout, stderr = child.communicate()
-                    if os.name == "nt":
-                        print("Metadata access diagnostics: " + json.dumps(windows_data_access(directory)), file=sys.stderr)
-                    raise RuntimeError(f"Packaged application exited: {child.returncode}\n"
-                                       + (stdout + stderr).decode(errors="replace")[-6000:])
+                    raise RuntimeError(f"Packaged application exited: {child.returncode}")
                 if database.is_file():
                     try:
                         actual = metadata(database)
+                        observed = {"schema": actual["schema"], "projects": len(actual["projects"]),
+                                    "settings": len(actual["settings"])}
                         ready = actual == expected if expected else actual["schema"] == 1 and not actual["projects"]
                         if expected and not ready:
                             raise RuntimeError("Packaged application changed existing metadata during startup")
                         if expected and ready:
                             ready = has_metadata_handle(child.pid, database)
-                    except sqlite3.Error:
-                        pass  # The process may still be committing its initial migration.
+                    except sqlite3.Error as error:
+                        last_error = {"message": str(error), "code": getattr(error, "sqlite_errorcode", None),
+                                      "name": getattr(error, "sqlite_errorname", None)}
                 if ready:
                     break
                 time.sleep(0.1)
@@ -184,7 +212,11 @@ def verify(application, data_directory=None, use_default_data_directory=False):
                 print("PASS installed application process holds the existing metadata database open")
             if use_default_data_directory:
                 print("PASS installed application uses the OS default data location without STACKCABIN_DATA_DIR")
+        except Exception:
+            print("Metadata startup diagnostics: " + json.dumps(startup_diagnostics(directory, child, last_error, observed)), file=sys.stderr)
+            raise
         finally:
+            failed = sys.exc_info()[0] is not None
             if child.poll() is None:
                 if os.name == "nt":
                     child.terminate()
@@ -198,7 +230,9 @@ def verify(application, data_directory=None, use_default_data_directory=False):
                     else:
                         os.killpg(child.pid, signal.SIGKILL)
                     child.wait(timeout=5)
-            child.communicate()
+            if failed:
+                print("Packaged stdout tail: " + output_tail(stdout), file=sys.stderr)
+                print("Packaged stderr tail: " + output_tail(stderr), file=sys.stderr)
         if expected and metadata(database) != expected:
             raise RuntimeError("Packaged application changed metadata during shutdown")
 

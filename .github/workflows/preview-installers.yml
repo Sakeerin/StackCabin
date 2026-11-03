@@ -57,7 +57,10 @@ jobs:
           $report = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./src-tauri/windows/install-vc-runtime.ps1 -PayloadDirectory ./artifacts/windows-prerequisites -Manifest ./runtime-catalog/windows-prerequisites.json -CheckOnly | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0 -or $report.installationNeeded) { throw 'Installer did not provide the required Visual C++ runtime' }
           Write-Output "PASS installed Visual C++ $($report.installedVersion), required $($report.requiredVersion)"
-          ./scripts/smoke-packaged-windows.ps1 -Application (Join-Path $destination 'stackcabin.exe') -Python (Get-Command python).Source
+          foreach ($launch in 1..10) {
+            Write-Output "Fresh metadata startup $launch/10"
+            ./scripts/smoke-packaged-windows.ps1 -Application (Join-Path $destination 'stackcabin.exe') -Python (Get-Command python).Source
+          }
       - name: Install and start the Ubuntu package in the disposable runner
         if: runner.os == 'Linux'
         shell: bash
