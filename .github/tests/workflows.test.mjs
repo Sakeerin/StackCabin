@@ -5,6 +5,21 @@ import { existsSync, readFileSync } from "node:fs";
 const workflow = (name) =>
   readFileSync(new URL(`../workflows/${name}.yml`, import.meta.url), "utf8");
 
+test("native release preparation uses reviewed producers and has no publishing or signing permission", () => {
+  const prepare = workflow("prepare-native-release");
+  assert.match(prepare, /contents: read/);
+  assert.match(prepare, /actions: read/);
+  assert.doesNotMatch(
+    prepare,
+    /contents: write|secrets\.|gh release|--clobber/,
+  );
+  assert.match(prepare, /native-test-builds\.json/);
+  assert.match(prepare, /verifyProducer\(run, build, repository\)/);
+  assert.match(prepare, /!a\.expired/);
+  assert.match(prepare, /sha256sum --check SHA256SUMS\.txt/);
+  assert.match(prepare, /if-no-files-found: error/);
+});
+
 // These workflows use the common JavaScript-compatible subset of Actions
 // expressions. actionlint independently checks the actual Actions syntax/types.
 function evaluate(expression, inputs) {

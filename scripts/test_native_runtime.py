@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from contextlib import closing
 import io
 from pathlib import Path
@@ -28,6 +29,18 @@ installer_spec.loader.exec_module(installer_checksums)
 packaged_spec = importlib.util.spec_from_file_location("packaged_smoke", Path(__file__).with_name("smoke-packaged.py"))
 packaged_smoke = importlib.util.module_from_spec(packaged_spec)
 packaged_spec.loader.exec_module(packaged_smoke)
+
+
+class NativeReleasePinsTests(unittest.TestCase):
+    def test_release_source_pins_match_the_native_builders(self):
+        from postgres_macos_dependencies import SOURCES
+        from mariadb_macos_dependencies import PCRE
+        pins = json.loads((Path(__file__).resolve().parent.parent / ".github/native-release-sources.json").read_text())
+        for actual, expected in [(pins["crypto"], SOURCES), ([pins["pcre2"]], [PCRE])]:
+            self.assertEqual(len(actual), len(expected))
+            for release, build in zip(actual, expected):
+                for key in ("name", "version", "license", "url", "sha256"):
+                    self.assertEqual(release[key], build[key], key)
 
 
 class PackagedMetadataTests(unittest.TestCase):

@@ -1,0 +1,64 @@
+name: Prepare reviewed native release assets
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Unique future native-* release tag; nothing is published
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify release preparation regressions
+        run: node --test scripts/test-native-release.mjs scripts/test-native-stack.mjs
+      - name: Download the exact reviewed producers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          import { mkdir, readFile, writeFile } from 'node:fs/promises';
+          import path from 'node:path';
+          import { releaseBase, releaseSelections, verifyProducer } from './scripts/prepare-native-release.mjs';
+          const repository = process.env.GITHUB_REPOSITORY;
+          releaseBase(repository, process.env.RELEASE_TAG);
+          const builds = releaseSelections(JSON.parse(await readFile('.github/native-test-builds.json', 'utf8')));
+          const api = (endpoint) => JSON.parse(execFileSync('gh', ['api', `repos/${repository}/${endpoint}`], { encoding: 'utf8' }));
+          const runs = new Map();
+          const inputs = [];
+          for (const build of builds) {
+            if (!runs.has(build.run)) runs.set(build.run, api(`actions/runs/${build.run}`));
+            const run = runs.get(build.run);
+            verifyProducer(run, build, repository);
+            const matches = api(`actions/runs/${build.run}/artifacts?per_page=100`).artifacts.filter((a) => a.name === build.artifact && !a.expired);
+            if (matches.length !== 1) throw new Error(`Missing/expired/ambiguous native artifact: ${build.id}`);
+            const directory = path.resolve('artifacts/native-release-inputs', build.id);
+            await mkdir(directory, { recursive: true });
+            execFileSync('gh', ['run', 'download', String(build.run), '--repo', repository, '--name', build.artifact, '--dir', directory], { stdio: 'inherit' });
+            inputs.push({ id: build.id, directory, run });
+          }
+          await writeFile('artifacts/native-release-inputs.json', JSON.stringify(inputs, null, 2));
+          NODE
+      - name: Assemble unsigned unpublished release candidate
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: node scripts/prepare-native-release.mjs --input=artifacts/native-release-inputs.json --output=artifacts/native-release --repository="$GITHUB_REPOSITORY" --tag="$RELEASE_TAG"
+      - name: Recheck every staged asset including the completion manifest
+        working-directory: artifacts/native-release
+        run: sha256sum --check SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reviewed-native-release-candidate
+          retention-days: 7
+          if-no-files-found: error
+          path: artifacts/native-release/

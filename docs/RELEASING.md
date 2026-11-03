@@ -73,6 +73,45 @@ Merge native artifact JSON objects into one JSON array and pass it as
 locations in those objects. Preserve required third-party notices and source
 distribution obligations with the corresponding artifact release.
 
+### Assemble a reviewed native release candidate
+
+Dispatch **Prepare reviewed native release assets** (`prepare-native-release.yml`)
+with an unused, versioned `native-*` tag. It consumes the exact twelve selections
+in `.github/native-test-builds.json`, requires successful native-runtime producer
+runs from this repository, and rejects missing/expired artifacts. Its token has
+only contents/actions read permissions. It uploads an Actions artifact; it does
+not create a GitHub release, publish assets, change the shipping catalog or read
+catalog signing keys.
+
+The preparation helper verifies runtime and publisher-source bytes, executable
+layouts, relocation provenance and the measured macOS 14.0 ceiling. Every declared
+macOS dependency must match the separately reviewed source/license pins and have
+its matching source archive. A Python regression keeps the crypto/PCRE release
+pins consistent with the native builders. Common source bytes are deduplicated
+by checksum, while original build metadata/provenance remains intact.
+
+The candidate contains `native-artifacts.json` with the future immutable HTTPS
+URLs, original build records, `source-inventory.json`, corresponding source
+archives, `SHA256SUMS.txt` and a final `release-manifest.json`. Verify all checksum
+records before review. A failed local copy has no completion manifest; an existing
+output directory is never replaced. The original metadata retains its producer's
+future URL; only `native-artifacts.json` describes the proposed release location.
+
+For previously downloaded artifacts, provide twelve input records with `id`,
+`directory` and the full GitHub run API response as `run`:
+
+```sh
+node scripts/prepare-native-release.mjs --input=inputs.json --output=new-review-folder --repository=Sakeerin/StackCabin --tag=native-unique-version
+```
+
+Local verification on 3 November assembled twelve real runtimes, eighteen unique
+source archives and 67 files; all 66 checksum records passed independently.
+The payload is retained in `artifacts/native-release-review-20261103/payload/`.
+This is preparation evidence. Review all bundled-library licenses and the full
+corresponding-source closure, including Linux system libraries, before public
+distribution. Baseline machine certification, actual immutable asset publication,
+verification of hosted bytes and production catalog signing remain separate gates.
+
 ## 2. Establish the production trust root
 
 Generate an Ed25519 signing key outside the repository. Supply its PEM content as

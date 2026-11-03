@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **2 November 2026**.
+Development version: **0.1.0**, checked on **3 November 2026**.
 This is a working development preview. The simultaneous Windows/macOS/Ubuntu
 production acceptance gate remains open.
 
@@ -214,6 +214,17 @@ PHP/Node start/stop, SQL and new-identity backup restore, then produced normal
 QA installers. These QA catalogs remain separate from the shipping catalog.
 
 ## Remaining production gates
+
+Native release preparation now has a read-only Actions workflow and a local
+assembly helper. Twelve preparation regressions, twelve existing native-stack
+checks, seven workflow contracts, 33 Windows packaging-helper cases and actionlint
+passed locally. The real twelve reviewed runtimes assembled into 67 candidate
+files with eighteen unique source archives; all 66 checksum records passed an
+independent recheck. Original producer metadata remains intact; the candidate
+records proposed immutable URLs without signing or publishing a catalog. Evidence
+is in `artifacts/native-release-review-20261103/LOCAL_VERIFICATION.json` and its
+`payload/` folder. See [release preparation](RELEASING.md). This does not complete
+the publication, license/source-closure or baseline-machine gates below.
 
 1. **Complete the shipping runtime catalog.** Its signed development catalog has
    32 entries: cross-platform Node/Caddy/Composer/package managers/CA artifacts,
