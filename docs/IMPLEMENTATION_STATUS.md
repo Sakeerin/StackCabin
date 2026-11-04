@@ -39,6 +39,10 @@ production acceptance gate remains open.
 - Native release byte verification requires a retained manifest SHA-256, checks
   the complete local inventory and offers bounded HTTPS streaming checks after
   public hosting. Small review evidence binds the candidate ZIP to its producer.
+- Unsigned catalog proposals verify the pinned base trust root, preserve existing
+  entries, reject metadata changes under immutable IDs, and check the complete
+  target/version/executable matrix. Public-byte verification is a separate mode;
+  neither mode signs the catalog or grants production approval.
 - Separate internal Unix QA app/catalog/credential identities and matching offline
   runtime packs; distributed QA apps exclude E2E plugins. See [QA usage](QA_DESKTOP.md).
 
@@ -46,7 +50,7 @@ production acceptance gate remains open.
 
 Hosted verification now uses macOS 15 ARM/Intel after the macOS 14 image's
 retirement. Rosetta remains an explicit x64 compatibility check on ARM hosts;
-Intel hosts always select x64 installer artifacts. Eleven workflow-contract checks
+Intel hosts always select x64 installer artifacts. Twelve workflow-contract checks
 cover platform selection and kit/desktop/upgrade artifact wiring. CI also runs
 checksum-pinned actionlint 1.7.12 and rejects retired hosted runner labels.
 QA build/upgrade workflows require an explicit producer `source_run` instead of

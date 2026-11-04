@@ -182,6 +182,45 @@ credentials. Its successful `hosted-native-release-verification` artifact record
 which producer and manifest were checked. It neither publishes a release nor signs
 or updates the shipping catalog. An unpublished tag correctly fails this gate.
 
+### Prepare the unsigned catalog handoff
+
+`.github/scripts/prepare-catalog-proposal.mjs` makes the proposed catalog concrete
+before any signing operation. It verifies the candidate against the retained
+manifest digest, checks the base catalog's Ed25519 signature against a separately
+retained `public-key.txt` file hash, and preserves every existing artifact record.
+An existing ID with a changed URL, executable path, extraction policy or any other
+metadata fails even when its archive checksum is unchanged. The complete matrix
+must include both Node and PHP branches on all four OS/architecture targets.
+Native executable contracts, relative paths and the macOS 14.0 baseline are checked.
+Legacy base entries may retain size `0` (unknown); every new native archive must
+have the exact positive size verified against the candidate.
+
+Run with a new output directory outside the candidate and base catalog:
+
+```sh
+node .github/scripts/prepare-catalog-proposal.mjs --directory=reviewed-candidate --repository=Sakeerin/StackCabin --tag=native-reviewed-version --manifest-sha256="$MANIFEST_SHA256" --catalog-directory=runtime-catalog --public-key-sha256="$TRUSTED_PUBLIC_KEY_FILE_SHA256" --output=catalog-proposal
+```
+
+The nine-file handoff contains `catalog.proposed.json`, the native additions and
+source inventory, the original release manifest, byte verification, and the base
+catalog/signature/public key. `CATALOG_HANDOFF.json` is written last and records
+every output file's size/hash, the original trust root, manifest pin, added IDs and
+remaining gates. Its `review-only-awaiting-public-hosting` status cannot establish
+public availability. No signing key is opened; no shipping file is modified.
+
+After immutable publication, repeat into a new output with `--hosted`. This streams
+every public asset again before creating the output; a saved report cannot stand
+in for transport checks. Only complete success yields
+`hosted-bytes-verified-awaiting-release-review`. Both modes explicitly remain
+unsigned and unapproved for production. The handoff is review evidence, not an
+authenticated release authorization or a replacement for source/VM acceptance.
+
+Native preparation now uploads a separate small `native-catalog-proposal` Actions
+artifact. The hosted verification artifact includes the completed handoff alongside
+its exact producer run. Both workflows pin the current checked-in trust root;
+rotating that key requires a reviewed workflow pin change. They retain read-only
+permissions and cannot publish or sign a catalog.
+
 ## 2. Establish the production trust root
 
 Generate an Ed25519 signing key outside the repository. Supply its PEM content as
@@ -189,10 +228,14 @@ Generate an Ed25519 signing key outside the repository. Supply its PEM content a
 catalog/public-key change. The private key must remain in release secrets. Never
 distribute the local development key.
 
-```sh
-node scripts/build-catalog.mjs --extra=artifacts.json
-node scripts/verify-catalog.mjs --release
-```
+Review the handoff and its remaining gates before using its native additions in
+the catalog builder. Do not sign a review-only proposal or use a saved JSON status
+as authorization. The existing `build-catalog.mjs --extra=...` publisher-refresh
+path resolves tools again; its output is not guaranteed to be the exact proposed
+catalog. Compare the resulting full inventory against the reviewed proposal and
+review any differences before distribution. Exact-byte production signing and
+trust-root rotation remain separate release operations. After signing, run
+`node scripts/verify-catalog.mjs --release` against the final shipping files.
 
 The release gate rejects the development catalog and requires PHP 8.4/8.5,
 Node 22/24, Caddy, Composer, MariaDB, PostgreSQL, pnpm, and Yarn for every target.

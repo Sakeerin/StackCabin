@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: "24"
       - name: Verify integrity and transport regressions
-        run: node --test .github/tests/native-release-verification.test.mjs
+        run: node --test .github/tests/native-release-verification.test.mjs .github/tests/catalog-proposal.test.mjs
       - name: Verify and download the exact successful candidate producer
         env:
           GH_TOKEN: ${{ github.token }}
@@ -55,11 +55,14 @@ jobs:
           await writeFile('artifacts/hosted-native-evidence/candidate-run.json', JSON.stringify(run, null, 2));
           execFileSync('gh', ['run', 'download', runId, '--repo', repository, '--name', matches[0].name, '--dir', 'artifacts/reviewed-candidate'], { stdio: 'inherit' });
           NODE
-      - name: Stream all public assets against the retained manifest without credentials
+      - name: Verify public bytes and prepare the unsigned catalog handoff
         env:
           RELEASE_TAG: ${{ inputs.tag }}
           MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
-        run: node .github/scripts/verify-native-release.mjs --directory=artifacts/reviewed-candidate --repository="$GITHUB_REPOSITORY" --tag="$RELEASE_TAG" --manifest-sha256="$MANIFEST_SHA256" --hosted --report=artifacts/hosted-native-evidence/hosted-verification.json
+          CATALOG_PUBLIC_KEY_SHA256: "203a1d0ff09c35d787e568a4cc4e746437454cf075a179960cfbb378597820d0"
+        run: |
+          node .github/scripts/prepare-catalog-proposal.mjs --directory=artifacts/reviewed-candidate --repository="$GITHUB_REPOSITORY" --tag="$RELEASE_TAG" --manifest-sha256="$MANIFEST_SHA256" --hosted --catalog-directory=runtime-catalog --public-key-sha256="$CATALOG_PUBLIC_KEY_SHA256" --output=artifacts/hosted-native-evidence/catalog-handoff
+          cp artifacts/hosted-native-evidence/catalog-handoff/candidate-verification.json artifacts/hosted-native-evidence/hosted-verification.json
       - uses: actions/upload-artifact@v4
         with:
           name: hosted-native-release-verification

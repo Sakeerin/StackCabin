@@ -91,6 +91,12 @@ asset against that retained manifest without credentials. Local integrity, hoste
 integrity and production approval are recorded separately; see the
 [review and hosted-byte checks](RELEASING.md#retain-the-review-pin-and-verify-hosted-bytes).
 
+The unsigned [catalog handoff](RELEASING.md#prepare-the-unsigned-catalog-handoff)
+keeps this same source inventory and manifest alongside the proposed complete
+catalog. It preserves the signed base inventory and records the pending hosted
+check. Only a fresh successful stream of every public asset can produce the hosted
+handoff status; source/license review and production signing remain separate.
+
 ## Review still required
 
 Inspect the recorded package/source mapping, included notices, bundled libraries,

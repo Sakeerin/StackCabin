@@ -98,6 +98,41 @@ test("hosted native verification requires an exact successful producer and retai
   );
 });
 
+test("catalog handoffs pin the existing trust root and keep review and public verification separate", () => {
+  for (const name of [
+    "prepare-native-release",
+    "verify-hosted-native-release",
+  ]) {
+    const value = workflow(name);
+    assert.match(value, /prepare-catalog-proposal\.mjs/);
+    assert.match(
+      value,
+      /CATALOG_PUBLIC_KEY_SHA256: "203a1d0ff09c35d787e568a4cc4e746437454cf075a179960cfbb378597820d0"/,
+    );
+    assert.match(
+      value,
+      /--catalog-directory=runtime-catalog --public-key-sha256="\$CATALOG_PUBLIC_KEY_SHA256"/,
+    );
+    assert.doesNotMatch(
+      value,
+      /STACKCABIN_CATALOG_PRIVATE_KEY|contents: write|secrets\./,
+    );
+  }
+  assert.match(
+    workflow("prepare-native-release"),
+    /name: native-catalog-proposal/,
+  );
+  assert.doesNotMatch(workflow("prepare-native-release"), / --hosted/);
+  assert.match(
+    workflow("verify-hosted-native-release"),
+    / --hosted --catalog-directory=/,
+  );
+  assert.match(
+    workflow("ci"),
+    /node --test \.github\/tests\/catalog-proposal\.test\.mjs/,
+  );
+});
+
 // These workflows use the common JavaScript-compatible subset of Actions
 // expressions. actionlint independently checks the actual Actions syntax/types.
 function evaluate(expression, inputs) {

@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: "24"
       - name: Verify release preparation regressions
-        run: node --test scripts/test-native-release.mjs scripts/test-native-stack.mjs .github/tests/native-release-verification.test.mjs
+        run: node --test scripts/test-native-release.mjs scripts/test-native-stack.mjs .github/tests/native-release-verification.test.mjs .github/tests/catalog-proposal.test.mjs
       - name: Download the exact reviewed producers
         env:
           GH_TOKEN: ${{ github.token }}
@@ -76,6 +76,13 @@ jobs:
           }
           console.log(JSON.stringify({ manifestSha256, files: report.fileCount, hosted: report.hostedVerification.result }));
           NODE
+      - name: Prepare a complete unsigned catalog for review
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          CATALOG_PUBLIC_KEY_SHA256: "203a1d0ff09c35d787e568a4cc4e746437454cf075a179960cfbb378597820d0"
+        run: |
+          MANIFEST_SHA256=$(node --input-type=module -e "import {readFile} from 'node:fs/promises'; console.log(JSON.parse(await readFile('artifacts/native-release-evidence/candidate-verification.json')).manifestSha256)")
+          node .github/scripts/prepare-catalog-proposal.mjs --directory=artifacts/native-release --repository="$GITHUB_REPOSITORY" --tag="$RELEASE_TAG" --manifest-sha256="$MANIFEST_SHA256" --catalog-directory=runtime-catalog --public-key-sha256="$CATALOG_PUBLIC_KEY_SHA256" --output=artifacts/native-catalog-proposal
       - uses: actions/upload-artifact@v4
         id: candidate
         with:
@@ -112,3 +119,9 @@ jobs:
           retention-days: 7
           if-no-files-found: error
           path: artifacts/native-release-evidence/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-catalog-proposal
+          retention-days: 7
+          if-no-files-found: error
+          path: artifacts/native-catalog-proposal/
