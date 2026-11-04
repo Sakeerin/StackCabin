@@ -66,23 +66,24 @@ the reviewed publisher source bytes. Twelve native-stack regression tests cover
 corrupt/substituted archives, missing provenance and incompatible macOS baselines.
 
 The normal application uses source `7097c79`, including file-backed startup probes.
-Current code CI uses `9dee7f3`; its changes are confined to CI tools and guides.
+Current catalog-handoff source is `37ab4e5`; its changes are confined to CI tools and guides.
 The reviewed native selection is
 `76955fa`; the downloadable Unix QA desktops below retain their earlier producers.
 The app retains the same signed development catalog and reports
 the metadata path and SQLite extended error code on initialization failure.
 Its resource set excludes the unused CI selection file. The real source/catalog
 compatibility check passed in
-`artifacts/native-transfer-review-20261104/installer-source-compatibility.json`. The macOS 14
+`artifacts/catalog-handoff-20261104/installer-source-compatibility.json`. The macOS 14
 execution rows below explicitly concern the earlier `2b3836e` installers.
 
 | Check                        | Latest evidence and scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Cross-platform CI            | [41803426025](https://github.com/Sakeerin/StackCabin/actions/runs/41803426025): all eleven jobs passed on Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. Eleven workflow contracts and actionlint 1.7.12 passed.                                                                                                                                                                                                                                                                              |
+| Cross-platform CI            | [41810779682](https://github.com/Sakeerin/StackCabin/actions/runs/41810779682): all eleven jobs passed on Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. Twelve workflow contracts and actionlint 1.7.12 passed.                                                                                                                                                                                                                                                                              |
 | Core/frontend                | 49 Windows / 44 Unix core tests; four ignored entries are separately invoked child-process fixtures. Fourteen frontend tests, formatting, Clippy and generated IPC checks passed. Forty-seven packaging helper cases include Ubuntu source/license verification, Windows access diagnostics, release source pins, verbose startup and failure output.                                                                                                                                                              |
 | Desktop                      | Four real IPC/SQLite E2E cases and four lifecycle sessions on each CI target, plus two desktop exit-coordination tests. Actual tray pointer interaction remains a clean-VM check.                                                                                                                                                                                                                                                                                                                                  |
 | Native tools                 | Managed Node 22/24, npm/pnpm/Yarn, Caddy and concurrent HTTP passed on all five targets; Windows also exercises PHP 8.4/8.5. Unreachable machine proxies do not redirect loopback health checks.                                                                                                                                                                                                                                                                                                                   |
 | Native transfer checks       | [41803437796](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796): all 109 candidate files passed the retained manifest pin; 40 small evidence files passed 39 checksum records and match independent local assembly. Thirteen corruption/redirect/timeout/cancellation regressions passed on each code-CI target. Full public StackCabin URL verification remains pending publication.                                                                                                               |
+| Unsigned catalog handoff     | [41810673728](https://github.com/Sakeerin/StackCabin/actions/runs/41810673728): the nine-file proposal preserves all 32 signed base entries and adds twelve native records. Both small ZIP digests, eight handoff file hashes, 39 evidence checksums and the 109-file candidate inventory passed independent comparison. The proposal remains review-only; an actual unpublished URL returned HTTP 404 without creating a hosted handoff.                                                                          |
 | Normal installers            | [41765896134](https://github.com/Sakeerin/StackCabin/actions/runs/41765896134): all four packaging jobs passed, with ten fresh installed Windows starts, installed deb startup and both macOS bundles. Builds exclude E2E features.                                                                                                                                                                                                                                                                                |
 | Ubuntu 24.04                 | [41796259437](https://github.com/Sakeerin/StackCabin/actions/runs/41796259437): the same Ubuntu 22.04 deb/AppImage passed checksums and real startup; AppImage used extract-and-run without FUSE.                                                                                                                                                                                                                                                                                                                  |
 | Reviewed Linux packages      | PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41796142648)/[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41796146248), [MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41765946994) and [PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41765727571): all eight jobs passed on Ubuntu 22.04/24.04. The four archives retain 139 library records with exact source/license evidence; 42 source bundles cover 41 distinct Ubuntu source-package versions. |
@@ -254,6 +255,18 @@ the manifest pin retained by the hosted preparation; its ZIP receipt matches Git
 metadata without downloading that large ZIP again. The small review artifact is
 [available here](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796/artifacts/13308687671),
 127,774 ZIP bytes with seven-day retention.
+
+The current `catalog-handoff-20261104/ACCEPTANCE_SUMMARY.json` binds **twelve
+successful jobs in two runs** to source `37ab4e5`: full code CI and unsigned native
+preparation. Eleven new proposal regressions passed on all five CI targets,
+alongside twelve workflow contracts; all 63 related local release/helper cases
+passed. The nine-file proposal preserves the signed 32-entry base and adds twelve
+native entries. Both downloaded small ZIP digests, eight handoff file hashes,
+39 evidence checksums and the 109-file candidate inventory passed independent
+comparison. The [proposal ZIP](https://github.com/Sakeerin/StackCabin/actions/runs/41810673728/artifacts/13311399496)
+is 38,834 bytes with seven-day retention. It remains unsigned and review-only;
+an actual unpublished native URL failed with HTTP 404 before any hosted handoff
+was created. Production keys, baseline acceptance and public hosting remain open.
 
 Earlier framework, HMR, full Unix PHP/database, QA-desktop and upgrade results are
 retained in the

@@ -113,7 +113,7 @@ node scripts/prepare-native-release.mjs --input=inputs.json --output=new-review-
 Local verification on 4 November assembled twelve real runtimes, sixty unique
 source archives and 109 files; all 108 checksum records passed independently.
 These include 42 Ubuntu source bundles for 41 exact source-package versions.
-The latest review payload is retained in `artifacts/native-transfer-review-20261104/payload/`.
+The independently assembled review payload is retained in `artifacts/native-transfer-review-20261104/payload/`.
 The same preparation passed on GitHub in
 [41803437796](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796).
 Its [reviewed native candidate](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796/artifacts/13308263646)
@@ -139,7 +139,7 @@ Check `EVIDENCE_SHA256SUMS.txt` after downloading; retain the manifest SHA-256 f
 this reviewed run separately before distributing the candidate. A checksum shipped
 only beside a replaceable archive does not provide that independent reference.
 
-The current [small review artifact](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796/artifacts/13308687671)
+The earlier [small review artifact](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796/artifacts/13308687671)
 is 127,774 ZIP bytes and contains forty files. All 39 evidence checksum records
 passed independently. Its receipt matches GitHub's full candidate ID/digest, and
 an independent local assembly matches the retained manifest pin:
@@ -220,6 +220,24 @@ artifact. The hosted verification artifact includes the completed handoff alongs
 its exact producer run. Both workflows pin the current checked-in trust root;
 rotating that key requires a reviewed workflow pin change. They retain read-only
 permissions and cannot publish or sign a catalog.
+
+The first [hosted preparation of this handoff](https://github.com/Sakeerin/StackCabin/actions/runs/41810673728)
+passed using source `37ab4e5` and tag `native-candidate-20261104-catalog`.
+Its [nine-file proposal](https://github.com/Sakeerin/StackCabin/actions/runs/41810673728/artifacts/13311399496)
+is 38,834 ZIP bytes, SHA-256
+`51a970b76dd25c8ddeb493ea64367a52299506821b175173df0b5760e63ff135`.
+The separate [small review evidence](https://github.com/Sakeerin/StackCabin/actions/runs/41810673728/artifacts/13312346986)
+retains manifest pin
+`a69cacb9733da6beeececf20aebc904ab093ad2f61c98dacc042b8152d1d3fa4`.
+Both small ZIPs were downloaded and hash-checked. Independent comparison preserved
+all 32 signed base entries, added the exact twelve native records, checked eight
+handoff file hashes and all 39 review checksums, and matched the 109-file candidate
+inventory. All twelve producers and 106 unchanged assets match the previously
+verified local candidate; only the proposed catalog URLs and associated control
+files change with the new tag. Evidence is in `artifacts/catalog-handoff-20261104/`.
+The full candidate ZIP receipt matches GitHub metadata without another large local
+download. These Actions artifacts expire after seven days. A real unpublished-URL
+probe returned HTTP 404 and created no hosted handoff; publication remains pending.
 
 ## 2. Establish the production trust root
 
