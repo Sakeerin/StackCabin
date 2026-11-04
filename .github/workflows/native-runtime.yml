@@ -51,8 +51,18 @@ jobs:
           deb-src [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://archive.ubuntu.com/ubuntu jammy-updates main restricted universe multiverse
           deb-src [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://security.ubuntu.com/ubuntu jammy-security main restricted universe multiverse
           SOURCES
+          # Hosted images also contain PGDG packages. Link PHP against Ubuntu's
+          # libpq so its exact corresponding source is available in these indexes.
+          cat <<'PREFERENCES' | sudo tee /etc/apt/preferences.d/stackcabin-libpq.pref >/dev/null
+          Package: libpq5 libpq-dev
+          Pin: release o=Ubuntu,n=jammy
+          Pin-Priority: 1001
+          PREFERENCES
           sudo apt-get update
+          sudo apt-get install -y --allow-downgrades libpq5 libpq-dev
           sudo apt-get install -y build-essential cmake ninja-build pkg-config patchelf bison flex libssl-dev libcurl4-openssl-dev libonig-dev libicu-dev libxml2-dev libzip-dev libsodium-dev libsqlite3-dev libpq-dev libpng-dev libjpeg-dev libfreetype-dev zlib1g-dev libncurses-dev libaio-dev libdbus-1-dev libsecret-1-dev dbus-x11 gnome-keyring
+          libpq_source="$(dpkg-query --show --showformat='${source:Package}=${source:Version}' libpq5)"
+          apt-get --print-uris --download-only --only-source source "$libpq_source"
       - name: Probe exact authenticated Ubuntu source retrieval
         if: runner.os == 'Linux'
         run: python scripts/linux_runtime_sources.py

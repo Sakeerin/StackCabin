@@ -73,6 +73,12 @@ Merge native artifact JSON objects into one JSON array and pass it as
 locations in those objects. Preserve required third-party notices and source
 distribution obligations with the corresponding artifact release.
 
+Linux source builds now collect exact Ubuntu package/source versions and license
+texts for their bundled external libraries. The builder verifies both descriptor
+members and the final runtime's recorded library/license bytes. Release preparation
+requires these records; earlier Linux candidates without them need a new reviewed
+build. See [runtime source records](RUNTIME_SOURCES.md).
+
 ### Assemble a reviewed native release candidate
 
 Dispatch **Prepare reviewed native release assets** (`prepare-native-release.yml`)

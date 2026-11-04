@@ -16,6 +16,18 @@ test("native Linux builds collect exact authenticated sources before accepting a
     /https:\/\/security\.ubuntu\.com\/ubuntu jammy-security/,
   );
   assert.match(native, /python scripts\/linux_runtime_sources\.py/);
+  assert.match(
+    native,
+    /Package: libpq5 libpq-dev\r?\n\s+Pin: release o=Ubuntu,n=jammy\r?\n\s+Pin-Priority: 1001/,
+  );
+  assert.match(
+    native,
+    /apt-get install -y --allow-downgrades libpq5 libpq-dev/,
+  );
+  assert.match(
+    native,
+    /apt-get --print-uris --download-only --only-source source "\$libpq_source"/,
+  );
   assert.doesNotMatch(native, /allow-unauthenticated|trusted=yes/);
   assert.ok(
     native.indexOf("Probe exact authenticated Ubuntu source retrieval") <
