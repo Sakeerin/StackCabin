@@ -5,6 +5,7 @@ Only the disposable native builder calls APT. No source is unpacked or executed.
 import hashlib
 import json
 import os
+import platform
 from pathlib import Path
 import re
 import shlex
@@ -184,7 +185,7 @@ def collect(prefix, output, work, component, origins, execute=command,
             doc_root=Path("/usr/share/doc"), common_root=Path("/usr/share/common-licenses"),
             distribution_version=None):
     if distribution_version is None:
-        release = os.freedesktop_os_release()
+        release = platform.freedesktop_os_release()
         if release.get("ID") != "ubuntu":
             raise RuntimeError("Portable Linux source packages require Ubuntu 22.04")
         distribution_version = release.get("VERSION_ID")

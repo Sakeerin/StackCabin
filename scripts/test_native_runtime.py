@@ -164,6 +164,14 @@ class LinuxSourceTests(unittest.TestCase):
                 linux_sources.collect(**options)
             self.assertEqual(list(options["output"].iterdir()), [])
 
+    def test_builder_reads_the_real_os_release_api_when_no_test_override_is_set(self):
+        with tempfile.TemporaryDirectory() as directory:
+            options, _ = self.fixture(directory)
+            options.pop("distribution_version")
+            with patch.object(linux_sources.platform, "freedesktop_os_release", return_value={"ID": "ubuntu", "VERSION_ID": "22.04"}):
+                proof = linux_sources.collect(**options)
+            self.assertEqual(proof["distributionVersion"], "22.04")
+
     def test_source_bundle_cannot_omit_recorded_licenses(self):
         with tempfile.TemporaryDirectory() as directory:
             options, _ = self.fixture(directory)
