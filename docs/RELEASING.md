@@ -113,12 +113,12 @@ node scripts/prepare-native-release.mjs --input=inputs.json --output=new-review-
 Local verification on 4 November assembled twelve real runtimes, sixty unique
 source archives and 109 files; all 108 checksum records passed independently.
 These include 42 Ubuntu source bundles for 41 exact source-package versions.
-The payload is retained in `artifacts/linux-sources-20261104/payload/`.
+The latest review payload is retained in `artifacts/native-transfer-review-20261104/payload/`.
 The same preparation passed on GitHub in
-[41798063596](https://github.com/Sakeerin/StackCabin/actions/runs/41798063596).
-Its [reviewed native candidate](https://github.com/Sakeerin/StackCabin/actions/runs/41798063596/artifacts/13306925575)
-has seven-day retention, 1,467,823,067 ZIP bytes and SHA-256
-`73cd4c9901da9c36758507ed440158754a246a474258d5313d270120121fb231`.
+[41803437796](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796).
+Its [reviewed native candidate](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796/artifacts/13308263646)
+has seven-day retention, 1,467,823,075 ZIP bytes and SHA-256
+`a24c6f587178cb3117586e0a6c359d4356944cd31663ab800656d9059ee460e0`.
 That ZIP digest is GitHub artifact metadata; the large ZIP was not downloaded
 again locally. CI independently rechecked all staged files, including the
 completion manifest. Logs/metadata are retained alongside the local payload. The
@@ -138,6 +138,17 @@ full candidate ZIP's Actions ID/digest to its source commit, run and manifest ha
 Check `EVIDENCE_SHA256SUMS.txt` after downloading; retain the manifest SHA-256 from
 this reviewed run separately before distributing the candidate. A checksum shipped
 only beside a replaceable archive does not provide that independent reference.
+
+The current [small review artifact](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796/artifacts/13308687671)
+is 127,774 ZIP bytes and contains forty files. All 39 evidence checksum records
+passed independently. Its receipt matches GitHub's full candidate ID/digest, and
+an independent local assembly matches the retained manifest pin:
+`710a618ee11e20cf1a6ed50968a2755971541aa4bbe49cb88b9fe41346032f39`.
+The reviewed tag is `native-candidate-20261104-review`; evidence is retained under
+`artifacts/native-transfer-review-20261104/`. Hosted verification remains pending
+publication. A real Caddy archive passed the same HTTPS/redirect/hash transport,
+and the unpublished StackCabin tag returned HTTP 404 without a completion report.
+Those scoped checks do not certify a publicly hosted StackCabin release.
 
 `.github/scripts/verify-native-release.mjs` checks every local candidate file against
 that manifest pin, including the exact checksum/file inventories, runtime matrix,

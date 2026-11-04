@@ -36,6 +36,9 @@ production acceptance gate remains open.
 - Normal Windows NSIS, Ubuntu deb/AppImage and separate macOS ARM/Intel DMGs.
   Windows online/offline setup verifies pinned Microsoft prerequisites; offline
   `-CheckOnly` validates the complete payload without executing an installer.
+- Native release byte verification requires a retained manifest SHA-256, checks
+  the complete local inventory and offers bounded HTTPS streaming checks after
+  public hosting. Small review evidence binds the candidate ZIP to its producer.
 - Separate internal Unix QA app/catalog/credential identities and matching offline
   runtime packs; distributed QA apps exclude E2E plugins. See [QA usage](QA_DESKTOP.md).
 
@@ -43,7 +46,7 @@ production acceptance gate remains open.
 
 Hosted verification now uses macOS 15 ARM/Intel after the macOS 14 image's
 retirement. Rosetta remains an explicit x64 compatibility check on ARM hosts;
-Intel hosts always select x64 installer artifacts. Nine workflow-contract checks
+Intel hosts always select x64 installer artifacts. Eleven workflow-contract checks
 cover platform selection and kit/desktop/upgrade artifact wiring. CI also runs
 checksum-pinned actionlint 1.7.12 and rejects retired hosted runner labels.
 QA build/upgrade workflows require an explicit producer `source_run` instead of
@@ -58,22 +61,24 @@ QA catalog signing requires a passed relocation probe for the exact version and
 the reviewed publisher source bytes. Twelve native-stack regression tests cover
 corrupt/substituted archives, missing provenance and incompatible macOS baselines.
 
-The rebuilt normal application and current code CI use source `7097c79`,
-including file-backed startup probes. The reviewed native selection is
+The normal application uses source `7097c79`, including file-backed startup probes.
+Current code CI uses `9dee7f3`; its changes are confined to CI tools and guides.
+The reviewed native selection is
 `76955fa`; the downloadable Unix QA desktops below retain their earlier producers.
 The app retains the same signed development catalog and reports
 the metadata path and SQLite extended error code on initialization failure.
 Its resource set excludes the unused CI selection file. The real source/catalog
 compatibility check passed in
-`artifacts/linux-sources-20261104/current-installer-compatibility.json`. The macOS 14
+`artifacts/native-transfer-review-20261104/installer-source-compatibility.json`. The macOS 14
 execution rows below explicitly concern the earlier `2b3836e` installers.
 
 | Check                        | Latest evidence and scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Cross-platform CI            | [41765725916](https://github.com/Sakeerin/StackCabin/actions/runs/41765725916): all eleven jobs passed on Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. Nine workflow contracts and actionlint 1.7.12 passed.                                                                                                                                                                                                                                                                                |
+| Cross-platform CI            | [41803426025](https://github.com/Sakeerin/StackCabin/actions/runs/41803426025): all eleven jobs passed on Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. Eleven workflow contracts and actionlint 1.7.12 passed.                                                                                                                                                                                                                                                                              |
 | Core/frontend                | 49 Windows / 44 Unix core tests; four ignored entries are separately invoked child-process fixtures. Fourteen frontend tests, formatting, Clippy and generated IPC checks passed. Forty-seven packaging helper cases include Ubuntu source/license verification, Windows access diagnostics, release source pins, verbose startup and failure output.                                                                                                                                                              |
 | Desktop                      | Four real IPC/SQLite E2E cases and four lifecycle sessions on each CI target, plus two desktop exit-coordination tests. Actual tray pointer interaction remains a clean-VM check.                                                                                                                                                                                                                                                                                                                                  |
 | Native tools                 | Managed Node 22/24, npm/pnpm/Yarn, Caddy and concurrent HTTP passed on all five targets; Windows also exercises PHP 8.4/8.5. Unreachable machine proxies do not redirect loopback health checks.                                                                                                                                                                                                                                                                                                                   |
+| Native transfer checks       | [41803437796](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796): all 109 candidate files passed the retained manifest pin; 40 small evidence files passed 39 checksum records and match independent local assembly. Thirteen corruption/redirect/timeout/cancellation regressions passed on each code-CI target. Full public StackCabin URL verification remains pending publication.                                                                                                               |
 | Normal installers            | [41765896134](https://github.com/Sakeerin/StackCabin/actions/runs/41765896134): all four packaging jobs passed, with ten fresh installed Windows starts, installed deb startup and both macOS bundles. Builds exclude E2E features.                                                                                                                                                                                                                                                                                |
 | Ubuntu 24.04                 | [41796259437](https://github.com/Sakeerin/StackCabin/actions/runs/41796259437): the same Ubuntu 22.04 deb/AppImage passed checksums and real startup; AppImage used extract-and-run without FUSE.                                                                                                                                                                                                                                                                                                                  |
 | Reviewed Linux packages      | PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41796142648)/[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41796146248), [MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41765946994) and [PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41765727571): all eight jobs passed on Ubuntu 22.04/24.04. The four archives retain 139 library records with exact source/license evidence; 42 source bundles cover 41 distinct Ubuntu source-package versions. |
@@ -236,6 +241,16 @@ passed independent checks. The candidate contains 109 files and sixty unique
 source archives; all 108 checksum records passed locally and in hosted preparation.
 Earlier failed attempts remain separate and do not count toward that total.
 
+The follow-up `native-transfer-review-20261104/ACCEPTANCE_SUMMARY.json` binds
+**twelve successful jobs in two runs** to source `9dee7f3`: the eleven-job code CI
+and one native preparation job. The new thirteen verifier cases passed on all five
+CI targets, alongside eleven workflow contracts. Forty small review files passed
+all 39 evidence checksums. The independently assembled 109-file candidate matches
+the manifest pin retained by the hosted preparation; its ZIP receipt matches GitHub
+metadata without downloading that large ZIP again. The small review artifact is
+[available here](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796/artifacts/13308687671),
+127,774 ZIP bytes with seven-day retention.
+
 Earlier framework, HMR, full Unix PHP/database, QA-desktop and upgrade results are
 retained in the
 [historical report](https://github.com/Sakeerin/StackCabin/blob/44a082bde38134d49e0aa1e0ab1242c3aec1e6c8/docs/IMPLEMENTATION_STATUS.md).
@@ -254,8 +269,9 @@ QA installers. These QA catalogs remain separate from the shipping catalog.
 
 Native release preparation now requires verified Ubuntu source/version ownership,
 descriptor contents, complete source bundles and matching packaged library/license
-bytes. Fifteen preparation regressions, twelve native-stack checks, nine workflow
-contracts, 47 Python packaging-helper cases and actionlint passed. Linux source
+bytes. Fifteen preparation regressions, twelve native-stack checks, eleven workflow
+contracts, thirteen transfer-verification cases, 47 Python packaging-helper cases
+and actionlint passed. Linux source
 collection initially failed on an incorrect OS API call; the corrected API has a
 regression case. Two subsequent PHP builds correctly rejected preinstalled PGDG
 libpq sources absent from the configured Ubuntu indexes. The disposable builder
@@ -266,14 +282,24 @@ The twelve reviewed runtimes assembled into 109 candidate files with sixty uniqu
 source archives, including 42 Ubuntu bundles for 41 source-package versions. All
 108 checksum records passed independently. Original metadata remains intact;
 proposed immutable URLs do not sign or publish a catalog. Evidence is in
-`artifacts/linux-sources-20261104/LOCAL_VERIFICATION.json` and `payload/`.
+`artifacts/native-transfer-review-20261104/independent-reviewed-candidate.json` and
+`payload/`. The new small evidence also retains the exact producer identities,
+source JSON and a separately retained manifest hash.
 The read-only hosted preparation passed in
-[41798063596](https://github.com/Sakeerin/StackCabin/actions/runs/41798063596),
-source `76955fa`. Its unsigned, unpublished artifact has seven-day retention.
+[41803437796](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796),
+source `9dee7f3`. Its unsigned, unpublished artifact has seven-day retention.
 The previous 3 November Linux inputs are now rejected before staging because they
 lack Ubuntu source records; their historical evidence remains preserved.
 See [source records](RUNTIME_SOURCES.md) and [release preparation](RELEASING.md).
 Publication, redistribution review and baseline-machine acceptance remain below.
+
+The post-publication verifier streams every public asset against that retained pin
+without credentials, rejects foreign/non-HTTPS redirects and truncated/changed
+bytes, and writes completion only after all files pass. A real upstream Caddy
+archive passed its HTTPS/redirect/hash transport. The unpublished StackCabin tag
+returned HTTP 404 and created no hosted completion report. Full public StackCabin
+hosted verification therefore remains pending actual publication; local integrity
+does not set production approval.
 
 1. **Complete the shipping runtime catalog.** Its signed development catalog has
    32 entries: cross-platform Node/Caddy/Composer/package managers/CA artifacts,

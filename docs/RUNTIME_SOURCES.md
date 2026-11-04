@@ -75,13 +75,15 @@ independently verified again without executing the downloaded binaries.
 
 The [combined Linux stack](https://github.com/Sakeerin/StackCabin/actions/runs/41798068081)
 then passed concurrent web/database checks on both Ubuntu versions. The
-[twelve-runtime candidate](https://github.com/Sakeerin/StackCabin/actions/runs/41798063596)
+[twelve-runtime candidate](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796)
 retains eight previously reviewed macOS packages and the four new Linux packages.
 It includes sixty unique source archives; all 108 checksum records passed in
 hosted preparation and independent local assembly. Previous Linux inputs without
 Ubuntu records fail the current release gate before creating an output folder.
 
-New preparation runs retain a small `native-release-verification` artifact with
+The [small review artifact](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796/artifacts/13308687671)
+is 127,774 ZIP bytes. Its forty files passed all 39 evidence checksum records and
+its retained manifest hash matches independent local assembly. It retains
 source/provenance JSON, a pinned manifest hash and the full candidate ZIP receipt.
 This lets reviewers inspect the mappings before downloading large source archives.
 After publication, the read-only hosted verification workflow checks every public
