@@ -128,11 +128,19 @@ def bundle_libraries(prefix, system):
                 if re.match(r"^(libc|libm|libpthread|libdl|librt|ld-linux|libresolv)\.so", soname):
                     continue
                 copied = lib / soname
+                original = Path(source).resolve()
                 if not copied.exists():
-                    shutil.copy2(Path(source).resolve(), copied)
+                    shutil.copy2(original, copied)
+                    origins[copied] = original
                     queue.append(copied)
+                elif copied.resolve() != original:
+                    previous = origins.get(copied, copied)
+                    if hashlib.file_digest(previous.open("rb"), "sha256").hexdigest() != hashlib.file_digest(original.open("rb"), "sha256").hexdigest():
+                        raise RuntimeError(f"Conflicting bundled libraries: {copied.name}")
             relative = os.path.relpath(lib, binary.parent)
             run(["patchelf", "--set-rpath", f"$ORIGIN/{relative}:$ORIGIN", binary])
+    return {target: original for target, original in origins.items()
+            if not original.resolve().is_relative_to(prefix.resolve())}
 
 
 def minimum_macos(prefix, maximum=None):
@@ -245,8 +253,12 @@ def main():
         executables = {tool: f"bin/{tool}" for tool in ["mariadbd", "mariadb", "mariadb-dump"]}
         executables["install-db"] = "scripts/mariadb-install-db"
         license_name = "GPL-2.0-only"
-    bundle_libraries(prefix, system)
+    library_origins = bundle_libraries(prefix, system)
     strip_runtime_symbols(prefix, system)
+    linux_sources = None
+    if system == "linux":
+        from linux_runtime_sources import collect
+        linux_sources = collect(prefix, output_dir, work, args.component, library_origins)
     for relative in executables.values():
         if not (prefix / relative).is_file():
             raise RuntimeError(f"Missing executable: {relative}")
@@ -260,6 +272,9 @@ def main():
     # Dereference links so the runtime installer never needs to trust archive symlinks.
     with tarfile.open(package, "w:gz", dereference=True) as bundle:
         bundle.add(prefix, arcname=identifier)
+    if linux_sources is not None:
+        from linux_runtime_sources import verify_runtime
+        verify_runtime(package, linux_sources)
     relocated = work / "relocated package ทดสอบ"
     relocated.mkdir()
     relocated_prefix = unpack(package, relocated)
@@ -279,7 +294,7 @@ def main():
     if system == "macos":
         metadata["minimumOsVersion"] = minimum_macos(relocated_prefix, maximum="14.0")
     (output_dir / f"{identifier}.json").write_text(json.dumps(metadata, indent=2) + "\n")
-    (output_dir / f"{identifier}-provenance.json").write_text(json.dumps({"sourceUrl": args.source_url, "sourceSha256": args.source_sha256, "platform": platform.platform(), "verification": verification, "minimumOsVersion": metadata.get("minimumOsVersion"), "dependencies": dependencies}, indent=2) + "\n")
+    (output_dir / f"{identifier}-provenance.json").write_text(json.dumps({"sourceUrl": args.source_url, "sourceSha256": args.source_sha256, "platform": platform.platform(), "verification": verification, "minimumOsVersion": metadata.get("minimumOsVersion"), "dependencies": dependencies, "linuxSources": linux_sources}, indent=2) + "\n")
     print(package)
 
 

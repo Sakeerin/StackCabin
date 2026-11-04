@@ -114,6 +114,82 @@ async function fixture(t) {
       build.platform === "macos"
         ? [{ ...dependency, deploymentTarget: "14.0" }]
         : [];
+    const linuxBundle = Buffer.from("matched Ubuntu source bundle");
+    const copyright = {
+      name: "copyright",
+      path: "share/licenses/ubuntu/libexample1/copyright",
+      size: 7,
+      sha256: hash("license"),
+    };
+    const common = {
+      name: "GPL-3",
+      path: "share/licenses/ubuntu/common/GPL-3",
+      size: 6,
+      sha256: hash("common"),
+    };
+    const linuxFiles = [
+      {
+        name: "example_1.0-1.dsc",
+        size: 10,
+        sha256: hash("descriptor"),
+        url: "https://archive.ubuntu.com/ubuntu/pool/main/e/example/example_1.0-1.dsc",
+      },
+      {
+        name: "example_1.0.orig.tar.gz",
+        size: 6,
+        sha256: hash("source"),
+        url: "https://archive.ubuntu.com/ubuntu/pool/main/e/example/example_1.0.orig.tar.gz",
+      },
+    ];
+    const linuxSourceName = `${build.component}-linux-source-${hash("example=1.0-1").slice(0, 24)}.tar`;
+    const linuxSources =
+      build.platform === "linux"
+        ? {
+            schemaVersion: 1,
+            distribution: "ubuntu",
+            distributionVersion: "22.04",
+            verification: {
+              result: "passed",
+              checks: [
+                "exact Ubuntu source versions",
+                "descriptor SHA-256 closure",
+                "source bundle members",
+                "packaged library and license bytes",
+              ],
+            },
+            commonLicenses: [common],
+            libraries: [
+              {
+                path: "lib/libexample.so.1",
+                sha256: hash("library"),
+                binaryPackage: "libexample1:amd64",
+                binaryVersion: "1.0-1",
+                architecture: "amd64",
+                sourcePackage: "example",
+                sourceVersion: "1.0-1",
+                copyright,
+              },
+            ],
+            packages: [
+              {
+                name: "example",
+                version: "1.0-1",
+                binaryPackages: ["libexample1:amd64"],
+                files: linuxFiles,
+                descriptor: linuxFiles[0],
+                licenses: [
+                  { ...copyright, name: "licenses/libexample1/copyright" },
+                  { ...common, name: "licenses/common/GPL-3" },
+                ],
+                bundle: {
+                  file: linuxSourceName,
+                  size: linuxBundle.length,
+                  sha256: hash(linuxBundle),
+                },
+              },
+            ],
+          }
+        : undefined;
     const files = {
       [`${build.id}.json`]: JSON.stringify(metadata),
       [`${build.id}-provenance.json`]: JSON.stringify({
@@ -126,9 +202,11 @@ async function fixture(t) {
           result: "passed",
         },
         dependencies,
+        linuxSources,
       }),
       [`${build.id}.tar.gz`]: build.id,
       [`${build.id}-source.tar.gz`]: `source-${build.component}-${build.version}`,
+      ...(linuxSources ? { [linuxSourceName]: linuxBundle } : {}),
       ...(dependencies.length
         ? {
             [`${build.component}-dependency-provenance.json`]:
@@ -183,8 +261,8 @@ test("stages all twelve exact runtime identities and preserves producer metadata
   assert.equal(
     (await readdir(options.output)).filter((name) => name.startsWith("source-"))
       .length,
-    6,
-  ); // Five archives plus the inventory.
+    7,
+  ); // Six source archives plus the inventory.
   for (const line of (
     await readFile(path.join(options.output, "SHA256SUMS.txt"), "utf8")
   )
@@ -354,6 +432,64 @@ test("binds dependency identity and licenses to the separately reviewed pins", a
     await assert.rejects(
       prepareNativeRelease(options),
       /Unreviewed dependency/,
+    );
+  }
+});
+
+test("requires verified Ubuntu library/source closure before staging Linux runtimes", async (t) => {
+  for (const change of [
+    (p) => delete p.linuxSources,
+    (p) => (p.linuxSources.verification.result = "failed"),
+    (p) => (p.linuxSources.distributionVersion = "24.04"),
+    (p) => (p.linuxSources.libraries = []),
+    (p) => (p.linuxSources.packages = []),
+    (p) => (p.linuxSources.commonLicenses = []),
+    (p) => (p.linuxSources.libraries[0].sourceVersion = "2.0"),
+    (p) => p.linuxSources.packages[0].licenses.pop(),
+  ]) {
+    const options = await fixture(t);
+    await mutate(options.inputs[0], "-provenance.json", change);
+    await assert.rejects(
+      prepareNativeRelease(options),
+      /Ubuntu source closure/,
+    );
+    await assert.rejects(
+      readFile(path.join(options.output, "release-manifest.json")),
+      { code: "ENOENT" },
+    );
+  }
+});
+
+test("rejects substituted Linux source bundles", async (t) => {
+  const options = await fixture(t);
+  const input = options.inputs[0];
+  const provenance = JSON.parse(
+    await readFile(path.join(input.directory, input.id + "-provenance.json")),
+  );
+  await writeFile(
+    path.join(input.directory, provenance.linuxSources.packages[0].bundle.file),
+    "corrupt source bundle",
+  );
+  await assert.rejects(
+    prepareNativeRelease(options),
+    /checksum\/size mismatch/,
+  );
+});
+
+test("rejects foreign Ubuntu source URLs, traversal and incomplete descriptors", async (t) => {
+  for (const change of [
+    (p) =>
+      (p.linuxSources.packages[0].files[1].url =
+        "https://foreign.test/source.tar.gz"),
+    (p) => (p.linuxSources.libraries[0].path = "../../outside"),
+    (p) => (p.linuxSources.packages[0].descriptor.sha256 = "a".repeat(64)),
+    (p) => p.linuxSources.packages[0].binaryPackages.push("another:amd64"),
+  ]) {
+    const options = await fixture(t);
+    await mutate(options.inputs[0], "-provenance.json", change);
+    await assert.rejects(
+      prepareNativeRelease(options),
+      /Ubuntu source closure/,
     );
   }
 });

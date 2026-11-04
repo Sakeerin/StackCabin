@@ -5,6 +5,24 @@ import { existsSync, readFileSync } from "node:fs";
 const workflow = (name) =>
   readFileSync(new URL(`../workflows/${name}.yml`, import.meta.url), "utf8");
 
+test("native Linux builds collect exact authenticated sources before accepting archives", () => {
+  const native = workflow("native-runtime");
+  assert.match(
+    native,
+    /deb-src \[signed-by=\/usr\/share\/keyrings\/ubuntu-archive-keyring\.gpg\] https:\/\/archive\.ubuntu\.com\/ubuntu jammy/,
+  );
+  assert.match(
+    native,
+    /https:\/\/security\.ubuntu\.com\/ubuntu jammy-security/,
+  );
+  assert.match(native, /python scripts\/linux_runtime_sources\.py/);
+  assert.doesNotMatch(native, /allow-unauthenticated|trusted=yes/);
+  assert.ok(
+    native.indexOf("Probe exact authenticated Ubuntu source retrieval") <
+      native.indexOf("Build and check relocatable package"),
+  );
+});
+
 test("normal Windows installer checks require ten consecutive fresh metadata startups", () => {
   for (const name of ["preview-installers", "verify-preview-installer"]) {
     const windows = workflow(name);

@@ -45,7 +45,17 @@ jobs:
         run: python -m unittest discover -s scripts -p test_native_runtime.py -v
       - name: Linux build dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential cmake ninja-build pkg-config patchelf bison flex libssl-dev libcurl4-openssl-dev libonig-dev libicu-dev libxml2-dev libzip-dev libsodium-dev libsqlite3-dev libpq-dev libpng-dev libjpeg-dev libfreetype-dev zlib1g-dev libncurses-dev libaio-dev libdbus-1-dev libsecret-1-dev dbus-x11 gnome-keyring
+        run: |
+          cat <<'SOURCES' | sudo tee /etc/apt/sources.list.d/stackcabin-src.list >/dev/null
+          deb-src [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://archive.ubuntu.com/ubuntu jammy main restricted universe multiverse
+          deb-src [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://archive.ubuntu.com/ubuntu jammy-updates main restricted universe multiverse
+          deb-src [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://security.ubuntu.com/ubuntu jammy-security main restricted universe multiverse
+          SOURCES
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config patchelf bison flex libssl-dev libcurl4-openssl-dev libonig-dev libicu-dev libxml2-dev libzip-dev libsodium-dev libsqlite3-dev libpq-dev libpng-dev libjpeg-dev libfreetype-dev zlib1g-dev libncurses-dev libaio-dev libdbus-1-dev libsecret-1-dev dbus-x11 gnome-keyring
+      - name: Probe exact authenticated Ubuntu source retrieval
+        if: runner.os == 'Linux'
+        run: python scripts/linux_runtime_sources.py
       - name: macOS build dependencies
         if: runner.os == 'macOS'
         run: |

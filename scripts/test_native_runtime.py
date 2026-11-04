@@ -19,6 +19,7 @@ import urllib.error
 from source_download import download_verified
 
 import native_runtime_smoke as smoke
+import linux_runtime_sources as linux_sources
 
 spec = importlib.util.spec_from_file_location("native_builder", Path(__file__).with_name("build-native-runtime.py"))
 builder = importlib.util.module_from_spec(spec)
@@ -29,6 +30,162 @@ installer_spec.loader.exec_module(installer_checksums)
 packaged_spec = importlib.util.spec_from_file_location("packaged_smoke", Path(__file__).with_name("smoke-packaged.py"))
 packaged_smoke = importlib.util.module_from_spec(packaged_spec)
 packaged_spec.loader.exec_module(packaged_smoke)
+
+
+class LinuxSourceTests(unittest.TestCase):
+    def fixture(self, root):
+        root = Path(root)
+        prefix, output, docs, common = (root / name for name in ("prefix", "output", "docs", "common"))
+        (prefix / "lib").mkdir(parents=True)
+        output.mkdir()
+        (docs / "libexample1").mkdir(parents=True)
+        (docs / "libexample1/copyright").write_bytes(b"Copyright and license reference")
+        common.mkdir()
+        (common / "GPL-3").write_bytes(b"Common license text")
+        original, library = root / "external.so.1", prefix / "lib/libexample.so.1"
+        original.write_bytes(b"original library")
+        library.write_bytes(b"relocated stripped library")
+        source_files = {"example_1.2.orig.tar.xz": b"original source", "example_1.2-3.debian.tar.xz": b"distribution patches"}
+        checks = "".join(f" {hashlib.sha256(value).hexdigest()} {len(value)} {name}\n" for name, value in source_files.items())
+        source_files["example_1.2-3.dsc"] = ("Format: 3.0 (quilt)\nSource: example\nVersion: 1:1.2-3\nChecksums-Sha256:\n" + checks).encode()
+        def execute(arguments, cwd=None):
+            if arguments[:2] == ["dpkg-query", "--search"]:
+                return f"libexample1:amd64: {original.resolve()}\n"
+            if arguments[:2] == ["dpkg-query", "--show"]:
+                return "libexample1:amd64\t1:1.2-3\texample\t1:1.2-3\tamd64\tinstalled\n"
+            self.assertEqual(arguments[-1], "example=1:1.2-3")
+            self.assertIn("APT::Get::AllowUnauthenticated=false", arguments)
+            self.assertIn("--download-only", arguments)
+            self.assertIn("--only-source", arguments)
+            if "--print-uris" in arguments:
+                return "\n".join(f"'https://archive.ubuntu.com/ubuntu/pool/main/e/example/{name}' {name} {len(value)} MD5Sum:unused" for name, value in source_files.items())
+            for name, value in source_files.items():
+                (cwd / name).write_bytes(value)
+            return "Downloaded sources without unpacking"
+        return {"prefix": prefix, "output": output, "work": root, "component": "php",
+                "origins": {library: original}, "execute": execute, "doc_root": docs, "common_root": common,
+                "distribution_version": "22.04"}, source_files
+
+    def test_exact_sources_and_licenses_are_bound_to_packaged_library_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            options, _ = self.fixture(directory)
+            proof = linux_sources.collect(**options)
+            self.assertEqual(proof["libraries"][0]["sourceVersion"], "1:1.2-3")
+            self.assertEqual(proof["libraries"][0]["sha256"], hashlib.sha256(b"relocated stripped library").hexdigest())
+            self.assertEqual(len(proof["packages"][0]["files"]), 3)
+            runtime = Path(directory) / "runtime.tar.gz"
+            with tarfile.open(runtime, "w:gz") as archive:
+                archive.add(options["prefix"], arcname="runtime")
+            linux_sources.verify_runtime(runtime, proof)
+            self.assertEqual(proof["verification"]["result"], "passed")
+
+    def test_source_uri_requires_official_https_safe_names_and_unique_entries(self):
+        for line in ["'http://archive.ubuntu.com/a' a.dsc 1 x", "'https://evil.test/a' a.dsc 1 x",
+                     "'https://user@archive.ubuntu.com/a' a.dsc 1 x", "'https://archive.ubuntu.com/a' ../a.dsc 1 x",
+                     "'https://archive.ubuntu.com/a' a.dsc 0 x", "unavailable"]:
+            with self.subTest(line=line), self.assertRaises(RuntimeError):
+                linux_sources.source_uris(line)
+        entry = "'https://archive.ubuntu.com/a' a.dsc 1 x"
+        with self.assertRaisesRegex(RuntimeError, "Duplicate"):
+            linux_sources.source_uris(entry + "\n" + entry)
+
+    def test_descriptor_requires_exact_identity_and_sha256_closure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, files = self.fixture(directory)
+            content = files["example_1.2-3.dsc"]
+            for changed in [content.replace(b"Source: example", b"Source: other"), content.replace(b"Version: 1:1.2-3", b"Version: 2.0"),
+                            content.replace(b"Checksums-Sha256:", b"Not-checksums:"), content.replace(b"example_1.2.orig.tar.xz", b"../../other")]:
+                with self.assertRaises(RuntimeError):
+                    linux_sources.dsc_files(changed, "example", "1:1.2-3")
+            signed = b"-----BEGIN PGP SIGNED MESSAGE-----\nHash: SHA256\n\n" + content + b"\n-----BEGIN PGP SIGNATURE-----\nnot-verified-by-this-parser\n"
+            self.assertEqual(len(linux_sources.dsc_files(signed, "example", "1:1.2-3")), 2)
+
+    def test_download_rejects_corrupt_bytes_even_when_sizes_match(self):
+        with tempfile.TemporaryDirectory() as directory:
+            options, files = self.fixture(directory)
+            execute = options["execute"]
+            def corrupt(arguments, cwd=None):
+                result = execute(arguments, cwd)
+                if arguments[0] == "apt-get" and "--print-uris" not in arguments:
+                    name = "example_1.2.orig.tar.xz"
+                    (cwd / name).write_bytes(b"x" * len(files[name]))
+                return result
+            options["execute"] = corrupt
+            with self.assertRaisesRegex(RuntimeError, "checksum/size"):
+                linux_sources.collect(**options)
+
+    def test_download_rejects_missing_source_parts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            options, _ = self.fixture(directory)
+            execute = options["execute"]
+            def missing(arguments, cwd=None):
+                result = execute(arguments, cwd)
+                if arguments[0] == "apt-get" and "--print-uris" not in arguments:
+                    (cwd / "example_1.2.orig.tar.xz").unlink()
+                return result
+            options["execute"] = missing
+            with self.assertRaisesRegex(RuntimeError, "source inventory"):
+                linux_sources.collect(**options)
+
+    def test_ambiguous_or_uninstalled_owners_are_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            options, _ = self.fixture(directory)
+            original = next(iter(options["origins"].values()))
+            with self.assertRaisesRegex(RuntimeError, "Ambiguous"):
+                linux_sources.owner(original, lambda args: f"a: {original.resolve()}\nb: {original.resolve()}")
+            execute = options["execute"]
+            def uninstalled(arguments, cwd=None):
+                return execute(arguments, cwd).replace("\tinstalled", "\tnot-installed")
+            with self.assertRaisesRegex(RuntimeError, "Incomplete"):
+                linux_sources.owner(original, uninstalled)
+
+    def test_missing_copyright_does_not_publish_a_source_bundle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            options, _ = self.fixture(directory)
+            (options["doc_root"] / "libexample1/copyright").unlink()
+            with self.assertRaisesRegex(RuntimeError, "copyright"):
+                linux_sources.collect(**options)
+            self.assertEqual(list(options["output"].iterdir()), [])
+
+    def test_source_bundle_substitution_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            options, _ = self.fixture(directory)
+            proof = linux_sources.collect(**options)
+            bundle = options["output"] / proof["packages"][0]["bundle"]["file"]
+            bundle.write_bytes(b"x" * bundle.stat().st_size)
+            with self.assertRaisesRegex(RuntimeError, "checksum"):
+                linux_sources.verify_bundles(options["output"], proof)
+
+    def test_newer_build_baseline_is_rejected_before_writing_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            options, _ = self.fixture(directory)
+            options["distribution_version"] = "24.04"
+            with self.assertRaisesRegex(RuntimeError, "Ubuntu 22.04"):
+                linux_sources.collect(**options)
+            self.assertEqual(list(options["output"].iterdir()), [])
+
+    def test_source_bundle_cannot_omit_recorded_licenses(self):
+        with tempfile.TemporaryDirectory() as directory:
+            options, _ = self.fixture(directory)
+            proof = linux_sources.collect(**options)
+            bundle = options["output"] / proof["packages"][0]["bundle"]["file"]
+            with tarfile.open(bundle, "w"):
+                pass
+            proof["packages"][0]["bundle"].update(sha256=linux_sources.digest(bundle), size=bundle.stat().st_size)
+            with self.assertRaisesRegex(RuntimeError, "member inventory"):
+                linux_sources.verify_bundles(options["output"], proof)
+
+    def test_packaged_library_or_license_changes_fail_verification(self):
+        for relative in ["lib/libexample.so.1", "share/licenses/ubuntu/libexample1/copyright"]:
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as directory:
+                options, _ = self.fixture(directory)
+                proof = linux_sources.collect(**options)
+                (options["prefix"] / relative).write_bytes(b"changed")
+                runtime = Path(directory) / "runtime.tar.gz"
+                with tarfile.open(runtime, "w:gz") as archive:
+                    archive.add(options["prefix"], arcname="runtime")
+                with self.assertRaisesRegex(RuntimeError, "checksum"):
+                    linux_sources.verify_runtime(runtime, proof)
 
 
 class NativeReleasePinsTests(unittest.TestCase):

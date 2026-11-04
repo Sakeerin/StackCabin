@@ -14,6 +14,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { root } from "./catalog-lib.mjs";
 import { verifyNativeStack } from "./native-stack-lib.mjs";
+import { linuxReleaseSources } from "./linux-source-release.mjs";
 
 const targets = ["linux-x64", "macos-arm64", "macos-x64"];
 const executables = {
@@ -248,6 +249,19 @@ export async function prepareNativeRelease({
     const provenance = await json(
       path.join(directory, `${build.id}-provenance.json`),
     );
+    if (build.platform === "linux") {
+      for (const entry of await linuxReleaseSources(
+        directory,
+        provenance.linuxSources,
+        build.id,
+        asset,
+      )) {
+        const key = `${entry.file}:${entry.name}:${entry.version}`;
+        const previous = sourceInventory.get(key);
+        if (previous) previous.usedBy.push(build.id);
+        else sourceInventory.set(key, entry);
+      }
+    }
     const expected =
       build.platform === "macos" ? dependencySources[build.component] : [];
     if (
@@ -330,7 +344,7 @@ export async function prepareNativeRelease({
     "source-inventory.json":
       JSON.stringify([...sourceInventory.values()], null, 2) + "\n",
     "RELEASE_REVIEW.txt":
-      "Unpublished native runtime release candidate. No catalog was signed.\nReview component/bundled-library licenses and corresponding-source completeness,\ncertify clean baseline machines, publish immutable assets, verify hosted bytes,\nthen separately review and sign the production catalog.\nLinux system-library source/redistribution review remains required.\nOriginal build metadata retains its producer's future URL; native-artifacts.json\ncontains the candidate release URLs. This folder is not a release approval.\n",
+      "Unpublished native runtime release candidate. No catalog was signed.\nReview component/bundled-library licenses and corresponding-source completeness,\ncertify clean baseline machines, publish immutable assets, verify hosted bytes,\nthen separately review and sign the production catalog.\nUbuntu source bundles preserve the original DSC/source filenames and license texts.\nRecorded source/license bytes are audit evidence; redistribution review remains required.\nOriginal build metadata retains its producer's future URL; native-artifacts.json\ncontains the candidate release URLs. This folder is not a release approval.\n",
   };
   for (const [name, bytes] of Object.entries(controls)) {
     const file = path.join(output, name);
