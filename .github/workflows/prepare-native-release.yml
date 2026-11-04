@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: "24"
       - name: Verify release preparation regressions
-        run: node --test scripts/test-native-release.mjs scripts/test-native-stack.mjs
+        run: node --test scripts/test-native-release.mjs scripts/test-native-stack.mjs .github/tests/native-release-verification.test.mjs
       - name: Download the exact reviewed producers
         env:
           GH_TOKEN: ${{ github.token }}
@@ -56,9 +56,59 @@ jobs:
       - name: Recheck every staged asset including the completion manifest
         working-directory: artifacts/native-release
         run: sha256sum --check SHA256SUMS.txt
+      - name: Retain independently verified small review evidence
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+          import { verifyCandidate } from './.github/scripts/verify-native-release.mjs';
+          const directory = 'artifacts/native-release';
+          const evidence = 'artifacts/native-release-evidence';
+          const manifestSha256 = createHash('sha256').update(await readFile(`${directory}/release-manifest.json`)).digest('hex');
+          const { report } = await verifyCandidate(directory, { repository: process.env.GITHUB_REPOSITORY, tag: process.env.RELEASE_TAG, manifestSha256 });
+          await mkdir(evidence);
+          await writeFile(`${evidence}/candidate-verification.json`, JSON.stringify(report, null, 2) + '\n', { flag: 'wx' });
+          for (const name of await readdir(directory)) {
+            if (name.endsWith('.json') || ['SHA256SUMS.txt', 'RELEASE_REVIEW.txt'].includes(name))
+              await copyFile(`${directory}/${name}`, `${evidence}/${name}`);
+          }
+          console.log(JSON.stringify({ manifestSha256, files: report.fileCount, hosted: report.hostedVerification.result }));
+          NODE
       - uses: actions/upload-artifact@v4
+        id: candidate
         with:
           name: reviewed-native-release-candidate
           retention-days: 7
           if-no-files-found: error
           path: artifacts/native-release/
+      - name: Bind small evidence to the uploaded candidate artifact
+        env:
+          CANDIDATE_ARTIFACT_ID: ${{ steps.candidate.outputs.artifact-id }}
+          CANDIDATE_ARTIFACT_URL: ${{ steps.candidate.outputs.artifact-url }}
+          CANDIDATE_ARTIFACT_DIGEST: ${{ steps.candidate.outputs.artifact-digest }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { readFile, readdir, writeFile } from 'node:fs/promises';
+          const directory = 'artifacts/native-release-evidence';
+          const candidate = JSON.parse(await readFile(`${directory}/candidate-verification.json`, 'utf8'));
+          const sha256 = process.env.CANDIDATE_ARTIFACT_DIGEST.replace(/^sha256:/, '');
+          const artifactId = process.env.CANDIDATE_ARTIFACT_ID;
+          if (!/^[1-9]\d*$/.test(artifactId) || !/^[a-f0-9]{64}$/.test(sha256)) throw new Error('Missing candidate upload identity/digest');
+          const receipt = { schemaVersion: 1, sourceCommit: process.env.GITHUB_SHA, workflowRun: process.env.GITHUB_RUN_ID,
+            runUrl: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+            artifactId, artifactUrl: process.env.CANDIDATE_ARTIFACT_URL, sha256, manifestSha256: candidate.manifestSha256 };
+          await writeFile(`${directory}/ARTIFACT_RECEIPT.json`, JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx' });
+          const lines = [];
+          for (const name of (await readdir(directory)).sort())
+            lines.push(`${createHash('sha256').update(await readFile(`${directory}/${name}`)).digest('hex')}  ${name}\n`);
+          await writeFile(`${directory}/EVIDENCE_SHA256SUMS.txt`, lines.join(''), { flag: 'wx' });
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-release-verification
+          retention-days: 7
+          if-no-files-found: error
+          path: artifacts/native-release-evidence/

@@ -129,6 +129,48 @@ and any remaining build/installation-information requirements before public
 distribution. Baseline machine certification, actual immutable asset publication,
 verification of hosted bytes and production catalog signing remain separate gates.
 
+### Retain the review pin and verify hosted bytes
+
+New preparation runs also upload `native-release-verification`. This small artifact
+contains `candidate-verification.json`, the original JSON metadata/provenance,
+source inventory, checksum lists and `ARTIFACT_RECEIPT.json`. The receipt binds the
+full candidate ZIP's Actions ID/digest to its source commit, run and manifest hash.
+Check `EVIDENCE_SHA256SUMS.txt` after downloading; retain the manifest SHA-256 from
+this reviewed run separately before distributing the candidate. A checksum shipped
+only beside a replaceable archive does not provide that independent reference.
+
+`.github/scripts/verify-native-release.mjs` checks every local candidate file against
+that manifest pin, including the exact checksum/file inventories, runtime matrix,
+catalog destinations and source references. It reads files without executing or
+changing them. This transfer check supplements the builder's source/license and
+relocation checks; it does not repeat compilation, approve redistribution or sign
+the catalog. Reports explicitly distinguish local byte integrity from hosted
+verification and production approval.
+
+For a previously downloaded candidate, run the following with the manifest hash
+retained from its own review evidence and an unused report path outside the pack:
+
+```sh
+node .github/scripts/verify-native-release.mjs --directory=reviewed-candidate --repository=Sakeerin/StackCabin --tag=native-reviewed-version --manifest-sha256="$MANIFEST_SHA256" --report=candidate-verification.json
+```
+
+After the exact assets are publicly hosted, add `--hosted`. The tool streams every
+asset, including manifests, source archives and notices, without credentials. It
+checks size and SHA-256, permits only HTTPS redirects among GitHub release hosts,
+and rejects redirects to other hosts, truncated/extra data and unexpected content
+encoding. Header/body deadlines and cancellation cover each asset; a complete run
+has a 30-minute deadline. It writes a completion report only after all files pass
+and never replaces an existing report.
+
+The read-only **Verify published native release bytes** workflow offers the same
+check. Supply the successful preparation `candidate_run`, exact `tag`, and retained
+`manifest_sha256`. It checks repository/head repository, workflow, successful run
+identity and artifact expiry before downloading the candidate. GitHub credentials
+are used only to retrieve that Actions artifact; public asset verification uses no
+credentials. Its successful `hosted-native-release-verification` artifact records
+which producer and manifest were checked. It neither publishes a release nor signs
+or updates the shipping catalog. An unpublished tag correctly fails this gate.
+
 ## 2. Establish the production trust root
 
 Generate an Ed25519 signing key outside the repository. Supply its PEM content as

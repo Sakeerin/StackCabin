@@ -59,6 +59,45 @@ test("native release preparation uses reviewed producers and has no publishing o
   assert.match(prepare, /if-no-files-found: error/);
 });
 
+test("native preparation retains a manifest pin and small evidence bound to the uploaded ZIP", () => {
+  const prepare = workflow("prepare-native-release");
+  assert.match(prepare, /verifyCandidate\(directory/);
+  assert.match(prepare, /name: native-release-verification/);
+  assert.match(
+    prepare,
+    /CANDIDATE_ARTIFACT_DIGEST: \$\{\{ steps\.candidate\.outputs\.artifact-digest \}\}/,
+  );
+  assert.match(prepare, /ARTIFACT_RECEIPT\.json/);
+  assert.match(prepare, /EVIDENCE_SHA256SUMS\.txt/);
+  assert.match(prepare, /manifestSha256: candidate\.manifestSha256/);
+});
+
+test("hosted native verification requires an exact successful producer and retained digest without publishing", () => {
+  const hosted = workflow("verify-hosted-native-release");
+  for (const input of ["candidate_run", "tag", "manifest_sha256"]) {
+    const section = hosted.match(
+      new RegExp(
+        `^      ${input}:\\r?\\n([\\s\\S]*?)(?=^      \\w+:|^permissions:)`,
+        "m",
+      ),
+    )?.[1];
+    assert.ok(section, input);
+    assert.match(section, /required: true/);
+    assert.doesNotMatch(section, /default:/);
+  }
+  assert.match(hosted, /contents: read/);
+  assert.match(hosted, /actions: read/);
+  assert.match(hosted, /run\.conclusion !== 'success'/);
+  assert.match(hosted, /prepare-native-release\.yml/);
+  assert.match(hosted, /run\.head_repository\?\.full_name/);
+  assert.match(hosted, /!item\.expired/);
+  assert.match(hosted, /--manifest-sha256="\$MANIFEST_SHA256" --hosted/);
+  assert.doesNotMatch(
+    hosted,
+    /contents: write|secrets\.|gh release|if: always/,
+  );
+});
+
 // These workflows use the common JavaScript-compatible subset of Actions
 // expressions. actionlint independently checks the actual Actions syntax/types.
 function evaluate(expression, inputs) {

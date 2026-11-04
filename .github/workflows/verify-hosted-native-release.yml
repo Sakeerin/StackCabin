@@ -1,0 +1,68 @@
+name: Verify published native release bytes
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_run:
+        description: Successful Prepare reviewed native release assets run ID
+        type: string
+        required: true
+      tag:
+        description: Exact reviewed native-* release tag, already publicly hosted
+        type: string
+        required: true
+      manifest_sha256:
+        description: Separately retained release-manifest SHA-256 from review evidence
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify integrity and transport regressions
+        run: node --test .github/tests/native-release-verification.test.mjs
+      - name: Verify and download the exact successful candidate producer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_RUN: ${{ inputs.candidate_run }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          import { mkdir, writeFile } from 'node:fs/promises';
+          import { releaseBase } from './scripts/prepare-native-release.mjs';
+          const repository = process.env.GITHUB_REPOSITORY;
+          const runId = process.env.CANDIDATE_RUN;
+          releaseBase(repository, process.env.RELEASE_TAG);
+          if (!/^[1-9]\d*$/.test(runId) || !/^[a-f0-9]{64}$/.test(process.env.MANIFEST_SHA256)) throw new Error('Expected an exact producer run and separately retained SHA-256');
+          const api = (suffix) => JSON.parse(execFileSync('gh', ['api', `repos/${repository}/${suffix}`], { encoding: 'utf8' }));
+          const run = api(`actions/runs/${runId}`);
+          if (String(run.id) !== runId || run.status !== 'completed' || run.conclusion !== 'success' || run.event !== 'workflow_dispatch' ||
+              run.path !== '.github/workflows/prepare-native-release.yml' || !/^[a-f0-9]{40}$/.test(run.head_sha || '') ||
+              [run.repository?.full_name, run.head_repository?.full_name].some((name) => name?.toLowerCase() !== repository.toLowerCase()))
+            throw new Error('Expected a successful native preparation run from this repository');
+          const matches = api(`actions/runs/${runId}/artifacts?per_page=100`).artifacts.filter((item) => item.name === 'reviewed-native-release-candidate' && !item.expired);
+          if (matches.length !== 1) throw new Error('Missing/expired/ambiguous candidate artifact');
+          await mkdir('artifacts/hosted-native-evidence', { recursive: true });
+          await writeFile('artifacts/hosted-native-evidence/candidate-run.json', JSON.stringify(run, null, 2));
+          execFileSync('gh', ['run', 'download', runId, '--repo', repository, '--name', matches[0].name, '--dir', 'artifacts/reviewed-candidate'], { stdio: 'inherit' });
+          NODE
+      - name: Stream all public assets against the retained manifest without credentials
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+        run: node .github/scripts/verify-native-release.mjs --directory=artifacts/reviewed-candidate --repository="$GITHUB_REPOSITORY" --tag="$RELEASE_TAG" --manifest-sha256="$MANIFEST_SHA256" --hosted --report=artifacts/hosted-native-evidence/hosted-verification.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hosted-native-release-verification
+          retention-days: 7
+          if-no-files-found: error
+          path: artifacts/hosted-native-evidence/

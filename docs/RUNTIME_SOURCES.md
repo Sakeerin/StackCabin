@@ -81,6 +81,14 @@ It includes sixty unique source archives; all 108 checksum records passed in
 hosted preparation and independent local assembly. Previous Linux inputs without
 Ubuntu records fail the current release gate before creating an output folder.
 
+New preparation runs retain a small `native-release-verification` artifact with
+source/provenance JSON, a pinned manifest hash and the full candidate ZIP receipt.
+This lets reviewers inspect the mappings before downloading large source archives.
+After publication, the read-only hosted verification workflow checks every public
+asset against that retained manifest without credentials. Local integrity, hosted
+integrity and production approval are recorded separately; see the
+[review and hosted-byte checks](RELEASING.md#retain-the-review-pin-and-verify-hosted-bytes).
+
 ## Review still required
 
 Inspect the recorded package/source mapping, included notices, bundled libraries,
