@@ -60,6 +60,27 @@ desktop's signed shipping catalog and private signing keys are separate. Current
 application downloads keep their own source/run evidence; a new runtime candidate
 does not silently update existing projects or installed runtime versions.
 
+## Verified development packages
+
+On 4 November 2026 the Linux PHP
+[8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41796142648) and
+[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41796146248),
+[MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41765946994) and
+[PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41765727571) producers
+passed on Ubuntu 22.04 and 24.04. The four archives contain 139 library records,
+with 42 source bundles covering 41 distinct Ubuntu source-package versions. The
+same source package can have separate bundles for different binary-package notices.
+Downloaded bundles, descriptor members, final libraries and license bytes were
+independently verified again without executing the downloaded binaries.
+
+The [combined Linux stack](https://github.com/Sakeerin/StackCabin/actions/runs/41798068081)
+then passed concurrent web/database checks on both Ubuntu versions. The
+[twelve-runtime candidate](https://github.com/Sakeerin/StackCabin/actions/runs/41798063596)
+retains eight previously reviewed macOS packages and the four new Linux packages.
+It includes sixty unique source archives; all 108 checksum records passed in
+hosted preparation and independent local assembly. Previous Linux inputs without
+Ubuntu records fail the current release gate before creating an output folder.
+
 ## Review still required
 
 Inspect the recorded package/source mapping, included notices, bundled libraries,

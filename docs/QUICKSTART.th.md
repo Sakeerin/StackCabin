@@ -5,8 +5,8 @@
 
 ## ติดตั้งบน Windows
 
-ดาวน์โหลดแพ็กเกจวันที่ 3 พฤศจิกายน 2026 จาก
-[GitHub Actions run นี้](https://github.com/Sakeerin/StackCabin/actions/runs/41565488510)
+ดาวน์โหลดแพ็กเกจวันที่ 4 พฤศจิกายน 2026 จาก
+[GitHub Actions run นี้](https://github.com/Sakeerin/StackCabin/actions/runs/41765896134)
 เลือก Artifact `development-installers-windows-latest` แล้วแตก ZIP และตรวจไฟล์
 ตาม `SHA256SUMS.txt` ไฟล์ติดตั้งอยู่ในโฟลเดอร์ `nsis/` ส่วนแพ็กเกจจากการ build เอง
 อยู่ใน `target/release/bundle/nsis/` Artifact เก็บไว้ 7 วัน
@@ -33,14 +33,14 @@ Visual C++ กับ WebView2 ที่จำเป็น แล้วเปิ�
 Windows อาจขอสิทธิ์ผู้ดูแลระบบสำหรับส่วนประกอบของ Microsoft
 หลังเปิดแอป เลือก Runtimes → Install from offline pack แล้วเลือกโฟลเดอร์ชุดออฟไลน์
 
-ชุดใน workspace อัปเดตเมื่อ 3 พฤศจิกายน 2026 ใช้ตัวติดตั้งจาก source `39bc2b6`
+ชุดใน workspace อัปเดตเมื่อ 4 พฤศจิกายน 2026 ใช้ตัวติดตั้งจาก source `7097c79`
 และตรวจครบ 11 runtime แล้ว การตรวจ checksum นี้ตรวจความครบถ้วนของไฟล์
 ส่วนการตรวจลายเซ็น catalog ของ runtime จะทำอีกครั้งโดยแอปก่อนติดตั้ง
 
-ชุดออฟไลน์วันที่ 3 พฤศจิกายน ดาวน์โหลดได้จาก
-[run 41566879702](https://github.com/Sakeerin/StackCabin/actions/runs/41566879702)
+ชุดออฟไลน์วันที่ 4 พฤศจิกายน ดาวน์โหลดได้จาก
+[run 41796262008](https://github.com/Sakeerin/StackCabin/actions/runs/41796262008)
 เลือก `development-offline-windows-x64` แล้วใช้โฟลเดอร์ `offline-windows-x64/`
-หลังแตก ZIP ชุดนี้ใช้ตัวแอป source `39bc2b6` พร้อมข้อมูลวินิจฉัยการเปิด metadata เพิ่มเติม
+หลังแตก ZIP ชุดนี้ใช้ตัวแอป source `7097c79` พร้อมข้อมูลวินิจฉัยการเปิด metadata เพิ่มเติม
 และผ่านการติดตั้งจริงพร้อมเปิดข้อมูลเดิมบน GitHub runner แล้ว ผลทดสอบอยู่ใน
 `windows-offline-installation-evidence` โดยยังไม่ถือเป็นการรับรองเครื่องสะอาด
 
@@ -81,7 +81,7 @@ chmod +x StackCabin_*.AppImage
 APPIMAGE_EXTRACT_AND_RUN=1 ./StackCabin_*.AppImage
 ```
 
-macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 2 พฤศจิกายนผ่านการเปิดแอป
+macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 4 พฤศจิกายนผ่านการเปิดแอป
 บน macOS 15 ทั้งสองสถาปัตยกรรม ส่วนผล macOS 14 เมื่อ 1 พฤศจิกายนเป็นของแพ็กเกจ
 source `2b3836e` รุ่นก่อน ทั้ง Apple Silicon และแพ็กเกจ Intel ผ่าน Rosetta
 แพ็กเกจปัจจุบันยังต้องตรวจ macOS 14 บนเครื่องทดสอบที่ดูแลเอง

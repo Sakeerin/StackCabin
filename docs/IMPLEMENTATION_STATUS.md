@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **3 November 2026**.
+Development version: **0.1.0**, checked on **4 November 2026**.
 This is a working development preview. The simultaneous Windows/macOS/Ubuntu
 production acceptance gate remains open.
 
@@ -43,44 +43,48 @@ production acceptance gate remains open.
 
 Hosted verification now uses macOS 15 ARM/Intel after the macOS 14 image's
 retirement. Rosetta remains an explicit x64 compatibility check on ARM hosts;
-Intel hosts always select x64 installer artifacts. Eight workflow-contract checks
+Intel hosts always select x64 installer artifacts. Nine workflow-contract checks
 cover platform selection and kit/desktop/upgrade artifact wiring. CI also runs
 checksum-pinned actionlint 1.7.12 and rejects retired hosted runner labels.
 QA build/upgrade workflows require an explicit producer `source_run` instead of
 expired hardcoded IDs. Windows offline/upgrade and Linux coexistence inputs also
-require explicit current producer selections. The reviewed Unix packages were rebuilt on 2 November:
-all sixteen source-build/integration jobs passed, and all twelve downloaded
-runtime/source pairs passed checksum and provenance checks. CI selections now
+require explicit current producer selections. The four Linux packages were rebuilt
+on 4 November: all eight build/integration/Ubuntu 24.04 jobs passed. Their source
+bundles and final library/license bytes were independently rechecked locally.
+The eight macOS packages retain the reviewed 2 November producers, with measured
+minimum OS versions at most 14.0. CI selections
 live in `.github/native-test-builds.json`, outside desktop resources. Temporary
 QA catalog signing requires a passed relocation probe for the exact version and
 the reviewed publisher source bytes. Twelve native-stack regression tests cover
 corrupt/substituted archives, missing provenance and incompatible macOS baselines.
 
-The rebuilt normal application and current code CI use source `39bc2b6`,
-including file-backed startup probes. The reviewed QA selection is
-`6dc51e6`. The app retains the same signed development catalog and now reports
+The rebuilt normal application and current code CI use source `7097c79`,
+including file-backed startup probes. The reviewed native selection is
+`76955fa`; the downloadable Unix QA desktops below retain their earlier producers.
+The app retains the same signed development catalog and reports
 the metadata path and SQLite extended error code on initialization failure.
 Its resource set excludes the unused CI selection file. The real source/catalog
 compatibility check passed in
-`artifacts/native-release-review-20261103/current-installer-compatibility.json`. The macOS 14
+`artifacts/linux-sources-20261104/current-installer-compatibility.json`. The macOS 14
 execution rows below explicitly concern the earlier `2b3836e` installers.
 
-| Check | Latest evidence and scope |
-| --- | --- |
-| Cross-platform CI | [41565462053](https://github.com/Sakeerin/StackCabin/actions/runs/41565462053): all eleven jobs passed on Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. Eight workflow contracts and actionlint 1.7.12 passed. |
-| Core/frontend | 49 Windows / 44 Unix core tests; four ignored entries are separately invoked child-process fixtures. Fourteen frontend tests, formatting, Clippy and generated IPC checks passed. Thirty-five packaging helper cases include Windows access diagnostics, release source pins, verbose startup and failure output. |
-| Desktop | Four real IPC/SQLite E2E cases and four lifecycle sessions on each CI target, plus two desktop exit-coordination tests. Actual tray pointer interaction remains a clean-VM check. |
-| Native tools | Managed Node 22/24, npm/pnpm/Yarn, Caddy and concurrent HTTP passed on all five targets; Windows also exercises PHP 8.4/8.5. Unreachable machine proxies do not redirect loopback health checks. |
-| Normal installers | [41565488510](https://github.com/Sakeerin/StackCabin/actions/runs/41565488510): all four packaging jobs passed, with ten fresh installed Windows starts, installed deb startup and both macOS bundles. Builds exclude E2E features. |
-| Ubuntu 24.04 | [41567226337](https://github.com/Sakeerin/StackCabin/actions/runs/41567226337): the same Ubuntu 22.04 deb/AppImage passed checksums and real startup; AppImage used extract-and-run without FUSE. |
-| Reviewed Unix packages | PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41382380346)/[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41382383140), [MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41382386213) and [PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41382389092): sixteen jobs passed across Linux x64, macOS ARM/Intel and Ubuntu 24.04 package compatibility. Every source-built macOS runtime and its bundled libraries measured at most 14.0. |
-| Combined Unix stack | [41387839639](https://github.com/Sakeerin/StackCabin/actions/runs/41387839639): all five jobs passed on both Ubuntu versions, native ARM/Intel macOS 15 and x64 through Rosetta. Each checked eleven tools, five simultaneous web projects and both database dump/restores, then extracted and ran the packaged release harness again. |
-| Unix QA desktop | [41389144691](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691): all three desktop/runtime/database E2E and packaging jobs passed. QA installers exclude E2E plugins and retain a separate identity. [41391205967](https://github.com/Sakeerin/StackCabin/actions/runs/41391205967) verified Ubuntu 24.04 deb/AppImage startup and coexistence without changing the normal executable. |
-| Unix upgrades | [Default](https://github.com/Sakeerin/StackCabin/actions/runs/41390907584) and [custom](https://github.com/Sakeerin/StackCabin/actions/runs/41390910274) data locations: all six jobs passed on Ubuntu 22.04, native macOS 15 ARM and Intel. Real previous QA 0.1.0 installers were replaced with unpublished 0.1.1 candidates while preserving ten projects, five databases, eleven tools and 78 hashes per fixture. |
-| Earlier macOS 14 ARM | [41270976722](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722): the `2b3836e` ARM DMG passed checksums, mount/copy, dependency/minimum-OS checks and startup on macOS 14.8.9. |
-| Earlier macOS 14 x64 | [41270979416](https://github.com/Sakeerin/StackCabin/actions/runs/41270979416): the `2b3836e` Intel DMG passed those checks through Rosetta on the ARM runner. Current installers and native Intel macOS 14 still need maintained-machine acceptance. |
-| Actual disk exhaustion | [41209951170](https://github.com/Sakeerin/StackCabin/actions/runs/41209951170), Ubuntu 24.04: bounded 32 MiB tmpfs produced real ENOSPC for settings writes and runtime extraction; old data survived, staging was cleaned, and retries succeeded after freeing owned space. |
-| Windows offline installation | [41566879702](https://github.com/Sakeerin/StackCabin/actions/runs/41566879702): both jobs passed: real wrapper/NSIS installation, eleven tools, five concurrent HTTP projects, both database dump/restores and existing-data preservation under a restricted standard-user token. |
+| Check                        | Latest evidence and scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cross-platform CI            | [41765725916](https://github.com/Sakeerin/StackCabin/actions/runs/41765725916): all eleven jobs passed on Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. Nine workflow contracts and actionlint 1.7.12 passed.                                                                                                                                                                                                                                                                                |
+| Core/frontend                | 49 Windows / 44 Unix core tests; four ignored entries are separately invoked child-process fixtures. Fourteen frontend tests, formatting, Clippy and generated IPC checks passed. Forty-seven packaging helper cases include Ubuntu source/license verification, Windows access diagnostics, release source pins, verbose startup and failure output.                                                                                                                                                              |
+| Desktop                      | Four real IPC/SQLite E2E cases and four lifecycle sessions on each CI target, plus two desktop exit-coordination tests. Actual tray pointer interaction remains a clean-VM check.                                                                                                                                                                                                                                                                                                                                  |
+| Native tools                 | Managed Node 22/24, npm/pnpm/Yarn, Caddy and concurrent HTTP passed on all five targets; Windows also exercises PHP 8.4/8.5. Unreachable machine proxies do not redirect loopback health checks.                                                                                                                                                                                                                                                                                                                   |
+| Normal installers            | [41765896134](https://github.com/Sakeerin/StackCabin/actions/runs/41765896134): all four packaging jobs passed, with ten fresh installed Windows starts, installed deb startup and both macOS bundles. Builds exclude E2E features.                                                                                                                                                                                                                                                                                |
+| Ubuntu 24.04                 | [41796259437](https://github.com/Sakeerin/StackCabin/actions/runs/41796259437): the same Ubuntu 22.04 deb/AppImage passed checksums and real startup; AppImage used extract-and-run without FUSE.                                                                                                                                                                                                                                                                                                                  |
+| Reviewed Linux packages      | PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41796142648)/[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41796146248), [MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41765946994) and [PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41765727571): all eight jobs passed on Ubuntu 22.04/24.04. The four archives retain 139 library records with exact source/license evidence; 42 source bundles cover 41 distinct Ubuntu source-package versions. |
+| Reviewed macOS packages      | The 2 November PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41382380346)/[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41382383140), [MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41382386213) and [PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41382389092) ARM/Intel packages remain selected. Their source-built runtimes and bundled libraries measured at most 14.0.                                                                        |
+| Combined Unix stack          | [41798068081](https://github.com/Sakeerin/StackCabin/actions/runs/41798068081): the new Linux packages passed both Ubuntu versions with eleven tools, five simultaneous web projects and both database dump/restores. The unchanged macOS packages retain [41387839639](https://github.com/Sakeerin/StackCabin/actions/runs/41387839639), including native ARM/Intel and Rosetta checks and extracted release harnesses.                                                                                           |
+| Unix QA desktop              | [41389144691](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691): all three desktop/runtime/database E2E and packaging jobs passed. QA installers exclude E2E plugins and retain a separate identity. [41391205967](https://github.com/Sakeerin/StackCabin/actions/runs/41391205967) verified Ubuntu 24.04 deb/AppImage startup and coexistence without changing the normal executable.                                                                                                              |
+| Unix upgrades                | [Default](https://github.com/Sakeerin/StackCabin/actions/runs/41390907584) and [custom](https://github.com/Sakeerin/StackCabin/actions/runs/41390910274) data locations: all six jobs passed on Ubuntu 22.04, native macOS 15 ARM and Intel. Real previous QA 0.1.0 installers were replaced with unpublished 0.1.1 candidates while preserving ten projects, five databases, eleven tools and 78 hashes per fixture.                                                                                              |
+| Earlier macOS 14 ARM         | [41270976722](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722): the `2b3836e` ARM DMG passed checksums, mount/copy, dependency/minimum-OS checks and startup on macOS 14.8.9.                                                                                                                                                                                                                                                                                                                      |
+| Earlier macOS 14 x64         | [41270979416](https://github.com/Sakeerin/StackCabin/actions/runs/41270979416): the `2b3836e` Intel DMG passed those checks through Rosetta on the ARM runner. Current installers and native Intel macOS 14 still need maintained-machine acceptance.                                                                                                                                                                                                                                                              |
+| Actual disk exhaustion       | [41209951170](https://github.com/Sakeerin/StackCabin/actions/runs/41209951170), Ubuntu 24.04: bounded 32 MiB tmpfs produced real ENOSPC for settings writes and runtime extraction; old data survived, staging was cleaned, and retries succeeded after freeing owned space.                                                                                                                                                                                                                                       |
+| Windows offline installation | [41796262008](https://github.com/Sakeerin/StackCabin/actions/runs/41796262008): both jobs passed: real wrapper/NSIS installation, eleven tools, five concurrent HTTP projects, both database dump/restores and existing-data preservation under a restricted standard-user token.                                                                                                                                                                                                                                  |
 
 Six atomic-write regressions exercise released/persistent Windows sharing locks,
 read-only files, failed publication cleanup, Thai/space paths and complete reads
@@ -184,18 +188,18 @@ transcripts/baselines are in `artifacts/native-refresh-20261102/windows-soak/`.
 ## Downloads and retained evidence
 
 Download the normal `development-installers-*` artifacts from
-[41565488510](https://github.com/Sakeerin/StackCabin/actions/runs/41565488510)
+[41765896134](https://github.com/Sakeerin/StackCabin/actions/runs/41765896134)
 and verify their `SHA256SUMS.txt`. All five downloaded installer files also
-matched those checksums locally. Windows NSIS is 23,021,842 bytes, SHA-256
-`27e7b9e8cb4c1d74d0a14f1efe0b20013037b5d05bdfb8ed074dd01e839e590f`.
+matched those checksums locally. Windows NSIS is 23,018,543 bytes, SHA-256
+`a5663cad6f933f1647abd529dc9ed16005f24371f8c8bb8240de553e1b0683a3`.
 
 The complete `development-offline-windows-x64` ZIP is in
-[41566879702](https://github.com/Sakeerin/StackCabin/actions/runs/41566879702),
-881,314,081 bytes, SHA-256
-`1016016e66b8c2faf99e088dad0eb735ea69aa1b3ff215c30b486aa0473306d5`.
+[41796262008](https://github.com/Sakeerin/StackCabin/actions/runs/41796262008),
+881,311,081 bytes, SHA-256
+`00dab3f98c174fcafe179dfdd494672f2f1f0414d3e515dee44028473b07b4fc`.
 Its receipt matched GitHub artifact metadata; the full ZIP was not downloaded
 locally. The installed normal executable SHA-256 is
-`94403ef4e4ea55eb7af6d27731ea833e158d58d6756854f21a13f846f5b0c771`.
+`f8dc19c6ae30267ee01c27b32cbfc84984be441cd3f684842dce35d3d4213c6b`.
 These development artifacts have seven-day retention.
 
 Download current Unix offline desktops from
@@ -207,15 +211,15 @@ Local logs and metadata are ignored under `artifacts/`. The 2 November
 19 canonical runs**, twelve verified runtime/source pairs and nine preservation
 baselines to the exact commits and hashes. Earlier failed attempts remain separate
 in the report; they are not counted as successful runs. Current installer bytes
-and checksums are retained in `development-installers-41565488510/`. The local
+and checksums are retained in `development-installers-41765896134/`. The local
 offline folder passed read-only verification of 25 files, eleven runtimes and
 Microsoft signature/version checks with the new installer, without executing it.
 Prior runner, macOS 14, disk-full and upgrade evidence remains in
 `hosted-runners-20261102/`, `baseline-upgrade-20261101/` and `atomic-write-20261031/`.
 
-The new `native-release-review-20261103/ACCEPTANCE_SUMMARY.json` binds **31
+The 3 November `native-release-review-20261103/ACCEPTANCE_SUMMARY.json` binds **31
 successful jobs in seven canonical runs** to the exact source commits, reviewed
-native candidate, current normal installers and Windows offline ZIP. It retains
+native candidate, that day's normal installers and Windows offline ZIP. It retains
 the failed Windows readiness attempt separately; its three successful Unix jobs
 are not included in that total. Both the old-installer reproduction and the new
 Windows installer passed ten consecutive fresh metadata starts. The new offline
@@ -223,6 +227,14 @@ installation preserved ten projects, five databases, eleven tools and 78 file
 hashes. The local offline folder was refreshed and passed `-CheckOnly` without
 executing its installers. The large candidate/offline ZIP digests come from
 GitHub metadata/receipts; those ZIPs were not downloaded again locally.
+
+The 4 November `linux-sources-20261104/ACCEPTANCE_SUMMARY.json` binds **29
+successful jobs in ten canonical runs** to exact producer commits, four rebuilt
+Linux packages, the twelve-runtime candidate, five current normal installers and
+the Windows offline pack. All four downloaded Linux source/library inventories
+passed independent checks. The candidate contains 109 files and sixty unique
+source archives; all 108 checksum records passed locally and in hosted preparation.
+Earlier failed attempts remain separate and do not count toward that total.
 
 Earlier framework, HMR, full Unix PHP/database, QA-desktop and upgrade results are
 retained in the
@@ -240,20 +252,28 @@ QA installers. These QA catalogs remain separate from the shipping catalog.
 
 ## Remaining production gates
 
-Native release preparation now has a read-only Actions workflow and a local
-assembly helper. Twelve preparation regressions, twelve existing native-stack
-checks, eight workflow contracts, 35 Windows packaging-helper cases and actionlint
-passed locally. The real twelve reviewed runtimes assembled into 67 candidate
-files with eighteen unique source archives; all 66 checksum records passed an
-independent recheck. Original producer metadata remains intact; the candidate
-records proposed immutable URLs without signing or publishing a catalog. Evidence
-is in `artifacts/native-release-review-20261103/LOCAL_VERIFICATION.json` and its
-`payload/` folder. See [release preparation](RELEASING.md). This does not complete
-the publication, license/source-closure or baseline-machine gates below.
+Native release preparation now requires verified Ubuntu source/version ownership,
+descriptor contents, complete source bundles and matching packaged library/license
+bytes. Fifteen preparation regressions, twelve native-stack checks, nine workflow
+contracts, 47 Python packaging-helper cases and actionlint passed. Linux source
+collection initially failed on an incorrect OS API call; the corrected API has a
+regression case. Two subsequent PHP builds correctly rejected preinstalled PGDG
+libpq sources absent from the configured Ubuntu indexes. The disposable builder
+now selects Ubuntu libpq and checks exact source availability before compilation.
+All six failed attempts remain excluded from accepted results.
+
+The twelve reviewed runtimes assembled into 109 candidate files with sixty unique
+source archives, including 42 Ubuntu bundles for 41 source-package versions. All
+108 checksum records passed independently. Original metadata remains intact;
+proposed immutable URLs do not sign or publish a catalog. Evidence is in
+`artifacts/linux-sources-20261104/LOCAL_VERIFICATION.json` and `payload/`.
 The read-only hosted preparation passed in
-[41563796600](https://github.com/Sakeerin/StackCabin/actions/runs/41563796600),
-source `97560e0`; all 66 staged checksum records passed there too. The uploaded
-candidate is an unsigned, unpublished Actions artifact with seven-day retention.
+[41798063596](https://github.com/Sakeerin/StackCabin/actions/runs/41798063596),
+source `76955fa`. Its unsigned, unpublished artifact has seven-day retention.
+The previous 3 November Linux inputs are now rejected before staging because they
+lack Ubuntu source records; their historical evidence remains preserved.
+See [source records](RUNTIME_SOURCES.md) and [release preparation](RELEASING.md).
+Publication, redistribution review and baseline-machine acceptance remain below.
 
 1. **Complete the shipping runtime catalog.** Its signed development catalog has
    32 entries: cross-platform Node/Caddy/Composer/package managers/CA artifacts,

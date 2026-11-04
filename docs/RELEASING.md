@@ -110,19 +110,22 @@ For previously downloaded artifacts, provide twelve input records with `id`,
 node scripts/prepare-native-release.mjs --input=inputs.json --output=new-review-folder --repository=Sakeerin/StackCabin --tag=native-unique-version
 ```
 
-Local verification on 3 November assembled twelve real runtimes, eighteen unique
-source archives and 67 files; all 66 checksum records passed independently.
-The payload is retained in `artifacts/native-release-review-20261103/payload/`.
+Local verification on 4 November assembled twelve real runtimes, sixty unique
+source archives and 109 files; all 108 checksum records passed independently.
+These include 42 Ubuntu source bundles for 41 exact source-package versions.
+The payload is retained in `artifacts/linux-sources-20261104/payload/`.
 The same preparation passed on GitHub in
-[41563796600](https://github.com/Sakeerin/StackCabin/actions/runs/41563796600).
-Its [reviewed native candidate](https://github.com/Sakeerin/StackCabin/actions/runs/41563796600/artifacts/13197263186)
-has seven-day retention, 1,108,967,151 ZIP bytes and SHA-256
-`2d0e7a16c09f9e87a66ab73e3a143ccd0dfe7ec6c91a694e1c798541cbd86cde`.
+[41798063596](https://github.com/Sakeerin/StackCabin/actions/runs/41798063596).
+Its [reviewed native candidate](https://github.com/Sakeerin/StackCabin/actions/runs/41798063596/artifacts/13306925575)
+has seven-day retention, 1,467,823,067 ZIP bytes and SHA-256
+`73cd4c9901da9c36758507ed440158754a246a474258d5313d270120121fb231`.
 That ZIP digest is GitHub artifact metadata; the large ZIP was not downloaded
 again locally. CI independently rechecked all staged files, including the
-completion manifest. Logs/metadata are retained alongside the local payload.
-This is preparation evidence. Review all bundled-library licenses and the full
-corresponding-source closure, including Linux system libraries, before public
+completion manifest. Logs/metadata are retained alongside the local payload. The
+previous 3 November candidate is historical; its Linux archives lack the newly
+required Ubuntu source records and are rejected by the current helper.
+This is preparation evidence. Review bundled-library licenses, collected sources
+and any remaining build/installation-information requirements before public
 distribution. Baseline machine certification, actual immutable asset publication,
 verification of hosted bytes and production catalog signing remain separate gates.
 
