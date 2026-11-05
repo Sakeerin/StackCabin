@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **4 November 2026**.
+Development version: **0.1.0**, checked on **5 November 2026**.
 This is a working development preview. The simultaneous Windows/macOS/Ubuntu
 production acceptance gate remains open.
 
@@ -43,6 +43,11 @@ production acceptance gate remains open.
   entries, reject metadata changes under immutable IDs, and check the complete
   target/version/executable matrix. Public-byte verification is a separate mode;
   neither mode signs the catalog or grants production approval.
+- Exact-byte catalog signing validates a separately pinned, fully hosted handoff
+  before accessing an Ed25519 key. It checks the independently selected public
+  key, rejects the known development identity and writes a new staged catalog
+  with a final signature receipt. Read-only preflight opens no key; signing does
+  not change shipping resources or grant production approval.
 - Separate internal Unix QA app/catalog/credential identities and matching offline
   runtime packs; distributed QA apps exclude E2E plugins. See [QA usage](QA_DESKTOP.md).
 
@@ -50,7 +55,7 @@ production acceptance gate remains open.
 
 Hosted verification now uses macOS 15 ARM/Intel after the macOS 14 image's
 retirement. Rosetta remains an explicit x64 compatibility check on ARM hosts;
-Intel hosts always select x64 installer artifacts. Twelve workflow-contract checks
+Intel hosts always select x64 installer artifacts. Thirteen workflow-contract checks
 cover platform selection and kit/desktop/upgrade artifact wiring. CI also runs
 checksum-pinned actionlint 1.7.12 and rejects retired hosted runner labels.
 QA build/upgrade workflows require an explicit producer `source_run` instead of

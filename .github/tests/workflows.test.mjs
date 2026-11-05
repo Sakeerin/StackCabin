@@ -133,6 +133,23 @@ test("catalog handoffs pin the existing trust root and keep review and public ve
   );
 });
 
+test("signing regressions run on code CI without supplying a catalog private key", () => {
+  assert.match(
+    workflow("ci"),
+    /node --test \.github\/tests\/catalog-signing\.test\.mjs/,
+  );
+  assert.doesNotMatch(workflow("ci"), /STACKCABIN_CATALOG_PRIVATE_KEY/);
+  for (const name of [
+    "prepare-native-release",
+    "verify-hosted-native-release",
+    "release",
+  ])
+    assert.doesNotMatch(
+      workflow(name),
+      /sign-catalog-proposal\.mjs|STACKCABIN_CATALOG_PRIVATE_KEY/,
+    );
+});
+
 // These workflows use the common JavaScript-compatible subset of Actions
 // expressions. actionlint independently checks the actual Actions syntax/types.
 function evaluate(expression, inputs) {

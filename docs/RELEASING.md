@@ -241,19 +241,59 @@ probe returned HTTP 404 and created no hosted handoff; publication remains pendi
 
 ## 2. Establish the production trust root
 
-Generate an Ed25519 signing key outside the repository. Supply its PEM content as
-`STACKCABIN_CATALOG_PRIVATE_KEY`, run the builder without `--dev`, and review the
-catalog/public-key change. The private key must remain in release secrets. Never
-distribute the local development key.
+Generate an Ed25519 signing key outside the repository. The private key must remain
+in the approved signing environment, supplied as `STACKCABIN_CATALOG_PRIVATE_KEY`.
+Never distribute the local development key. Select and review the production
+public key separately; its pinned SHA-256 is for the exact canonical
+`public-key.txt` bytes (base64 of the raw 32-byte Ed25519 key followed by one LF).
 
-Review the handoff and its remaining gates before using its native additions in
-the catalog builder. Do not sign a review-only proposal or use a saved JSON status
-as authorization. The existing `build-catalog.mjs --extra=...` publisher-refresh
-path resolves tools again; its output is not guaranteed to be the exact proposed
-catalog. Compare the resulting full inventory against the reviewed proposal and
-review any differences before distribution. Exact-byte production signing and
-trust-root rotation remain separate release operations. After signing, run
-`node scripts/verify-catalog.mjs --release` against the final shipping files.
+After public hosting and source/clean-machine review, use
+`.github/scripts/sign-catalog-proposal.mjs` to sign the exact proposed bytes. It
+requires the separately retained SHA-256 of `CATALOG_HANDOFF.json`, the trusted
+base public-key file hash, and the independently selected production public-key
+file hash. Retain the handoff hash from the reviewed successful hosted workflow;
+do not trust a replacement hash supplied only alongside a downloadable folder.
+A JSON status by itself is not release authorization. Source/license review and
+baseline acceptance remain operator decisions, not conclusions of the signer.
+
+First check the complete input and unused destination without accessing any key:
+
+```sh
+node .github/scripts/sign-catalog-proposal.mjs --directory=hosted-catalog-handoff --handoff-sha256="$REVIEWED_HANDOFF_SHA256" --base-public-key-sha256="$TRUSTED_BASE_PUBLIC_KEY_FILE_SHA256" --public-key-sha256="$PRODUCTION_PUBLIC_KEY_FILE_SHA256" --output=signed-catalog --check-only
+```
+
+In the approved signing environment, repeat that command without `--check-only`.
+The tool rejects review-only/pending handoffs, altered or additional control files,
+invalid base signatures, changed immutable runtime metadata, incomplete native or
+public-byte inventories, unsafe destinations and the known development key.
+It validates every input before opening the private key, requires Ed25519, matches
+the derived public key to the independently selected hash, and self-verifies the
+signature. It performs no publisher refresh or network request. The existing
+`build-catalog.mjs --extra=...` path remains a publisher-refresh tool and does not
+guarantee the exact reviewed bytes.
+
+The new output contains `catalog.json`, `catalog.sig`, `public-key.txt`, and
+`provenance.json`. The catalog is byte-for-byte identical to
+`catalog.proposed.json`; timestamps, whitespace and record ordering are preserved.
+`SIGNING_RECEIPT.json` is written last and binds those four hashes to the selected
+review/trust-root pins. Neither the private key nor its PEM text is written or
+logged. The receipt explicitly covers only the catalog signature and retains
+`productionApproved: false`. A signature does not certify VM, legal or installer
+acceptance. Existing destinations and the checkout's shipping resources are never
+replaced by this tool.
+
+Verify the staged signed catalog before reviewing the shipping catalog/public-key
+change:
+
+```sh
+node --input-type=module -e "import { verifyCatalog } from './scripts/catalog-lib.mjs'; await verifyCatalog('signed-catalog', true);"
+```
+
+Once the approved four files are deliberately incorporated into `runtime-catalog/`,
+run `node scripts/verify-catalog.mjs --release` against the final shipping files.
+The signature tool is not wired to the preparation or packaging workflows; they
+do not receive a catalog private key. Tests use ephemeral keys and a child
+environment that does not inherit the operator's secrets.
 
 The release gate rejects the development catalog and requires PHP 8.4/8.5,
 Node 22/24, Caddy, Composer, MariaDB, PostgreSQL, pnpm, and Yarn for every target.
