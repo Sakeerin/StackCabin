@@ -295,6 +295,18 @@ The signature tool is not wired to the preparation or packaging workflows; they
 do not receive a catalog private key. Tests use ephemeral keys and a child
 environment that does not inherit the operator's secrets.
 
+The 5 November implementation uses source `048c052`. Fifteen signing regressions
+passed on all five code-CI targets, including the actual CLI with an allowlisted
+child environment. Tests sign only synthetic transfer fixtures with ephemeral
+keys; their successful signatures are not production-release evidence.
+Separately, the real 4 November proposal ZIP was rechecked against its retained
+GitHub digest and the original handoff pin
+`ef9acf44138b363d1a6b57ef22d9d9d7442acf0db07ca469918690f8231846df`.
+The signer rejected that still-pending handoff with zero private-key accesses and
+no output directory. This probe used a clearly recorded placeholder target-key
+hash to test admission order; no production key was selected. Evidence is retained
+under `artifacts/catalog-signing-20261105/`.
+
 The release gate rejects the development catalog and requires PHP 8.4/8.5,
 Node 22/24, Caddy, Composer, MariaDB, PostgreSQL, pnpm, and Yarn for every target.
 Every target must run both the native runtime smoke suite and the desktop E2E
