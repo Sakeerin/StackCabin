@@ -11,22 +11,23 @@ for the tested behavior and the remaining three-platform release gates.
 
 [คู่มือเริ่มใช้งานภาษาไทย](docs/QUICKSTART.th.md)
 
-Development installers built on 4 November 2026 are available in
-[this verified Actions run](https://github.com/Sakeerin/StackCabin/actions/runs/41765896134):
+Development installers built on 6 November 2026 are available in
+[this verified Actions run](https://github.com/Sakeerin/StackCabin/actions/runs/42163918516):
 Windows x64 NSIS, Ubuntu x64 deb/AppImage, and separate macOS Intel/Apple Silicon
 DMGs. Download the matching `development-installers-*` artifact and verify its
 `SHA256SUMS.txt`. These artifacts expire after seven days. Their source is
-`7097c79`, including atomic settings recovery and detailed metadata startup errors;
+`c763b6d`, including atomic settings recovery, detailed metadata startup errors
+and exact-byte recovery of the pinned CA archive;
 signing and clean-machine certification remain release gates.
 
-The complete Windows offline development bundle built on 4 November is available
-in [this verified installation run](https://github.com/Sakeerin/StackCabin/actions/runs/41796262008).
+The complete Windows offline development bundle built on 6 November is available
+in [this verified installation run](https://github.com/Sakeerin/StackCabin/actions/runs/42165094208).
 Download `development-offline-windows-x64` and extract it; use its
 `offline-windows-x64/` folder. The separate `windows-offline-verification`
 artifact contains the source/preflight reports and ZIP checksum. Retention is
 seven days. `windows-offline-installation-evidence` records real installation,
 all managed tools, database backup/restore and preserved app data on a hosted
-Windows runner. This package uses the verified `7097c79` application binary.
+Windows runner. This package uses the verified `c763b6d` application binary.
 
 Internal [Unix QA desktop packs](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691)
 include matching offline PHP 8.4/8.5, Node 22/24 and database runtimes for Linux,

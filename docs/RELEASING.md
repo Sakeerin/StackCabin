@@ -373,6 +373,33 @@ fixtures. Fourteen workflow contracts keep the packaging dependency and repeated
 preflight ahead of certificate access. All 92 related local cases and actionlint
 passed on 6 November 2026.
 
+The following CA recovery source `c763b6d` passed all eleven code-CI jobs in
+[42163894785](https://github.com/Sakeerin/StackCabin/actions/runs/42163894785),
+including these twelve cases on all five targets. Its four normal development
+installer jobs passed in
+[42163918516](https://github.com/Sakeerin/StackCabin/actions/runs/42163918516).
+The same deb/AppImage passed on Ubuntu 24.04 in
+[42164712886](https://github.com/Sakeerin/StackCabin/actions/runs/42164712886);
+the matching Windows offline package/installation passed both jobs in
+[42165094208](https://github.com/Sakeerin/StackCabin/actions/runs/42165094208).
+The small five-file verification ZIP was downloaded and hash-checked; its source,
+preflight and full-bundle receipt match GitHub metadata. The large bundle ZIP was
+not downloaded locally. The source guard correctly rejects the earlier `7097c79`
+installer because the CA recovery changes application code. The current source
+compatibility report retains the unchanged five catalog/prerequisite hashes.
+These 18 successful jobs, the separate expected rejection and the earlier failed
+CA job are recorded under `artifacts/release-catalog-20261106/`.
+
+A real negative dispatch on source `cb4bc1d`,
+[42163322680](https://github.com/Sakeerin/StackCabin/actions/runs/42163322680),
+selected the known development public-key hash and an explicitly placeholder
+all-zero receipt hash with `build_installers=true`. The catalog job failed with
+the expected development-identity rejection, the report upload was skipped, and
+the packaging job was skipped with no steps. No installer build or certificate
+access occurred. This expected failure proves early rejection of that identity;
+it is not a successful production release or evidence for a selected production
+key. The verifier/workflow are unchanged by the following CA recovery.
+
 ## 3. Prepare installer variants
 
 - Windows: sign the executable and installer using the release certificate;
