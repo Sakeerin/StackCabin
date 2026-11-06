@@ -290,7 +290,10 @@ node --input-type=module -e "import { verifyCatalog } from './scripts/catalog-li
 ```
 
 Once the approved four files are deliberately incorporated into `runtime-catalog/`,
-run `node scripts/verify-catalog.mjs --release` against the final shipping files.
+retain their original `SIGNING_RECEIPT.json` at `.github/release/SIGNING_RECEIPT.json`
+outside the bundled resources. Retain that receipt's SHA-256 independently from
+the checkout, together with the selected production public-key file hash. Run
+`node scripts/verify-catalog.mjs --release` against the final shipping files.
 The signature tool is not wired to the preparation or packaging workflows; they
 do not receive a catalog private key. Tests use ephemeral keys and a child
 environment that does not inherit the operator's secrets.
@@ -311,6 +314,52 @@ The release gate rejects the development catalog and requires PHP 8.4/8.5,
 Node 22/24, Caddy, Composer, MariaDB, PostgreSQL, pnpm, and Yarn for every target.
 Every target must run both the native runtime smoke suite and the desktop E2E
 suite. A source build alone does not establish runtime compatibility.
+
+### Admit the exact signed catalog to packaging
+
+The read-only `.github/scripts/verify-release-catalog.mjs` requires both held
+hashes. It verifies the receipt's complete four-file inventory, exact Ed25519
+signature, canonical public-key/signature encodings, review/source pins and
+provenance. It also checks the complete target/version matrix, safe executable
+paths and the macOS 14.0 ceiling. The known development key is rejected even when
+its whitespace or self-reported development marker changes. Replacing the
+catalog, receipt and their local checksums together cannot replace either held
+hash. Select those hashes from the approved signing review, not from an untrusted
+replacement folder.
+
+```sh
+node .github/scripts/verify-release-catalog.mjs --directory=runtime-catalog --receipt=.github/release/SIGNING_RECEIPT.json --receipt-sha256="$REVIEWED_SIGNING_RECEIPT_SHA256" --public-key-sha256="$PRODUCTION_PUBLIC_KEY_FILE_SHA256" --repository=Sakeerin/StackCabin --report=release-catalog-verification.json
+```
+
+The optional report is written only after success, outside the catalog and receipt,
+without replacing an existing file. Linked/non-regular files, unknown resources
+and additional signing files are rejected. The three existing source/prerequisite
+JSON resources are allowed and their actual hashes are included in the report;
+they remain subject to their existing builder/prerequisite checks and are not
+covered by the four-file signing receipt. No private key is accessed. Successful
+reports explicitly retain `productionApproved: false`: this gate binds reviewed
+signing bytes; source/license approval, clean-machine certification, installer
+certificates and notarization remain separate release decisions.
+
+Dispatch **Package reviewed release** (`release.yml`) with required
+`signing_receipt_sha256` and `public_key_sha256`; neither has a default. Leave
+`build_installers` false for catalog verification only. With it true, a successful
+preflight admits the four-platform packaging matrix. Each job checks out the exact
+dispatch commit and repeats the receipt/key checks before installing build tools
+or accessing installer certificate secrets. The existing release catalog gate
+also runs before the Tauri build. Verification reports are retained for seven days.
+The workflow has contents-read permission and does not publish a release or receive
+a catalog private key. The current development catalog cannot pass this workflow;
+no placeholder production receipt is checked in.
+
+Twelve regression cases exercise exact signing output admission, independent pins,
+all four altered files, disguised development identities, invalid signatures,
+incomplete/unsafe matrices, provenance substitution, linked paths and CLI output
+rules. They use ephemeral keys and synthetic metadata independent of the shipping
+catalog, so a reviewed production catalog/key promotion does not change the test
+fixtures. Fourteen workflow contracts keep the packaging dependency and repeated
+preflight ahead of certificate access. All 92 related local cases and actionlint
+passed on 6 November 2026.
 
 ## 3. Prepare installer variants
 

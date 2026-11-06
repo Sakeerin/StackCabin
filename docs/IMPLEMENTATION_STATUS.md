@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **5 November 2026**.
+Development version: **0.1.0**, checked on **6 November 2026**.
 This is a working development preview. The simultaneous Windows/macOS/Ubuntu
 production acceptance gate remains open.
 
@@ -48,6 +48,10 @@ production acceptance gate remains open.
   key, rejects the known development identity and writes a new staged catalog
   with a final signature receipt. Read-only preflight opens no key; signing does
   not change shipping resources or grant production approval.
+- Packaging admission verifies the exact signing outputs against independently
+  retained receipt/public-key hashes. Catalog-only preflight precedes the installer
+  matrix; each exact checkout repeats it before build tools or certificate access.
+  The gate never accesses a catalog private key or grants production approval.
 - Separate internal Unix QA app/catalog/credential identities and matching offline
   runtime packs; distributed QA apps exclude E2E plugins. See [QA usage](QA_DESKTOP.md).
 
@@ -55,7 +59,7 @@ production acceptance gate remains open.
 
 Hosted verification now uses macOS 15 ARM/Intel after the macOS 14 image's
 retirement. Rosetta remains an explicit x64 compatibility check on ARM hosts;
-Intel hosts always select x64 installer artifacts. Thirteen workflow-contract checks
+Intel hosts always select x64 installer artifacts. Fourteen workflow-contract checks
 cover platform selection and kit/desktop/upgrade artifact wiring. CI also runs
 checksum-pinned actionlint 1.7.12 and rejects retired hosted runner labels.
 QA build/upgrade workflows require an explicit producer `source_run` instead of
@@ -71,7 +75,7 @@ the reviewed publisher source bytes. Twelve native-stack regression tests cover
 corrupt/substituted archives, missing provenance and incompatible macOS baselines.
 
 The normal application uses source `7097c79`, including file-backed startup probes.
-Current release-tool source is `048c052`; its changes are confined to CI tools and guides.
+Current release-tool changes are confined to CI tools, synthetic test fixtures and guides.
 The independently reviewed native catalog handoff retains source `37ab4e5`.
 The reviewed native selection is
 `76955fa`; the downloadable Unix QA desktops below retain their earlier producers.
@@ -275,7 +279,7 @@ is 38,834 bytes with seven-day retention. It remains unsigned and review-only;
 an actual unpublished native URL failed with HTTP 404 before any hosted handoff
 was created. Production keys, baseline acceptance and public hosting remain open.
 
-The current `catalog-signing-20261105/ACCEPTANCE_SUMMARY.json` binds **eleven
+The earlier `catalog-signing-20261105/ACCEPTANCE_SUMMARY.json` binds **eleven
 successful code-CI jobs** to source `048c052`. All fifteen signing regressions
 passed on five targets, along with thirteen workflow contracts; all 79 related
 local helper cases passed. Real CLI tests use an allowlisted environment and
@@ -286,6 +290,16 @@ rejected before private-key access. The shipping catalog and all five installer
 catalog/prerequisite inputs remain byte-identical to normal installer source
 `7097c79`. Production signing was not performed; the current native URLs still
 await publication and complete hosted verification.
+
+On 6 November the read-only packaging gate added twelve regression cases; all
+92 related local cases and actionlint passed. It requires separately retained
+signing-receipt and production public-key file hashes, verifies the exact four
+signing outputs and rejects the known development identity before build admission.
+The release workflow defaults to catalog-only verification and repeats the checks
+in every packaging checkout before build tools or certificate access. Test base
+catalogs are now synthetic and independent of shipping catalog/key promotion.
+No production receipt, signature, installer or publication was created by these
+tests. Cross-platform verification for this increment is recorded below when complete.
 
 Earlier framework, HMR, full Unix PHP/database, QA-desktop and upgrade results are
 retained in the

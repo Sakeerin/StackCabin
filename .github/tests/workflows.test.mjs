@@ -150,6 +150,52 @@ test("signing regressions run on code CI without supplying a catalog private key
     );
 });
 
+test("packaging admits independently pinned signing outputs before builds or installer certificate access", () => {
+  const release = workflow("release");
+  for (const input of ["signing_receipt_sha256", "public_key_sha256"]) {
+    const section = release.match(
+      new RegExp(
+        `^      ${input}:\\r?\\n([\\s\\S]*?)(?=^      \\w+:|^permissions:)`,
+        "m",
+      ),
+    )?.[1];
+    assert.ok(section, input);
+    assert.match(section, /required: true/);
+    assert.doesNotMatch(section, /default:/);
+  }
+  assert.match(
+    release,
+    /build_installers:[\s\S]*?type: boolean\r?\n\s+default: false/,
+  );
+  assert.match(release, /needs: catalog/);
+  assert.match(
+    release,
+    /if: inputs\.build_installers && needs\.catalog\.result == 'success'/,
+  );
+  assert.equal((release.match(/verify-release-catalog\.mjs/g) || []).length, 2);
+  assert.equal(
+    (release.match(/ref: \$\{\{ github\.sha \}\}/g) || []).length,
+    2,
+  );
+  assert.match(release, /--receipt=\.github\/release\/SIGNING_RECEIPT\.json/);
+  assert.ok(
+    release.indexOf("Recheck the exact signing outputs") <
+      release.indexOf("dtolnay/rust-toolchain"),
+  );
+  assert.ok(
+    release.indexOf("Recheck the exact signing outputs") <
+      release.indexOf("APPLE_CERTIFICATE:"),
+  );
+  assert.match(
+    workflow("ci"),
+    /node --test \.github\/tests\/release-catalog\.test\.mjs/,
+  );
+  assert.doesNotMatch(
+    release,
+    /STACKCABIN_CATALOG_PRIVATE_KEY|contents: write|gh release/,
+  );
+});
+
 // These workflows use the common JavaScript-compatible subset of Actions
 // expressions. actionlint independently checks the actual Actions syntax/types.
 function evaluate(expression, inputs) {

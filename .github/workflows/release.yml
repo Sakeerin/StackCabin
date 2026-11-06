@@ -1,10 +1,49 @@
 name: Package reviewed release
 on:
   workflow_dispatch:
+    inputs:
+      signing_receipt_sha256:
+        description: Separately retained SHA-256 of the reviewed signing receipt
+        type: string
+        required: true
+      public_key_sha256:
+        description: Independently selected production public-key.txt SHA-256
+        type: string
+        required: true
+      build_installers:
+        description: Build installers after catalog checks; false checks catalog only
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
+  catalog:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify selected production catalog before admitting packaging
+        env:
+          RECEIPT_SHA256: ${{ inputs.signing_receipt_sha256 }}
+          PUBLIC_KEY_SHA256: ${{ inputs.public_key_sha256 }}
+        run: |
+          mkdir -p artifacts
+          node .github/scripts/verify-release-catalog.mjs --directory=runtime-catalog --receipt=.github/release/SIGNING_RECEIPT.json --receipt-sha256="$RECEIPT_SHA256" --public-key-sha256="$PUBLIC_KEY_SHA256" --repository="$GITHUB_REPOSITORY" --report=artifacts/release-catalog-verification.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reviewed-release-catalog-check
+          retention-days: 7
+          if-no-files-found: error
+          path: artifacts/release-catalog-verification.json
   package:
+    needs: catalog
+    if: inputs.build_installers && needs.catalog.result == 'success'
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -12,10 +51,20 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
+      - name: Recheck the exact signing outputs in each packaging checkout
+        shell: bash
+        env:
+          RECEIPT_SHA256: ${{ inputs.signing_receipt_sha256 }}
+          PUBLIC_KEY_SHA256: ${{ inputs.public_key_sha256 }}
+        run: |
+          mkdir -p artifacts
+          node .github/scripts/verify-release-catalog.mjs --directory=runtime-catalog --receipt=.github/release/SIGNING_RECEIPT.json --receipt-sha256="$RECEIPT_SHA256" --public-key-sha256="$PUBLIC_KEY_SHA256" --repository="$GITHUB_REPOSITORY" --report=artifacts/release-catalog-verification.json
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Linux dependencies
@@ -41,3 +90,9 @@ jobs:
         with:
           name: installer-${{ matrix.os }}
           path: target/release/bundle/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-catalog-check-${{ matrix.os }}
+          retention-days: 7
+          if-no-files-found: error
+          path: artifacts/release-catalog-verification.json

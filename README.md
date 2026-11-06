@@ -81,8 +81,10 @@ also include WebView2; see the Thai quickstart for installation steps.
 This checkout contains a **signed development catalog**, not a production release
 trust root. The development private key is in ignored `.local/`; it is never part
 of the source distribution or installer. Production signing keys must be supplied
-by the release maintainer. The release workflow rejects development catalogs and
-missing platform packages.
+by the release maintainer. The release workflow requires independently retained
+signing-receipt and production public-key hashes before admitting installer builds.
+It rejects development identities, changed signing outputs and missing platform
+packages; see [release preparation](docs/RELEASING.md).
 
 Node.js, Caddy, Composer, pnpm, Yarn, and CA bundle catalog entries cover Windows
 x64, macOS Intel/Apple Silicon, and Linux x64. PHP Windows packages are resolved
