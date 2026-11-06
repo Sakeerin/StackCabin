@@ -68,6 +68,18 @@ generation may fail when a publisher endpoint is unavailable; do not replace a
 missing hash with a guessed value. Review the resulting executables and run the
 native smoke suite before signing any package into the production catalog.
 
+The legacy CA bundle has an unversioned curl download URL. On 6 November the
+Windows smoke check correctly rejected changed upstream bytes. The official
+`cacert-2026-10-20.pem` archive still matches all four signed CA records exactly:
+200,116 bytes, SHA-256
+`796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe`.
+The native downloader and offline-pack tool select this dated URL only for that
+exact component/archive/URL/hash combination. Download checksums remain mandatory;
+no catalog bytes, IDs or trust roots change. The selection does not authorize a
+different or newer CA set. Use reviewed dated URLs for future CA catalog entries.
+The real transport/metadata check is retained in
+`artifacts/release-catalog-20261106/PINNED_CA_RECOVERY.json`.
+
 Merge native artifact JSON objects into one JSON array and pass it as
 `--extra=artifacts.json` to the catalog builder. Host archives at the exact HTTPS
 locations in those objects. Preserve required third-party notices and source

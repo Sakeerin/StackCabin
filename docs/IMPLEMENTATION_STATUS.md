@@ -20,6 +20,8 @@ production acceptance gate remains open.
 - Signed catalog and checksum verification, archive traversal checks, bounded
   transport retries, cancellation, offline archives and receipt-last installation.
   Official PHP archive and Node distribution aliases retain exact versions/hashes.
+  The legacy CA bundle resolves to its official dated archive only when the signed
+  component/URL/hash match; changed upstream latest bytes are never accepted.
 - Windows Job Objects and Unix process groups/watchdogs contain owned children.
   Shutdown closes admission, cancels preparation/downloads, drains accepted
   backup/database work and waits for real cleanup before exit. Repeated Quit
@@ -300,6 +302,17 @@ in every packaging checkout before build tools or certificate access. Test base
 catalogs are now synthetic and independent of shipping catalog/key promotion.
 No production receipt, signature, installer or publication was created by these
 tests. Cross-platform verification for this increment is recorded below when complete.
+
+The first code run for this increment found a real upstream CA change: Windows
+native-smoke rejected `cacert.pem` with a SHA-256 mismatch. The official dated
+20 October archive was independently downloaded and exactly matches the signed
+200,116-byte record on all four targets. Native/offline download selection now
+uses that historical copy for the exact legacy identity, preserving mandatory
+checksum validation and the signed shipping catalog. Forty-one related catalog,
+source-compatibility and offline preflight cases passed locally. This application
+change requires fresh normal installers; the earlier `7097c79` packages do not
+contain the recovery. The earlier source-compatibility report applies only to the
+CI-tool-only `cb4bc1d` increment.
 
 Earlier framework, HMR, full Unix PHP/database, QA-desktop and upgrade results are
 retained in the

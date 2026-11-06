@@ -10,6 +10,17 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 export const root = path.resolve(import.meta.dirname, "..");
 export const sha256 = (data) => createHash("sha256").update(data).digest("hex");
+export function runtimeDownloadUrl(artifact) {
+  // Same legacy signed CA identity as the native downloader. Never choose latest
+  // bytes or relax the caller's mandatory archive checksum verification.
+  return artifact.component === "cacert" &&
+    artifact.archive === "file" &&
+    artifact.url === "https://curl.se/ca/cacert.pem" &&
+    artifact.sha256 ===
+      "796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe"
+    ? "https://curl.se/ca/cacert-2026-10-20.pem"
+    : artifact.url;
+}
 export function phpArchiveUrl(url) {
   const match =
     /^https:\/\/downloads\.php\.net\/~windows\/releases\/(php-[a-zA-Z0-9.-]+\.zip)$/.exec(

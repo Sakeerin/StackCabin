@@ -4,7 +4,41 @@ import { generateKeyPairSync, sign } from "node:crypto";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { get, sha256, verifyCatalog } from "./catalog-lib.mjs";
+import {
+  get,
+  sha256,
+  verifyCatalog,
+  runtimeDownloadUrl,
+} from "./catalog-lib.mjs";
+
+test("the historical CA identity selects only the exact official dated archive", () => {
+  const original = {
+    component: "cacert",
+    archive: "file",
+    url: "https://curl.se/ca/cacert.pem",
+    sha256: "796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe",
+  };
+  assert.equal(
+    runtimeDownloadUrl(original),
+    "https://curl.se/ca/cacert-2026-10-20.pem",
+  );
+  for (const change of [
+    { sha256: "a".repeat(64) },
+    { component: "node" },
+    { archive: "zip" },
+    ...[
+      "http://curl.se/ca/cacert.pem",
+      "https://curl.se.evil.test/ca/cacert.pem",
+      "https://user@curl.se/ca/cacert.pem",
+      "https://curl.se/ca/cacert.pem?token=value",
+      "https://curl.se/ca/cacert-2026-11-05.pem",
+    ].map((url) => ({ url })),
+  ]) {
+    const artifact = { ...original, ...change };
+    assert.equal(runtimeDownloadUrl(artifact), artifact.url);
+  }
+  assert.equal(original.url, "https://curl.se/ca/cacert.pem");
+});
 
 test("a moved pinned PHP binary is recovered from the same official archive filename", async (t) => {
   const original =

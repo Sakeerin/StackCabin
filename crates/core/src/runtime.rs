@@ -57,6 +57,20 @@ fn node_release_alias(url: &str) -> Option<String> {
     .then(|| format!("https://nodejs.org/download/release/{relative}"))
 }
 
+fn pinned_download_url(artifact: &RuntimeArtifact) -> &str {
+    // curl's latest PEM changes in place. This official dated copy was checked
+    // against the existing signed hash; verification after download is unchanged.
+    if artifact.component == "cacert"
+        && artifact.archive == "file"
+        && artifact.url == "https://curl.se/ca/cacert.pem"
+        && artifact.sha256 == "796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe"
+    {
+        "https://curl.se/ca/cacert-2026-10-20.pem"
+    } else {
+        &artifact.url
+    }
+}
+
 async fn download_archive(
     client: &reqwest::Client,
     artifact: &RuntimeArtifact,
@@ -78,17 +92,22 @@ async fn download_archive(
                 tokio::time::sleep(Duration::from_secs(attempt)).await;
             }
             let result: Result<()> = async {
-                let url = if attempt > 0 {
-                    node_release_alias(&artifact.url).unwrap_or_else(|| artifact.url.clone())
+                let selected = pinned_download_url(artifact);
+                let url = if selected != artifact.url || attempt == 0 {
+                    selected.to_owned()
                 } else {
-                    artifact.url.clone()
+                    node_release_alias(&artifact.url).unwrap_or_else(|| artifact.url.clone())
                 };
                 if url != artifact.url {
                     (sink)(event(
                         "progress",
                         operation,
                         &artifact.id,
-                        "Downloading the same version from Node.js",
+                        if artifact.component == "cacert" {
+                            "Downloading the pinned CA bundle from the official dated archive"
+                        } else {
+                            "Downloading the same version from Node.js"
+                        },
                         Some(0.0),
                     ));
                 }
@@ -751,6 +770,42 @@ mod download_tests {
         Complete,
         Stalled,
         Missing,
+    }
+
+    #[test]
+    fn ca_archive_preserves_the_signed_identity_and_rejects_unrelated_inputs() {
+        let mut artifact = RuntimeManager::new(PathBuf::new(), Arc::new(|_| {}))
+            .catalog
+            .artifacts
+            .into_iter()
+            .find(|item| item.component == "cacert")
+            .unwrap();
+        artifact.url = "https://curl.se/ca/cacert.pem".into();
+        artifact.sha256 = "796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe".into();
+        assert_eq!(
+            pinned_download_url(&artifact),
+            "https://curl.se/ca/cacert-2026-10-20.pem"
+        );
+        let original = artifact.clone();
+        for url in [
+            "http://curl.se/ca/cacert.pem",
+            "https://curl.se.evil.test/ca/cacert.pem",
+            "https://user@curl.se/ca/cacert.pem",
+            "https://curl.se/ca/cacert.pem?token=value",
+            "https://curl.se/ca/cacert-2026-11-05.pem",
+        ] {
+            artifact.url = url.into();
+            assert_eq!(pinned_download_url(&artifact), url);
+        }
+        artifact = original.clone();
+        artifact.sha256 = "a".repeat(64);
+        assert_eq!(pinned_download_url(&artifact), artifact.url);
+        artifact = original.clone();
+        artifact.component = "node".into();
+        assert_eq!(pinned_download_url(&artifact), artifact.url);
+        artifact = original;
+        artifact.archive = "zip".into();
+        assert_eq!(pinned_download_url(&artifact), artifact.url);
     }
 
     #[test]

@@ -1,4 +1,10 @@
-import { verifyCatalog, root, get, sha256 } from "./catalog-lib.mjs";
+import {
+  verifyCatalog,
+  root,
+  get,
+  sha256,
+  runtimeDownloadUrl,
+} from "./catalog-lib.mjs";
 import { mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
 import path from "node:path";
 const platform = process.argv
@@ -35,7 +41,7 @@ for (const artifact of catalog.artifacts.filter(
     try {
       bytes = await readFile(path.join(cache, sha256(artifact.url)));
     } catch {
-      bytes = await get(artifact.url, true);
+      bytes = await get(runtimeDownloadUrl(artifact), true);
     }
   }
   if (sha256(bytes) !== artifact.sha256)
