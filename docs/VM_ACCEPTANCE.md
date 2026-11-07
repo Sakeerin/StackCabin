@@ -8,12 +8,12 @@ Required machines are Windows 10 22H2 x64, Windows 11 x64, macOS 14 Intel and
 Apple Silicon, and Ubuntu Desktop 22.04/24.04 x64. Rosetta checks supplement a
 native Intel VM; they do not replace it.
 
-Current normal preview installers from source `c763b6d` are available in
-[run 42163918516](https://github.com/Sakeerin/StackCabin/actions/runs/42163918516)
+Current normal preview installers from source `300dc74` are available in
+[run 42381361969](https://github.com/Sakeerin/StackCabin/actions/runs/42381361969)
 for Windows x64, Ubuntu x64 and macOS ARM/Intel. Download the matching
 `development-installers-*` artifact and verify `SHA256SUMS.txt`; retention is
-seven days. The same `c763b6d` Ubuntu 22.04 deb and AppImage also passed
-[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/42164712886).
+seven days. The same `300dc74` Ubuntu 22.04 deb and AppImage also passed
+[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/42381875969).
 These are normal builds without E2E instrumentation and retain the signed
 development catalog. Earlier `2b3836e` installers passed startup on
 [macOS 14 ARM](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722) and

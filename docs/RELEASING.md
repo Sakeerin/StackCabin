@@ -357,10 +357,10 @@ development key. Together with the existing catalog/workflow cases, all forty
 related local tests and actionlint passed on 7 November 2026.
 All eleven code-CI jobs passed on source `cf75cc4` in
 [42376648599](https://github.com/Sakeerin/StackCabin/actions/runs/42376648599),
-including the fifteen new cases on all five code targets. The current normal
-installer/offline downloads retain their verified `c763b6d` producer. The source
-guard remains unchanged and requires a fresh normal installer before assembling
-a new offline bundle from this later publisher-tool checkout.
+including the fifteen new cases on all five code targets. At that checkpoint,
+normal installer/offline downloads retained their verified `c763b6d` producer.
+The unchanged source guard required fresh normal installers for the later
+publisher-tool checkout. The runtime-pack increment below built that fresh set.
 
 A separate read-only check downloaded the real current and dated curl CA bundles:
 200,116 identical bytes, SHA-256
@@ -503,6 +503,27 @@ related local cases and actionlint passed. A real cache-only CLI run verified al
 11 Windows archives (621,294,545 bytes), rejected subsequent overwrite, and
 preserved 28 source/cache and shipping inputs. Evidence is under
 `artifacts/offline-pack-20261107/`; no software was installed locally.
+
+Source `300dc74` then passed all eleven code-CI jobs in
+[42381344342](https://github.com/Sakeerin/StackCabin/actions/runs/42381344342),
+including the twenty new cases on every code target. All four normal installer
+jobs passed in
+[42381361969](https://github.com/Sakeerin/StackCabin/actions/runs/42381361969),
+and the same deb/AppImage passed Ubuntu 24.04 startup in
+[42381875969](https://github.com/Sakeerin/StackCabin/actions/runs/42381875969).
+Both Windows offline assembly/installation jobs passed in
+[42382025371](https://github.com/Sakeerin/StackCabin/actions/runs/42382025371),
+including all eleven tools, five concurrent HTTP projects, both database
+dump/restores and preserved app data under a restricted standard-user token.
+The small verification ZIP passed independent digest/source/receipt checks;
+the large bundle was not downloaded locally. These eighteen successful jobs and
+the unchanged five catalog/prerequisite hashes are bound in
+`artifacts/offline-pack-20261107/ACCEPTANCE_SUMMARY.json`.
+The old producer was rejected without changing the source guard. The generated
+local test pack's seventeen duplicate files (621,326,424 bytes) were removed only
+after inventory/hash checks, retaining the receipt and all 28 original inputs.
+This does not certify a clean desktop or select a production signing identity.
+
 For a downloaded installer from the matching source/catalog, pass `-Installer`
 and `-InstallerSha256` using the independently verified installer checksum.
 Assembly verifies the pack against the checkout's trusted signed catalog and

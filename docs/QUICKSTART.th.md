@@ -5,8 +5,8 @@
 
 ## ติดตั้งบน Windows
 
-ดาวน์โหลดแพ็กเกจวันที่ 6 พฤศจิกายน 2026 จาก
-[GitHub Actions run นี้](https://github.com/Sakeerin/StackCabin/actions/runs/42163918516)
+ดาวน์โหลดแพ็กเกจวันที่ 7 พฤศจิกายน 2026 จาก
+[GitHub Actions run นี้](https://github.com/Sakeerin/StackCabin/actions/runs/42381361969)
 เลือก Artifact `development-installers-windows-latest` แล้วแตก ZIP และตรวจไฟล์
 ตาม `SHA256SUMS.txt` ไฟล์ติดตั้งอยู่ในโฟลเดอร์ `nsis/` ส่วนแพ็กเกจจากการ build เอง
 อยู่ใน `target/release/bundle/nsis/` Artifact เก็บไว้ 7 วัน
@@ -44,12 +44,17 @@ Windows อาจขอสิทธิ์ผู้ดูแลระบบสำ
 เป็นไฟล์สุดท้ายเมื่อสำเร็จเท่านั้น บันทึกความครบถ้วนนี้ครอบคลุม catalog และ runtime
 ส่วนการตรวจตัวติดตั้ง Windows กับ prerequisites ใช้ manifest ของชุดเต็มอีกชั้นหนึ่ง
 
-ชุดออฟไลน์วันที่ 6 พฤศจิกายน ดาวน์โหลดได้จาก
-[run 42165094208](https://github.com/Sakeerin/StackCabin/actions/runs/42165094208)
+ชุดออฟไลน์วันที่ 7 พฤศจิกายน ดาวน์โหลดได้จาก
+[run 42382025371](https://github.com/Sakeerin/StackCabin/actions/runs/42382025371)
 เลือก `development-offline-windows-x64` แล้วใช้โฟลเดอร์ `offline-windows-x64/`
-หลังแตก ZIP ชุดนี้ใช้ตัวแอป source `c763b6d` พร้อมการดาวน์โหลด CA bundle เดิมจากไฟล์ย้อนหลังทางการ
+หลังแตก ZIP ชุดนี้ใช้ตัวแอป source `300dc74` พร้อมการดาวน์โหลด CA bundle เดิมจากไฟล์ย้อนหลังทางการ
 และผ่านการติดตั้งจริงพร้อมเปิดข้อมูลเดิมบน GitHub runner แล้ว ผลทดสอบอยู่ใน
 `windows-offline-installation-evidence` โดยยังไม่ถือเป็นการรับรองเครื่องสะอาด
+
+ขั้นตอนประกอบชุดใหม่ตรวจไฟล์ในพื้นที่ชั่วคราวก่อนสร้างปลายทาง และเขียน receipt
+หลังคัดลอกครบแล้ว การทดสอบผ่านครบ 75 กรณีในเครื่องพัฒนา และ 18 jobs บน GitHub
+รวมการติดตั้งจริงและการสำรอง/กู้คืนฐานข้อมูล ชุดไฟล์ที่สร้างซ้ำเพื่อทดสอบในเครื่องนี้
+ลบแล้ว 17 ไฟล์ คืนพื้นที่ประมาณ 621 MB โดยเก็บผลตรวจและชุดต้นฉบับไว้ทั้งหมด
 
 สร้างชุดออฟไลน์ใหม่ที่ดาวน์โหลดจาก GitHub ได้ด้วย workflow
 **Build and verify the Windows offline bundle** โดยกรอก run ID ของ
@@ -81,7 +86,7 @@ job แรกของ workflow รวมและตรวจไฟล์โด
 และเก็บไว้ 7 วัน แพ็กเกจเหล่านี้ยังไม่ได้เผยแพร่เป็น release สาธารณะ
 
 Linux มี `.deb` และ `.AppImage` โดยไฟล์ที่สร้างบน Ubuntu 22.04 ผ่านการเปิดแอป
-บน Ubuntu 24.04 แล้ว ([ผลทดสอบ](https://github.com/Sakeerin/StackCabin/actions/runs/42164712886))
+บน Ubuntu 24.04 แล้ว ([ผลทดสอบ](https://github.com/Sakeerin/StackCabin/actions/runs/42381875969))
 การรัน AppImage บนเครื่องที่ไม่มี FUSE ใช้:
 
 ```sh
@@ -89,7 +94,7 @@ chmod +x StackCabin_*.AppImage
 APPIMAGE_EXTRACT_AND_RUN=1 ./StackCabin_*.AppImage
 ```
 
-macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 6 พฤศจิกายนผ่านการเปิดแอป
+macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 7 พฤศจิกายนผ่านการเปิดแอป
 บน macOS 15 ทั้งสองสถาปัตยกรรม ส่วนผล macOS 14 เมื่อ 1 พฤศจิกายนเป็นของแพ็กเกจ
 source `2b3836e` รุ่นก่อน ทั้ง Apple Silicon และแพ็กเกจ Intel ผ่าน Rosetta
 แพ็กเกจปัจจุบันยังต้องตรวจ macOS 14 บนเครื่องทดสอบที่ดูแลเอง
