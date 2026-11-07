@@ -4,13 +4,12 @@ import { lstat, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { root, verifyCatalog } from "./catalog-lib.mjs";
+import {
+  catalogFiles,
+  verifyRuntimeReceipt,
+} from "../.github/scripts/offline-runtime-pack.mjs";
 
-export const catalogFiles = [
-  "catalog.json",
-  "catalog.sig",
-  "public-key.txt",
-  "provenance.json",
-];
+export { catalogFiles };
 export const bundleFiles = [
   ...catalogFiles,
   "StackCabin-setup.exe",
@@ -47,6 +46,7 @@ export async function verifyRuntimePack(
   if ((await lstat(directory)).isSymbolicLink())
     throw new Error("Bundle directory must not be a link");
   const catalog = await verifyCatalog(trustedCatalog);
+  const controls = [];
   for (const file of catalogFiles) {
     const actual = await fileInfo(directory, file);
     const expected = await fileInfo(trustedCatalog, file);
@@ -54,6 +54,7 @@ export async function verifyRuntimePack(
       throw new Error(
         `Offline pack does not match the application's catalog: ${file}`,
       );
+    controls.push(actual);
   }
   const artifacts = catalog.artifacts.filter(
     (a) => a.platform === "windows" && a.arch === "x64",
@@ -66,6 +67,12 @@ export async function verifyRuntimePack(
       throw new Error(`Runtime checksum mismatch: ${digest}`);
     archives.push(entry);
   }
+  await verifyRuntimeReceipt(directory, {
+    platform: "windows",
+    arch: "x64",
+    artifacts,
+    files: [...controls, ...archives],
+  });
   return { runtimeCount: artifacts.length, archives };
 }
 

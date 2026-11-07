@@ -379,6 +379,18 @@ All five shipping catalog/prerequisite hashes remain unchanged. This is publishe
 resolution evidence, with no catalog signature, shipping update or trust-policy
 approval. It is retained in `artifacts/catalog-refresh-20261107/`.
 
+On 7 November runtime-pack assembly gained staged verification and exclusive
+output creation. It refuses existing folders, supports cache-only `--offline`
+assembly, checks final copies again and writes a scoped completion receipt last.
+Its cleanup removes only owned partial files with matching identities. Twenty
+new regressions and 55 related catalog, workflow, source and Windows packaging
+cases passed locally, with actionlint. A real cache-only CLI run verified all 11
+Windows archives (621,294,545 bytes), rejected overwrite and preserved 28 original
+inputs, without installing software. The new receipt covers catalog/archive
+bytes only and does not approve a production release. Evidence is retained in
+`artifacts/offline-pack-20261107/`. New CI/installer results are pending; the
+download links above continue to identify the previously verified producers.
+
 Earlier framework, HMR, full Unix PHP/database, QA-desktop and upgrade results are
 retained in the
 [historical report](https://github.com/Sakeerin/StackCabin/blob/44a082bde38134d49e0aa1e0ab1242c3aec1e6c8/docs/IMPLEMENTATION_STATUS.md).

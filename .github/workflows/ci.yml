@@ -56,6 +56,7 @@ jobs:
       - run: node scripts/verify-catalog.mjs
       - run: node --test scripts/test-catalog.mjs
       - run: node --test .github/tests/catalog-updates.test.mjs
+      - run: node --test .github/tests/offline-runtime-pack.test.mjs
       - run: node --test scripts/test-native-stack.mjs
       - run: node --test scripts/test-native-release.mjs
       - run: node --test .github/tests/native-release-verification.test.mjs

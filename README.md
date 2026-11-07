@@ -131,6 +131,23 @@ node scripts/offline-pack.mjs --platform=windows --arch=x64 --dev
 
 Choose the resulting `artifacts/offline-windows-x64` folder in **Runtimes > Install
 from offline pack**. It must match the catalog embedded in the application.
+The output must be a new folder, even if an existing folder is empty. To retain
+an earlier pack and assemble only from cached archives, use an existing parent
+directory and a new output name:
+
+```sh
+node scripts/offline-pack.mjs --platform=windows --arch=x64 --dev --offline --cache=artifacts/offline-windows-x64 --output=artifacts/offline-windows-x64-new
+```
+
+Assembly verifies the signed catalog, archive checksums and known sizes in a
+temporary folder, then copies verified bytes into the exclusively created output.
+`RUNTIME_PACK_RECEIPT.json` is written last. It covers the four catalog controls
+and runtime archives; it is a completion record, not a release signature or an
+installer/prerequisite manifest. Interrupted operations clean their own partial
+files; unexpected or replaced files are preserved. `--offline` fails on missing
+or damaged cache entries without fetching replacements. Cache entries may be
+named by archive SHA-256 or the publisher cache's URL SHA-256.
+
 The pack contains runtime archives, not arbitrary npm/Composer dependencies.
 Running an existing project offline requires its dependencies to already be
 installed for the target OS. See [release preparation](docs/RELEASING.md) for

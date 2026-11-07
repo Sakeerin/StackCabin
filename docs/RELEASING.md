@@ -468,6 +468,41 @@ Create the offline pack with `scripts/offline-pack.mjs`. On Windows, run
 `scripts/windows-offline-bundle.ps1` after building the installer; it downloads
 and verifies Microsoft's signed full WebView2/Visual C++ payloads and generates
 an offline install script with a checksum manifest. It does not execute installers.
+
+Runtime pack assembly requires a new output directory (`--output=<new-folder>`;
+its parent must exist). It never refreshes or overwrites an existing pack, even
+an empty directory. A sibling staging directory holds a snapshot of the four
+signed-catalog controls and deduplicated, checksum/size-verified archives. Before
+publication the original controls must still match; final copies are hashed
+again. The output directory is created exclusively, and the completion receipt
+is written last after every verified copy. Publication is not an atomic directory
+rename. Failure/cancellation removes only owned files with matching identities;
+foreign/replaced files are retained. Avoid consuming a folder while it is being
+built. The whole operation has a 30-minute cancellation deadline.
+
+`--offline --cache=<folder>` disables downloads and accepts archive-SHA filenames
+or the publisher cache's URL-SHA filenames. Missing/damaged entries fail without
+replacement; source cache files are read-only. Cached copies are streamed, with
+an 8-GiB per-archive bound and signed size checks when known. Network downloads
+still use the shared buffered download helper, with cancellation propagated to
+fetch; this is not a streaming-network-memory guarantee.
+
+`RUNTIME_PACK_RECEIPT.json` covers exactly the four catalog controls and runtime
+archives. README is excluded because the complete Windows wrapper replaces it.
+It excludes installers, Microsoft prerequisites, arbitrary dependencies and
+secrets. The Windows builder verifies a present receipt against independently
+verified bytes, while legacy packs remain accepted by the original catalog and
+archive checks. This optional completion record has no production/signing
+authority; the complete Windows integrity manifest remains a separate layer.
+
+Twenty new cases cover all supported pack targets, cache layouts, interruption,
+archive/catalog changes, cancellation, late output ownership, linked inputs,
+receipt tampering and the real CLI with Thai/space paths. They run in code CI on
+all five targets and before Windows offline assembly. On 7 November 2026 all 75
+related local cases and actionlint passed. A real cache-only CLI run verified all
+11 Windows archives (621,294,545 bytes), rejected subsequent overwrite, and
+preserved 28 source/cache and shipping inputs. Evidence is under
+`artifacts/offline-pack-20261107/`; no software was installed locally.
 For a downloaded installer from the matching source/catalog, pass `-Installer`
 and `-InstallerSha256` using the independently verified installer checksum.
 Assembly verifies the pack against the checkout's trusted signed catalog and

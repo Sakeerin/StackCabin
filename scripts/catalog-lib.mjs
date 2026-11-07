@@ -30,13 +30,16 @@ export function phpArchiveUrl(url) {
     ? `https://downloads.php.net/~windows/releases/archives/${match[1]}`
     : null;
 }
-export async function get(url, binary = false) {
+export async function get(url, binary = false, { signal } = {}) {
   const options = {
     headers: {
       "User-Agent": "StackCabin-catalog-builder/0.1",
       Accept: "application/json",
     },
-    signal: AbortSignal.timeout(binary ? 1_800_000 : 60_000),
+    signal: AbortSignal.any([
+      AbortSignal.timeout(binary ? 1_800_000 : 60_000),
+      ...(signal ? [signal] : []),
+    ]),
   };
   let response = await fetch(url, options);
   const archive =

@@ -1,59 +1,66 @@
-import {
-  verifyCatalog,
-  root,
-  get,
-  sha256,
-  runtimeDownloadUrl,
-} from "./catalog-lib.mjs";
-import { mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
 import path from "node:path";
-const platform = process.argv
-  .find((a) => a.startsWith("--platform="))
-  ?.slice(11);
-const arch =
-  process.argv.find((a) => a.startsWith("--arch="))?.slice(7) || "x64";
-if (!["windows", "macos", "linux"].includes(platform))
-  throw new Error("Pass --platform=windows|macos|linux [--arch=x64|arm64]");
-const catalog = await verifyCatalog(undefined, !process.argv.includes("--dev"));
-const output = path.join(root, "artifacts", `offline-${platform}-${arch}`);
-const cache =
-  process.argv.find((a) => a.startsWith("--cache="))?.slice(8) ||
-  path.join(root, ".local", "publisher-cache");
-await mkdir(output, { recursive: true });
-for (const file of [
-  "catalog.json",
-  "catalog.sig",
-  "public-key.txt",
-  "provenance.json",
-])
-  await copyFile(
-    path.join(root, "runtime-catalog", file),
-    path.join(output, file),
-  );
-for (const artifact of catalog.artifacts.filter(
-  (a) => a.platform === platform && a.arch === arch,
-)) {
-  const file = path.join(output, artifact.sha256);
-  let bytes;
-  try {
-    bytes = await readFile(file);
-  } catch {
-    try {
-      bytes = await readFile(path.join(cache, sha256(artifact.url)));
-    } catch {
-      bytes = await get(runtimeDownloadUrl(artifact), true);
-    }
+import { pathToFileURL } from "node:url";
+import { mkdir } from "node:fs/promises";
+import { root } from "./catalog-lib.mjs";
+import { buildOfflinePack } from "../.github/scripts/offline-runtime-pack.mjs";
+
+export async function main(arguments_) {
+  const args = {};
+  for (const argument of arguments_) {
+    const match = /^--(platform|arch|cache|output)=(.+)$/.exec(argument);
+    const name =
+      match?.[1] ||
+      (argument === "--dev"
+        ? "dev"
+        : argument === "--offline"
+          ? "offline"
+          : null);
+    if (!name || Object.hasOwn(args, name))
+      throw new Error("Unknown or duplicate offline pack argument");
+    args[name] = match ? match[2] : true;
   }
-  if (sha256(bytes) !== artifact.sha256)
-    throw new Error(`Checksum mismatch: ${artifact.id}`);
-  await writeFile(file, bytes);
-  console.log(`Packed ${artifact.id}`);
+  if (!args.platform)
+    throw new Error(
+      "Pass --platform=windows|macos|linux [--arch=x64|arm64] [--output=new-folder] [--offline]",
+    );
+  const directory = path.join(root, "artifacts");
+  await mkdir(directory, { recursive: true });
+  const controller = new AbortController(),
+    cancel = () =>
+      controller.abort(new Error("Offline pack assembly cancelled"));
+  process.once("SIGINT", cancel);
+  process.once("SIGTERM", cancel);
+  try {
+    const result = await buildOfflinePack({
+      catalogDirectory: path.join(root, "runtime-catalog"),
+      platform: args.platform,
+      arch: args.arch || "x64",
+      development: !!args.dev,
+      offline: !!args.offline,
+      output: args.output
+        ? path.resolve(args.output)
+        : path.join(
+            directory,
+            `offline-${args.platform}-${args.arch || "x64"}`,
+          ),
+      cache: args.cache
+        ? path.resolve(args.cache)
+        : path.join(root, ".local/publisher-cache"),
+      signal: controller.signal,
+      onProgress: (event) => {
+        if (event.artifactId) console.log(`Preparing ${event.artifactId}`);
+      },
+    });
+    console.log(result.output);
+    return result;
+  } finally {
+    process.removeListener("SIGINT", cancel);
+    process.removeListener("SIGTERM", cancel);
+  }
 }
-await writeFile(
-  path.join(output, "README.txt"),
-  "StackCabin offline runtime pack\nChoose this folder in Runtimes > Install from offline pack.\nUse with the StackCabin application release that contains this catalog and public key.\nFramework dependencies are not included.\n" +
-    (process.argv.includes("--dev")
-      ? "DEVELOPMENT BUILD: requires clean-machine certification before public release.\n"
-      : ""),
-);
-console.log(output);
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
+  main(process.argv.slice(2)).catch((error) => {
+    console.error(error.message);
+    process.exitCode = 1;
+  });
