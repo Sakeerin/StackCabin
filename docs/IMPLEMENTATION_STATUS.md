@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **6 November 2026**.
+Development version: **0.1.0**, checked on **7 November 2026**.
 This is a working development preview. The simultaneous Windows/macOS/Ubuntu
 production acceptance gate remains open.
 
@@ -54,6 +54,11 @@ production acceptance gate remains open.
   retained receipt/public-key hashes. Catalog-only preflight precedes the installer
   matrix; each exact checkout repeats it before build tools or certificate access.
   The gate never accesses a catalog private key or grants production approval.
+- Publisher refresh preserves every existing ID's full metadata, rejects duplicate
+  or malformed records before selecting a key, and retains newly resolved default
+  priority. CA discovery bypasses the mutable URL cache and requires exact bytes
+  from a dated official archive before proposing new records. Legacy signed URLs
+  remain unchanged when the same CA bytes are resolved again.
 - Separate internal Unix QA app/catalog/credential identities and matching offline
   runtime packs; distributed QA apps exclude E2E plugins. See [QA usage](QA_DESKTOP.md).
 
@@ -78,7 +83,9 @@ corrupt/substituted archives, missing provenance and incompatible macOS baseline
 
 The normal application uses source `c763b6d`, including exact-byte recovery of the
 pinned CA archive and the existing file-backed startup probes. The release-tool
-increment `cb4bc1d` added packaging admission and synthetic test fixtures.
+increment `cb4bc1d` added packaging admission and synthetic test fixtures. The
+7 November increment hardens the separate publisher-refresh builder; no new app
+installer or offline bundle was built for that increment.
 The independently reviewed native catalog handoff retains source `37ab4e5`.
 The reviewed native selection is
 `76955fa`; the downloadable Unix QA desktops below retain their earlier producers.
@@ -88,6 +95,11 @@ Its resource set excludes the unused CI selection file. The real source/catalog
 compatibility check passed in
 `artifacts/release-catalog-20261106/installer-source-compatibility.json`. The macOS 14
 execution rows below explicitly concern the earlier `2b3836e` installers.
+That compatibility report binds assembly `2b25154` to the 6 November installer.
+The later publisher-builder script change is outside the source guard's closed
+allowlist: assembling a fresh offline bundle from this checkout requires a new
+normal installer first. The guard is unchanged; download links retain the exact
+previously verified `c763b6d` packages.
 
 | Check                        | Latest evidence and scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -352,6 +364,16 @@ mismatch and subsequent cancellation separately; no failed/cancelled job is
 counted in the 18. The expected release-gate failure also remains separate and
 explicitly used no production identity or installer certificate. These results
 do not close public hosting, source/license approval or clean-machine gates.
+
+On 7 November, fifteen publisher-refresh regressions and the existing catalog
+and workflow cases passed locally (forty total). Real CLI cases use copied
+workspaces, mock transports and ephemeral signing keys; no operator key is
+inherited. The read-only real transport check matched current curl bytes to the
+5 November dated archive, proposed four new CA records and preserved all 32 base
+records. A replay of the real 20 October archive preserved every legacy CA field.
+All five shipping catalog/prerequisite hashes remain unchanged. This is publisher
+resolution evidence, with no catalog signature, shipping update or trust-policy
+approval. It is retained in `artifacts/catalog-refresh-20261107/`.
 
 Earlier framework, HMR, full Unix PHP/database, QA-desktop and upgrade results are
 retained in the

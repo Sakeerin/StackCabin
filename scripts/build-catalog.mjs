@@ -10,6 +10,10 @@ import {
 } from "./catalog-lib.mjs";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  mergeCatalogUpdates,
+  resolveCaArtifacts,
+} from "../.github/scripts/catalog-updates.mjs";
 const dev = process.argv.includes("--dev");
 const components = (
   process.argv.find((a) => a.startsWith("--components="))?.split("=")[1] ||
@@ -293,26 +297,13 @@ for (const component of ["pnpm", "yarn"])
 const extra = process.argv.find((a) => a.startsWith("--extra="))?.slice(8);
 if (components.includes("cacert"))
   await attempt("cacert", async () => {
-    const url = "https://curl.se/ca/cacert.pem";
-    const bytes = await downloaded(url);
-    const hash = sha256(bytes);
-    for (const [platform, , arch] of variants)
-      artifacts.push(
-        artifact(
-          "cacert",
-          hash.slice(0, 12),
-          platform,
-          arch,
-          url,
-          hash,
-          "file",
-          0,
-          { cacert: "cacert.pem" },
-          "MPL-2.0",
-          "https://curl.se/docs/caextract.html",
-          bytes.length,
-        ),
-      );
+    artifacts.push(
+      ...(await resolveCaArtifacts({
+        fetchLatest: (url) => get(url, true),
+        fetchDated: downloaded,
+        historical,
+      })),
+    );
   });
 if (components.includes("mariadb"))
   await attempt("mariadb", async () => {
@@ -378,13 +369,5 @@ if (failures.length) {
     `Catalog has unresolved components; existing catalog was preserved:\n${failures.join("\n")}`,
   );
 }
-const retained = new Map(artifacts.map((artifact) => [artifact.id, artifact]));
-for (const artifact of historical) {
-  const current = retained.get(artifact.id);
-  if (current && current.sha256 !== artifact.sha256)
-    throw new Error(
-      `Refusing to replace immutable runtime ${artifact.id} with different bytes`,
-    );
-  if (!current) retained.set(artifact.id, artifact);
-}
-await saveCatalog([...retained.values()], await signingKey(dev), dev);
+const retained = mergeCatalogUpdates(historical, artifacts);
+await saveCatalog(retained, await signingKey(dev), dev);

@@ -327,6 +327,44 @@ Node 22/24, Caddy, Composer, MariaDB, PostgreSQL, pnpm, and Yarn for every targe
 Every target must run both the native runtime smoke suite and the desktop E2E
 suite. A source build alone does not establish runtime compatibility.
 
+### Refresh publisher metadata without changing existing identities
+
+The publisher-refresh builder now uses `.github/scripts/catalog-updates.mjs` to
+merge new records. Every field of an existing ID must remain identical, including
+URL, executable paths, extraction policy, source/license, size and future metadata.
+Matching archive bytes alone cannot authorize a metadata replacement. Duplicate
+IDs in either input and malformed ID/hash/HTTPS metadata fail before selecting a
+signing key. Freshly resolved records retain their default-selection priority;
+older identities remain in the catalog with their original fields.
+
+For CA discovery, `build-catalog.mjs` bypasses the mutable latest-URL cache. It
+parses the PEM conversion timestamp as a checked UTC calendar date and downloads
+the official dated archive. Both byte sequences must match exactly before any
+records are returned. New CA records use that dated URL, with their verified
+checksum and size. A signed legacy latest URL is retained only when every other
+field already agrees; the builder cannot silently rewrite its URL under the same
+ID. Invalid/ambiguous dates, non-PEM input, substituted/truncated dated bytes and
+publisher errors stop resolution. PEM shape and transport checks do not review
+the root certificates' trust policy.
+
+The builder still refreshes publishers and signs a new catalog when explicitly
+invoked with a signing identity. Use the exact-byte handoff signer for reviewed
+release proposals. The new helper itself never opens a private key or modifies
+shipping files. Fifteen new regressions include real CLI executions in copied,
+isolated workspaces with Thai/space paths, allowlisted environments and ephemeral
+keys; rejection cases preserve all four original signed controls and create no
+development key. Together with the existing catalog/workflow cases, all forty
+related local tests and actionlint passed on 7 November 2026.
+
+A separate read-only check downloaded the real current and dated curl CA bundles:
+200,116 identical bytes, SHA-256
+`427c064216761a1e72a8b30f0d954d08cb6e4435a82091fb865afd20c8497285`,
+dated 5 November. It proposed four additional CA identities while preserving all
+32 base records. Replaying independently downloaded 20 October bytes also retained
+the four exact legacy CA records. The five shipping catalog/prerequisite files
+remain unchanged. Evidence is under `artifacts/catalog-refresh-20261107/`;
+this check did not sign or install the proposed CA records or approve their policy.
+
 ### Admit the exact signed catalog to packaging
 
 The read-only `.github/scripts/verify-release-catalog.mjs` requires both held
