@@ -103,7 +103,7 @@ previously verified `c763b6d` packages.
 
 | Check                        | Latest evidence and scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Cross-platform CI            | [42163894785](https://github.com/Sakeerin/StackCabin/actions/runs/42163894785): all eleven jobs passed on source `c763b6d`: Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. Fourteen workflow contracts, twelve release-catalog cases per target and actionlint 1.7.12 passed.                                                                                                                                                                                                                 |
+| Cross-platform CI            | [42376648599](https://github.com/Sakeerin/StackCabin/actions/runs/42376648599): all eleven jobs passed on source `cf75cc4`: Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. Fourteen workflow contracts, fifteen publisher-refresh cases and twelve release-catalog cases per code target, plus actionlint 1.7.12 passed.                                                                                                                                                                      |
 | Core/frontend                | 50 Windows / 45 Unix core tests; four ignored entries are separately invoked child-process fixtures. Fourteen frontend tests, formatting, Clippy and generated IPC checks passed. Forty-seven packaging helper cases include Ubuntu source/license verification, Windows access diagnostics, release source pins, verbose startup and failure output.                                                                                                                                                              |
 | Desktop                      | Four real IPC/SQLite E2E cases and four lifecycle sessions on each CI target, plus two desktop exit-coordination tests. Actual tray pointer interaction remains a clean-VM check.                                                                                                                                                                                                                                                                                                                                  |
 | Native tools                 | Managed Node 22/24, npm/pnpm/Yarn, Caddy and concurrent HTTP passed on all five targets; Windows also exercises PHP 8.4/8.5. Unreachable machine proxies do not redirect loopback health checks.                                                                                                                                                                                                                                                                                                                   |
@@ -352,7 +352,7 @@ that earlier installer. Its earlier byte-compatibility report applies only to
 the CI-tool-only `cb4bc1d` increment and is retained as
 `release-catalog-20261106/pre-recovery-installer-source-compatibility.json`.
 
-The current `release-catalog-20261106/ACCEPTANCE_SUMMARY.json` binds **18
+The 6 November `release-catalog-20261106/ACCEPTANCE_SUMMARY.json` binds **18
 successful jobs** to application source `c763b6d`: eleven code-CI, four normal
 installer, one Ubuntu 24.04 verification and two Windows offline jobs. The 92
 local release cases and 41 catalog/offline/source cases passed. The actual dated
@@ -366,7 +366,11 @@ explicitly used no production identity or installer certificate. These results
 do not close public hosting, source/license approval or clean-machine gates.
 
 On 7 November, fifteen publisher-refresh regressions and the existing catalog
-and workflow cases passed locally (forty total). Real CLI cases use copied
+and workflow cases passed locally (forty total). All eleven jobs in
+[42376648599](https://github.com/Sakeerin/StackCabin/actions/runs/42376648599)
+passed on source `cf75cc4`, including the fifteen new cases on all five code
+targets. `catalog-refresh-20261107/ACCEPTANCE_SUMMARY.json` retains the exact
+source/builder hashes, run/job identities and shipping hashes. Real CLI cases use copied
 workspaces, mock transports and ephemeral signing keys; no operator key is
 inherited. The read-only real transport check matched current curl bytes to the
 5 November dated archive, proposed four new CA records and preserved all 32 base

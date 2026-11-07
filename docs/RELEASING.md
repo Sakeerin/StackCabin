@@ -333,8 +333,8 @@ The publisher-refresh builder now uses `.github/scripts/catalog-updates.mjs` to
 merge new records. Every field of an existing ID must remain identical, including
 URL, executable paths, extraction policy, source/license, size and future metadata.
 Matching archive bytes alone cannot authorize a metadata replacement. Duplicate
-IDs in either input and malformed ID/hash/HTTPS metadata fail before selecting a
-signing key. Freshly resolved records retain their default-selection priority;
+IDs in either input, invalid IDs/hashes and missing HTTPS URL prefixes fail before
+selecting a signing key. Freshly resolved records retain their default-selection priority;
 older identities remain in the catalog with their original fields.
 
 For CA discovery, `build-catalog.mjs` bypasses the mutable latest-URL cache. It
@@ -355,6 +355,12 @@ isolated workspaces with Thai/space paths, allowlisted environments and ephemera
 keys; rejection cases preserve all four original signed controls and create no
 development key. Together with the existing catalog/workflow cases, all forty
 related local tests and actionlint passed on 7 November 2026.
+All eleven code-CI jobs passed on source `cf75cc4` in
+[42376648599](https://github.com/Sakeerin/StackCabin/actions/runs/42376648599),
+including the fifteen new cases on all five code targets. The current normal
+installer/offline downloads retain their verified `c763b6d` producer. The source
+guard remains unchanged and requires a fresh normal installer before assembling
+a new offline bundle from this later publisher-tool checkout.
 
 A separate read-only check downloaded the real current and dated curl CA bundles:
 200,116 identical bytes, SHA-256
@@ -364,6 +370,7 @@ dated 5 November. It proposed four additional CA identities while preserving all
 the four exact legacy CA records. The five shipping catalog/prerequisite files
 remain unchanged. Evidence is under `artifacts/catalog-refresh-20261107/`;
 this check did not sign or install the proposed CA records or approve their policy.
+This 36-record publisher proposal is separate from the existing native handoff.
 
 ### Admit the exact signed catalog to packaging
 
