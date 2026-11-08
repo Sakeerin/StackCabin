@@ -85,7 +85,8 @@ QA catalog signing requires a passed relocation probe for the exact version and
 the reviewed publisher source bytes. Twelve native-stack regression tests cover
 corrupt/substituted archives, missing provenance and incompatible macOS baselines.
 
-The current normal application and Windows offline bundle use source `300dc74`.
+The current normal application uses source `300dc74`. The 8 November Windows
+offline bundle was assembled from `b3c68af` using that unchanged verified binary.
 They retain exact-byte recovery of the pinned CA archive and the file-backed
 startup probes from `c763b6d`. The earlier release-tool increment added packaging
 admission; the 7 November publisher-refresh and runtime-pack increments hardened
@@ -106,10 +107,12 @@ allowlist. It correctly rejected reuse of the `c763b6d` producer; fresh normal
 installers from `300dc74` were built before the new offline bundle. The guard
 remains unchanged. Current compatibility and all five input hashes are retained
 in `artifacts/offline-pack-20261107/installer-source-compatibility.json`.
+The streaming-only packaging increment is within the unchanged closed allowlist;
+its compatibility check is retained under `artifacts/runtime-streaming-20261108/`.
 
 | Check                        | Latest evidence and scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Cross-platform CI            | [42381344342](https://github.com/Sakeerin/StackCabin/actions/runs/42381344342): all eleven jobs passed on source `300dc74`: Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. Twenty runtime-pack, fifteen publisher-refresh and twelve release-catalog cases per code target, fourteen workflow contracts and actionlint 1.7.12 passed.                                                                                                                                                         |
+| Cross-platform CI            | [42443718418](https://github.com/Sakeerin/StackCabin/actions/runs/42443718418): all eleven jobs passed on source `b3c68af`: Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. Runner logs independently verify thirteen transport and twenty-two pack passes per target with zero failures/skips; fourteen workflow contracts and actionlint 1.7.12 passed. Nonfinal/missing API step records remain preserved in the evidence.                                                                  |
 | Core/frontend                | 50 Windows / 45 Unix core tests; four ignored entries are separately invoked child-process fixtures. Fourteen frontend tests, formatting, Clippy and generated IPC checks passed. Forty-seven packaging helper cases include Ubuntu source/license verification, Windows access diagnostics, release source pins, verbose startup and failure output.                                                                                                                                                              |
 | Desktop                      | Four real IPC/SQLite E2E cases and four lifecycle sessions on each CI target, plus two desktop exit-coordination tests. Actual tray pointer interaction remains a clean-VM check.                                                                                                                                                                                                                                                                                                                                  |
 | Native tools                 | Managed Node 22/24, npm/pnpm/Yarn, Caddy and concurrent HTTP passed on all five targets; Windows also exercises PHP 8.4/8.5. Unreachable machine proxies do not redirect loopback health checks.                                                                                                                                                                                                                                                                                                                   |
@@ -126,7 +129,7 @@ in `artifacts/offline-pack-20261107/installer-source-compatibility.json`.
 | Earlier macOS 14 ARM         | [41270976722](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722): the `2b3836e` ARM DMG passed checksums, mount/copy, dependency/minimum-OS checks and startup on macOS 14.8.9.                                                                                                                                                                                                                                                                                                                      |
 | Earlier macOS 14 x64         | [41270979416](https://github.com/Sakeerin/StackCabin/actions/runs/41270979416): the `2b3836e` Intel DMG passed those checks through Rosetta on the ARM runner. Current installers and native Intel macOS 14 still need maintained-machine acceptance.                                                                                                                                                                                                                                                              |
 | Actual disk exhaustion       | [41209951170](https://github.com/Sakeerin/StackCabin/actions/runs/41209951170), Ubuntu 24.04: bounded 32 MiB tmpfs produced real ENOSPC for settings writes and runtime extraction; old data survived, staging was cleaned, and retries succeeded after freeing owned space.                                                                                                                                                                                                                                       |
-| Windows offline installation | [42382025371](https://github.com/Sakeerin/StackCabin/actions/runs/42382025371): both jobs passed on source `300dc74`: staged pack assembly, real wrapper/NSIS installation, eleven tools, five concurrent HTTP projects, both database dump/restores and existing-data preservation under a restricted standard-user token.                                                                                                                                                                                        |
+| Windows offline installation | [42443747010](https://github.com/Sakeerin/StackCabin/actions/runs/42443747010): both jobs passed with packaging source `b3c68af` and unchanged app binary `300dc74`: streamed archive assembly, real wrapper/NSIS installation, eleven tools, five concurrent HTTP projects, both database dump/restores and existing-data preservation under a restricted standard-user token.                                                                                                                                    |
 
 Six atomic-write regressions exercise released/persistent Windows sharing locks,
 read-only files, failed publication cleanup, Thai/space paths and complete reads
@@ -235,16 +238,17 @@ and verify their `SHA256SUMS.txt`. These four successful producer jobs built fiv
 package files from `300dc74` and verified installed Windows/deb and macOS bundle
 startup. The new installer ZIPs were not downloaded again locally.
 
-The matching 7 November Windows offline ZIP is in
-[42382025371](https://github.com/Sakeerin/StackCabin/actions/runs/42382025371),
-881,231,749 bytes, SHA-256
-`7429b8afb0ab7c0cbfaafa389f0a08838d619865e09a5e814f7e5acb89da06dd`.
+The matching 8 November Windows offline ZIP is in
+[42443747010](https://github.com/Sakeerin/StackCabin/actions/runs/42443747010),
+881,232,726 bytes, SHA-256
+`e9c32f3123d46a5d83b4b08764340020e57ce96f0382f1b60d59ca870829abeb`.
 The small verification ZIP was downloaded and checked against GitHub's digest;
 all five JSON files passed source/preflight/receipt comparison, including eleven
 runtimes and the unchanged five catalog/prerequisite hashes. Its full bundle
 receipt matches GitHub metadata; the large ZIP was not downloaded locally. Both
 the package and actual hosted installation jobs passed. Evidence is retained in
-`artifacts/offline-pack-20261107/` with seven-day Actions retention.
+`artifacts/runtime-streaming-20261108/` with seven-day Actions retention. Its
+application producer remains `300dc74`; the packaging source is `b3c68af`.
 
 The earlier 4 November files from
 [41765896134](https://github.com/Sakeerin/StackCabin/actions/runs/41765896134)
@@ -406,8 +410,18 @@ writes. Thirteen transport and two builder integration cases cover backpressure,
 unknown/declared sizes, encoding, safe redirects, pinned PHP recovery, cancellation
 and deadlines. A 384-MiB synthetic stream stays within the regression's 96-MiB RSS
 growth allowance in an isolated process with a 32-MiB JS heap. All ninety related
-local cases and actionlint passed. Hosted results for this increment are pending;
-the verified installer sources and existing download links above remain valid.
+local cases and actionlint passed. All eleven code-CI jobs passed on `b3c68af` in
+[42443718418](https://github.com/Sakeerin/StackCabin/actions/runs/42443718418),
+and both streamed offline assembly/installation jobs passed in
+[42443747010](https://github.com/Sakeerin/StackCabin/actions/runs/42443747010).
+These are thirteen new successful jobs, reusing the verified `300dc74` normal
+installer under the unchanged source guard. No app/runtime catalog bytes changed.
+The real CA and Composer archives passed local streamed hash checks. Full runner
+logs independently verify 13 transport and 22 pack passes with zero failures/skips
+on every code target and in offline assembly, resolving nonfinal/missing API step
+records without modifying that raw metadata. Evidence and log hashes are retained
+in `artifacts/runtime-streaming-20261108/ACCEPTANCE_SUMMARY.json` and
+`RUNNER_LOG_VERIFICATION.json`.
 
 Earlier framework, HMR, full Unix PHP/database, QA-desktop and upgrade results are
 retained in the

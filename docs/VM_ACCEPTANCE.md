@@ -24,6 +24,12 @@ on the listed OS/architecture combinations.
 
 ## Windows runtime test kit
 
+The current complete offline bundle was assembled from `b3c68af` in
+[42443747010](https://github.com/Sakeerin/StackCabin/actions/runs/42443747010),
+using the unchanged `300dc74` normal installer above. Both assembly and actual
+installation jobs passed. The closed source guard permits only the reviewed
+packaging/docs differences and verifies all five catalog/prerequisite hashes.
+
 The **Build and verify the Windows offline bundle** workflow now has a separate
 hosted installation job. It downloads the produced artifact and invokes its
 actual wrapper with `-Silent -InstallDirectory`, checks the installed version and

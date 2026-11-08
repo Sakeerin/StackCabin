@@ -20,15 +20,15 @@ DMGs. Download the matching `development-installers-*` artifact and verify its
 and exact-byte recovery of the pinned CA archive;
 signing and clean-machine certification remain release gates.
 
-The complete Windows offline development bundle built on 7 November is available
-in [this verified installation run](https://github.com/Sakeerin/StackCabin/actions/runs/42382025371).
+The complete Windows offline development bundle built on 8 November is available
+in [this verified installation run](https://github.com/Sakeerin/StackCabin/actions/runs/42443747010).
 Download `development-offline-windows-x64` and extract it; use its
 `offline-windows-x64/` folder. The separate `windows-offline-verification`
 artifact contains the source/preflight reports and ZIP checksum. Retention is
 seven days. `windows-offline-installation-evidence` records real installation,
 all managed tools, database backup/restore and preserved app data on a hosted
-Windows runner. This package uses the verified `300dc74` application binary and
-the staged runtime pack assembler with a scoped completion receipt.
+Windows runner. This package uses the verified `300dc74` application binary,
+assembled by `b3c68af` with streamed downloads and a scoped completion receipt.
 
 Internal [Unix QA desktop packs](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691)
 include matching offline PHP 8.4/8.5, Node 22/24 and database runtimes for Linux,

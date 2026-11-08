@@ -504,8 +504,26 @@ Thirteen transport regressions and two default-transport pack cases were added.
 They include a 384-MiB synthetic stream in a child limited to a 32-MiB JS heap,
 with measured RSS growth below a 96-MiB allowance, and an assertion that the first
 chunk is on disk before the next read. On 8 November all ninety related local
-tests and actionlint passed. CI and real offline bundle verification for this
-increment are pending; installer source compatibility is still enforced.
+tests and actionlint passed. Source `b3c68af` passed all eleven code-CI jobs in
+[42443718418](https://github.com/Sakeerin/StackCabin/actions/runs/42443718418),
+and both offline assembly/installation jobs passed in
+[42443747010](https://github.com/Sakeerin/StackCabin/actions/runs/42443747010).
+The unchanged `300dc74` installer from run `42381361969` was reused only after
+the closed source guard admitted the packaging/docs differences and verified all
+five catalog/prerequisite hashes. No new normal app installer was required.
+
+Complete runner logs independently show 13 transport and 22 pack cases passing
+with zero failures/skips on all five code targets and in offline assembly. Some
+GitHub step records remained pending/missing despite completed successful jobs;
+raw metadata is retained alongside hashed logs and exact runner summaries in
+`artifacts/runtime-streaming-20261108/RUNNER_LOG_VERIFICATION.json`. This does
+not relabel the inconsistent API steps. The actual install log confirms all
+eleven tools, five concurrent HTTP projects, both database dump/restores and
+preserved data under a standard-user token. The small verification ZIP passed
+independent digest/source/receipt checks, without downloading the large bundle.
+The real pinned CA and Composer archives also passed local streamed SHA-256
+checks without storing archives or changing shipping controls. The thirteen new
+successful jobs are bound in the same folder's `ACCEPTANCE_SUMMARY.json`.
 
 `RUNTIME_PACK_RECEIPT.json` covers exactly the four catalog controls and runtime
 archives. README is excluded because the complete Windows wrapper replaces it.
