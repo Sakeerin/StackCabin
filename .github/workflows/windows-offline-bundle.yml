@@ -27,6 +27,8 @@ jobs:
         run: node --test scripts/test-offline-installer-source.mjs scripts/test-windows-offline-bundle.mjs
       - name: Verify staged runtime pack assembly
         run: node --test .github/tests/offline-runtime-pack.test.mjs
+      - name: Verify bounded runtime archive streaming
+        run: node --test .github/tests/runtime-archive-download.test.mjs
       - name: Verify installer source and catalog compatibility
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

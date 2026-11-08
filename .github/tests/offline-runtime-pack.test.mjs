@@ -497,6 +497,99 @@ test("cancellation during a chunked transfer cleans owned partials and never wri
   await f.clean();
 });
 
+test("the default HTTPS downloader writes and hashes each chunk before requesting the next", async (t) => {
+  const f = await fixture(t),
+    bytes = f.data.get(f.artifacts[0].url);
+  let reads = 0,
+    calls = 0;
+  t.mock.method(globalThis, "fetch", async (url) => {
+    calls++;
+    assert.equal(url, f.artifacts[0].url);
+    return new Response(
+      new ReadableStream(
+        {
+          async pull(control) {
+            if (reads === 1) {
+              const stage = (await readdir(f.root)).find((name) =>
+                name.startsWith(".stackcabin-offline-"),
+              );
+              assert.deepEqual(
+                await readFile(path.join(f.root, stage, f.artifacts[0].sha256)),
+                bytes.subarray(0, 3),
+              );
+            }
+            if (reads === 0) control.enqueue(bytes.subarray(0, 3));
+            else if (reads === 1) control.enqueue(bytes.subarray(3));
+            else control.close();
+            reads++;
+          },
+        },
+        { highWaterMark: 0 },
+      ),
+      { headers: { "Content-Length": String(bytes.length) } },
+    );
+  });
+  const { receipt } = await buildOfflinePack({
+    ...f.options,
+    download: undefined,
+  });
+  assert.equal(calls, 1);
+  assert.equal(reads, 3);
+  assert.equal(receipt.archiveCount, 1);
+  assert.deepEqual(
+    await readFile(path.join(f.options.output, f.artifacts[0].sha256)),
+    bytes,
+  );
+  assert.equal(
+    (await verifyRuntimePack(f.options.output, f.catalogDirectory))
+      .runtimeCount,
+    2,
+  );
+  await f.clean();
+});
+
+test("the default streamed transport leaves no pack or partials after checksum, truncation or cancellation failure", async (t) => {
+  let current;
+  t.mock.method(globalThis, "fetch", async () => current());
+  for (const mode of ["checksum", "truncated", "cancelled"]) {
+    const f = await fixture(t),
+      bytes = f.data.get(f.artifacts[0].url),
+      stopped = new AbortController();
+    let reads = 0;
+    current = () =>
+      new Response(
+        new ReadableStream(
+          {
+            pull(control) {
+              if (mode === "cancelled") {
+                if (reads++)
+                  stopped.abort(new Error("fixture network cancelled"));
+                else control.enqueue(bytes.subarray(0, 3));
+              } else if (reads++) control.close();
+              else
+                control.enqueue(
+                  mode === "checksum"
+                    ? Buffer.alloc(bytes.length)
+                    : bytes.subarray(1),
+                );
+            },
+          },
+          { highWaterMark: 0 },
+        ),
+      );
+    await assert.rejects(
+      buildOfflinePack({
+        ...f.options,
+        signal: stopped.signal,
+        download: undefined,
+      }),
+      /checksum mismatch|size mismatch|fixture network cancelled/,
+    );
+    await missing(f.options.output);
+    await f.clean();
+  }
+});
+
 test("cached large inputs are copied and hashed across multiple chunks", async (t) => {
   const f = await fixture(t),
     bytes = Buffer.alloc(512 * 1024 + 11, 3);
@@ -582,6 +675,7 @@ async function cliFixture(t) {
     "scripts/offline-pack.mjs",
     "scripts/catalog-lib.mjs",
     ".github/scripts/offline-runtime-pack.mjs",
+    ".github/scripts/runtime-archive-download.mjs",
   ]) {
     const file = path.join(f.root, name);
     await mkdir(path.dirname(file), { recursive: true });

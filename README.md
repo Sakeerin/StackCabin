@@ -149,6 +149,11 @@ files; unexpected or replaced files are preserved. `--offline` fails on missing
 or damaged cache entries without fetching replacements. Cache entries may be
 named by archive SHA-256 or the publisher cache's URL SHA-256.
 
+Online pack assembly streams archive chunks to the staging file and hashes them
+without buffering the complete download. It validates declared/actual lengths,
+uses bounded HTTPS redirects and cancels stalled transfers. The same mandatory
+catalog checksum still decides whether an archive can enter the completed pack.
+
 The pack contains runtime archives, not arbitrary npm/Composer dependencies.
 Running an existing project offline requires its dependencies to already be
 installed for the target OS. See [release preparation](docs/RELEASING.md) for

@@ -135,10 +135,11 @@ test("catalog handoffs pin the existing trust root and keep review and public ve
 
 test("signing regressions run on code CI without supplying a catalog private key", () => {
   for (const name of ["ci", "windows-offline-bundle"])
-    assert.match(
-      workflow(name),
-      /node --test \.github\/tests\/offline-runtime-pack\.test\.mjs/,
-    );
+    for (const suite of ["offline-runtime-pack", "runtime-archive-download"])
+      assert.match(
+        workflow(name),
+        new RegExp(`node --test \\.github/tests/${suite}\\.test\\.mjs`),
+      );
   assert.match(
     workflow("ci"),
     /node --test \.github\/tests\/catalog-updates\.test\.mjs/,

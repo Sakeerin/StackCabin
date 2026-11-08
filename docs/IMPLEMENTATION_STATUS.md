@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **7 November 2026**.
+Development version: **0.1.0**, checked on **8 November 2026**.
 This is a working development preview. The simultaneous Windows/macOS/Ubuntu
 production acceptance gate remains open.
 
@@ -59,6 +59,10 @@ production acceptance gate remains open.
   priority. CA discovery bypasses the mutable URL cache and requires exact bytes
   from a dated official archive before proposing new records. Legacy signed URLs
   remain unchanged when the same CA bytes are resolved again.
+- Offline pack network assembly streams archives to staging while hashing, checks
+  advertised and actual lengths and bounds redirects to HTTPS. Cancellation covers
+  stalled headers/bodies; transport or disk failure cannot complete a pack. The
+  shared metadata helper and native app runtime downloader remain separate.
 - Separate internal Unix QA app/catalog/credential identities and matching offline
   runtime packs; distributed QA apps exclude E2E plugins. See [QA usage](QA_DESKTOP.md).
 
@@ -396,6 +400,14 @@ Windows offline assembly/installation jobs. The small five-file evidence ZIP
 passed independent digest, source and full-bundle receipt checks. The generated
 local test pack was then removed: seventeen files, 621,326,424 bytes. Its receipt
 and audit inventory were retained; all 28 original inputs were rechecked unchanged.
+
+On 8 November the network path of offline pack assembly was converted to streamed
+writes. Thirteen transport and two builder integration cases cover backpressure,
+unknown/declared sizes, encoding, safe redirects, pinned PHP recovery, cancellation
+and deadlines. A 384-MiB synthetic stream stays within the regression's 96-MiB RSS
+growth allowance in an isolated process with a 32-MiB JS heap. All ninety related
+local cases and actionlint passed. Hosted results for this increment are pending;
+the verified installer sources and existing download links above remain valid.
 
 Earlier framework, HMR, full Unix PHP/database, QA-desktop and upgrade results are
 retained in the

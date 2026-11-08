@@ -483,9 +483,29 @@ built. The whole operation has a 30-minute cancellation deadline.
 `--offline --cache=<folder>` disables downloads and accepts archive-SHA filenames
 or the publisher cache's URL-SHA filenames. Missing/damaged entries fail without
 replacement; source cache files are read-only. Cached copies are streamed, with
-an 8-GiB per-archive bound and signed size checks when known. Network downloads
-still use the shared buffered download helper, with cancellation propagated to
-fetch; this is not a streaming-network-memory guarantee.
+an 8-GiB per-archive bound and signed size checks when known. Since 8 November,
+network archives use `.github/scripts/runtime-archive-download.mjs`: the builder
+writes and hashes each chunk before requesting the next. It does not use
+`arrayBuffer()` or assemble a complete archive buffer. Metadata downloads retain
+their separate existing helper. See the [Node Web Streams API](https://nodejs.org/docs/latest-v22.x/api/webstreams.html)
+for the reader/cancellation interface.
+
+The streaming path checks Content-Length before consuming the body, rejects
+unexpected content encoding, and enforces actual byte counts even without a
+length header. Each request and redirect requires HTTPS without URL credentials
+or fragments; at most five redirects are followed. Credential forwarding is
+disabled. Legacy PHP 404/410 recovery selects the same exact-version archive
+once; the existing signed CA URL/hash mapping is unchanged. Cancellation and the
+30-minute deadline cover headers and body reads. A failed disk write or an early
+consumer return also closes the response. Corruption/truncation never produces a
+completion receipt. This change does not add automatic transfer retries/resume.
+
+Thirteen transport regressions and two default-transport pack cases were added.
+They include a 384-MiB synthetic stream in a child limited to a 32-MiB JS heap,
+with measured RSS growth below a 96-MiB allowance, and an assertion that the first
+chunk is on disk before the next read. On 8 November all ninety related local
+tests and actionlint passed. CI and real offline bundle verification for this
+increment are pending; installer source compatibility is still enforced.
 
 `RUNTIME_PACK_RECEIPT.json` covers exactly the four catalog controls and runtime
 archives. README is excluded because the complete Windows wrapper replaces it.

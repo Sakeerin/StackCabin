@@ -11,11 +11,14 @@ import {
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import {
-  get,
   sha256,
   runtimeDownloadUrl,
   verifyCatalog,
 } from "../../scripts/catalog-lib.mjs";
+import {
+  downloadRuntimeArchive,
+  runtimeArchiveLimit,
+} from "./runtime-archive-download.mjs";
 
 export const catalogFiles = [
   "catalog.json",
@@ -24,7 +27,6 @@ export const catalogFiles = [
   "provenance.json",
 ];
 export const runtimeReceiptFile = "RUNTIME_PACK_RECEIPT.json";
-const archiveLimit = 8 * 1024 * 1024 * 1024;
 const inside = (directory, file) => {
   const relative = path.relative(directory, file);
   return (
@@ -129,7 +131,7 @@ async function writeOwned(owner, name, source, expected, signal) {
     for await (const chunk of source) {
       signal?.throwIfAborted();
       bytes += chunk.length;
-      if (bytes > (expected?.bytes || archiveLimit))
+      if (bytes > (expected?.bytes || runtimeArchiveLimit))
         throw new Error(`Pack file exceeds expected size: ${name}`);
       hash.update(chunk);
       await handle.writeFile(chunk);
@@ -198,7 +200,7 @@ export async function buildOfflinePack({
   offline = false,
   signal,
   onProgress = () => {},
-  download = (url, options) => get(url, true, options),
+  download = downloadRuntimeArchive,
 }) {
   if (
     !["windows/x64", "linux/x64", "macos/x64", "macos/arm64"].includes(
@@ -259,7 +261,7 @@ export async function buildOfflinePack({
       if (
         !Number.isSafeInteger(item.size) ||
         item.size < 0 ||
-        item.size > archiveLimit
+        item.size > runtimeArchiveLimit
       )
         throw new Error("Invalid runtime archive size");
       const previous = archives.get(item.sha256);
@@ -289,6 +291,7 @@ export async function buildOfflinePack({
           throw new Error(`Offline cache is missing runtime: ${item.id}`);
         const bytes = await download(runtimeDownloadUrl(item), {
           signal: operation,
+          expectedBytes: item.size,
         });
         prepared.push(
           await writeOwned(
