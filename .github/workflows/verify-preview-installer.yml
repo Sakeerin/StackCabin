@@ -24,6 +24,16 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify selected installer artifact availability
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_RUN: ${{ inputs.source_run }}
+          PREVIEW_TARGET: ${{ startsWith(inputs.runner, 'windows') && 'windows-x64' || startsWith(inputs.runner, 'ubuntu') && 'linux-x64' || (inputs.runner == 'macos-15-intel' || inputs.arch == 'x64') && 'macos-x64' || 'macos-arm64' }}
+        shell: bash
+        run: node .github/scripts/preview-installers.mjs --repository="$GITHUB_REPOSITORY" --target="$PREVIEW_TARGET" --run-id="$SOURCE_RUN"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -36,10 +46,6 @@ jobs:
       - name: Verify downloaded installer checksums
         shell: bash
         run: python scripts/verify-installer-checksums.py artifacts/installers --platform "$RUNNER_OS"
-      - uses: actions/setup-node@v4
-        if: runner.os == 'Windows'
-        with:
-          node-version: "24"
       - name: Install and verify the Windows prerequisite and application
         if: runner.os == 'Windows'
         shell: pwsh

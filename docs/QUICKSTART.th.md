@@ -5,8 +5,9 @@
 
 ## ติดตั้งบน Windows
 
-ดาวน์โหลดแพ็กเกจวันที่ 7 พฤศจิกายน 2026 จาก
-[GitHub Actions run นี้](https://github.com/Sakeerin/StackCabin/actions/runs/42381361969)
+เลือก run ล่าสุดที่สำเร็จและยังมีไฟล์ให้ดาวน์โหลดจาก
+[Build and verify development installers](https://github.com/Sakeerin/StackCabin/actions/workflows/preview-installers.yml)
+หรือดู [วิธีค้นหาชุดที่ยังไม่หมดอายุ](PREVIEW_INSTALLERS.md)
 เลือก Artifact `development-installers-windows-latest` แล้วแตก ZIP และตรวจไฟล์
 ตาม `SHA256SUMS.txt` ไฟล์ติดตั้งอยู่ในโฟลเดอร์ `nsis/` ส่วนแพ็กเกจจากการ build เอง
 อยู่ใน `target/release/bundle/nsis/` Artifact เก็บไว้ 7 วัน
@@ -44,10 +45,10 @@ Windows อาจขอสิทธิ์ผู้ดูแลระบบสำ
 เป็นไฟล์สุดท้ายเมื่อสำเร็จเท่านั้น บันทึกความครบถ้วนนี้ครอบคลุม catalog และ runtime
 ส่วนการตรวจตัวติดตั้ง Windows กับ prerequisites ใช้ manifest ของชุดเต็มอีกชั้นหนึ่ง
 
-ชุดออฟไลน์วันที่ 8 พฤศจิกายน ดาวน์โหลดได้จาก
+ชุดออฟไลน์วันที่ 8 พฤศจิกายนเคยผ่านการตรวจใน
 [run 42443747010](https://github.com/Sakeerin/StackCabin/actions/runs/42443747010)
-เลือก `development-offline-windows-x64` แล้วใช้โฟลเดอร์ `offline-windows-x64/`
-หลังแตก ZIP ชุดนี้ใช้ตัวแอป source `300dc74` พร้อมการดาวน์โหลด CA bundle เดิมจากไฟล์ย้อนหลังทางการ
+ไฟล์ใน run นี้หมดอายุแล้ว ณ วันที่ 15 พฤศจิกายน โดยเก็บผลตรวจไว้ใน workspace
+ชุดนี้ใช้ตัวแอป source `300dc74` พร้อมการดาวน์โหลด CA bundle เดิมจากไฟล์ย้อนหลังทางการ
 และผ่านการติดตั้งจริงพร้อมเปิดข้อมูลเดิมบน GitHub runner แล้ว ผลทดสอบอยู่ใน
 `windows-offline-installation-evidence` โดยยังไม่ถือเป็นการรับรองเครื่องสะอาด
 

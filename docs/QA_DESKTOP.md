@@ -6,7 +6,7 @@ application identity `dev.stackcabin.qa`, its own default metadata directory and
 its own OS credential namespace. The normal StackCabin application keeps its
 existing identity and catalog. The QA interface displays an English/Thai banner.
 
-Current packs built on 2 November 2026:
+Historical packs built on 2 November 2026 (seven-day downloads have expired):
 
 | Target | Build | Artifact |
 | --- | --- | --- |

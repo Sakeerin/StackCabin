@@ -5,6 +5,28 @@ import { existsSync, readFileSync } from "node:fs";
 const workflow = (name) =>
   readFileSync(new URL(`../workflows/${name}.yml`, import.meta.url), "utf8");
 
+test("normal installer consumers check availability before downloading an explicit producer", () => {
+  for (const name of ["windows-offline-bundle", "verify-preview-installer"]) {
+    const content = workflow(name);
+    assert.ok(
+      content.indexOf(".github/scripts/preview-installers.mjs") <
+        content.indexOf("uses: actions/download-artifact@v4"),
+    );
+    assert.match(content, /preview-installers\.mjs .*--run-id=/);
+    assert.match(content, /GH_TOKEN: \$\{\{ secrets.GITHUB_TOKEN \}\}/);
+  }
+  assert.match(workflow("windows-offline-bundle"), /--target=windows-x64/);
+  assert.match(
+    workflow("windows-offline-bundle"),
+    /offline-evidence\/availability\.json/,
+  );
+  assert.match(
+    workflow("ci"),
+    /node --test \.github\/tests\/preview-installers\.test\.mjs/,
+  );
+  assert.match(workflow("preview-installers"), /if-no-files-found: error/);
+});
+
 test("native Linux builds collect exact authenticated sources before accepting archives", () => {
   const native = workflow("native-runtime");
   assert.match(

@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **8 November 2026**.
+Development version: **0.1.0**, checked on **15 November 2026**.
 This is a working development preview. The simultaneous Windows/macOS/Ubuntu
 production acceptance gate remains open.
 
@@ -63,10 +63,23 @@ production acceptance gate remains open.
   advertised and actual lengths and bounds redirects to HTTPS. Cancellation covers
   stalled headers/bodies; transport or disk failure cannot complete a pack. The
   shared metadata helper and native app runtime downloader remain separate.
+- Read-only preview discovery checks successful main-branch producer identity,
+  per-platform artifacts, exact source provenance, ZIP digests and expiration.
+  Explicit producer choices never fall back. Normal-installer consumers reject
+  missing/expired downloads before assembly; source/catalog compatibility remains
+  independently required. See [preview downloads](PREVIEW_INSTALLERS.md).
 - Separate internal Unix QA app/catalog/credential identities and matching offline
   runtime packs; distributed QA apps exclude E2E plugins. See [QA usage](QA_DESKTOP.md).
 
 ## Current verification
+
+On 15 November the GitHub API returned zero retained artifacts for both normal
+installer run `42381361969` and offline run `42443747010`. Those successful runs
+remain historical evidence, not current downloads. Fourteen discovery regressions
+and fifteen workflow contracts passed locally; the full related Windows check
+passed all 59 cases, with actionlint passing. Fresh hosted builds are being
+verified for this increment; the previous accepted run details below retain
+their original source and scope.
 
 Hosted verification now uses macOS 15 ARM/Intel after the macOS 14 image's
 retirement. Rosetta remains an explicit x64 compatibility check on ARM hosts;

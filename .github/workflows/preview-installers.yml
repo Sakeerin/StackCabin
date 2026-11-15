@@ -85,6 +85,7 @@ jobs:
         with:
           name: development-installers-${{ matrix.os }}
           retention-days: 7
+          if-no-files-found: error
           path: |
             target/release/bundle/nsis/*.exe
             target/release/bundle/dmg/*.dmg

@@ -11,29 +11,31 @@ for the tested behavior and the remaining three-platform release gates.
 
 [คู่มือเริ่มใช้งานภาษาไทย](docs/QUICKSTART.th.md)
 
-Development installers built on 7 November 2026 are available in
+Actions downloads expire. See [finding a usable preview installer](docs/PREVIEW_INSTALLERS.md)
+for current-artifact discovery and checksum verification. Contributors can run
+`node .github/scripts/preview-installers.mjs` to locate the latest successful
+main-branch build with all four platform artifacts still available.
+
+Historical development installers built on 7 November 2026 were verified in
 [this verified Actions run](https://github.com/Sakeerin/StackCabin/actions/runs/42381361969):
 Windows x64 NSIS, Ubuntu x64 deb/AppImage, and separate macOS Intel/Apple Silicon
-DMGs. Download the matching `development-installers-*` artifact and verify its
-`SHA256SUMS.txt`. These artifacts expire after seven days. Their source is
+DMGs. Those seven-day artifacts have expired. Their source is
 `300dc74`, including atomic settings recovery, detailed metadata startup errors
 and exact-byte recovery of the pinned CA archive;
 signing and clean-machine certification remain release gates.
 
-The complete Windows offline development bundle built on 8 November is available
-in [this verified installation run](https://github.com/Sakeerin/StackCabin/actions/runs/42443747010).
-Download `development-offline-windows-x64` and extract it; use its
-`offline-windows-x64/` folder. The separate `windows-offline-verification`
-artifact contains the source/preflight reports and ZIP checksum. Retention is
-seven days. `windows-offline-installation-evidence` records real installation,
+The complete Windows offline development bundle built on 8 November was verified
+in [this installation run](https://github.com/Sakeerin/StackCabin/actions/runs/42443747010).
+Its seven-day artifacts have also expired. Retained local evidence records real installation,
 all managed tools, database backup/restore and preserved app data on a hosted
 Windows runner. This package uses the verified `300dc74` application binary,
 assembled by `b3c68af` with streamed downloads and a scoped completion receipt.
 
-Internal [Unix QA desktop packs](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691)
-include matching offline PHP 8.4/8.5, Node 22/24 and database runtimes for Linux,
+Historical internal [Unix QA desktop packs](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691)
+included matching offline PHP 8.4/8.5, Node 22/24 and database runtimes for Linux,
 macOS ARM and Intel. Follow the [QA guide](docs/QA_DESKTOP.md); these use a separate
 application/data identity while stable public Unix runtime hosting is prepared.
+Their seven-day downloads have expired; the guide describes rebuilding them.
 
 ## Run the application
 

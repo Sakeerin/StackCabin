@@ -29,6 +29,8 @@ jobs:
         run: node --test .github/tests/offline-runtime-pack.test.mjs
       - name: Verify bounded runtime archive streaming
         run: node --test .github/tests/runtime-archive-download.test.mjs
+      - name: Verify preview artifact discovery
+        run: node --test .github/tests/preview-installers.test.mjs
       - name: Verify installer source and catalog compatibility
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -39,6 +41,8 @@ jobs:
           New-Item -ItemType Directory -Force -Path artifacts/offline-evidence | Out-Null
           gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:INSTALLER_RUN" > artifacts/offline-evidence/run.json
           if ($LASTEXITCODE -ne 0) { throw 'Cannot read installer build metadata' }
+          node .github/scripts/preview-installers.mjs "--repository=$env:GITHUB_REPOSITORY" --target=windows-x64 "--run-id=$env:INSTALLER_RUN" > artifacts/offline-evidence/availability.json
+          if ($LASTEXITCODE -ne 0) { throw 'Installer artifact is unavailable; build a new normal installer first' }
           node scripts/verify-offline-installer-source.mjs artifacts/offline-evidence/run.json $env:GITHUB_REPOSITORY $env:INSTALLER_RUN > artifacts/offline-evidence/source.json
           if ($LASTEXITCODE -ne 0) { throw 'Installer is incompatible; build a new normal installer first' }
       - uses: actions/download-artifact@v4
