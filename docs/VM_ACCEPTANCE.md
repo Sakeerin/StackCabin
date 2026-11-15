@@ -8,13 +8,13 @@ Required machines are Windows 10 22H2 x64, Windows 11 x64, macOS 14 Intel and
 Apple Silicon, and Ubuntu Desktop 22.04/24.04 x64. Rosetta checks supplement a
 native Intel VM; they do not replace it.
 
-Current normal preview installers from source `bec77ce` were verified in
-[run 43690043993](https://github.com/Sakeerin/StackCabin/actions/runs/43690043993)
+Current normal preview installers from source `82475a9` were verified in
+[run 43700770858](https://github.com/Sakeerin/StackCabin/actions/runs/43700770858)
 on 15 November for Windows x64, Ubuntu x64 and macOS ARM/Intel. Downloads expire
 on 22 November. Use [current preview discovery](PREVIEW_INSTALLERS.md), download
 the matching `development-installers-*` artifact and verify `SHA256SUMS.txt`.
 The same Ubuntu 22.04 deb and AppImage also passed
-[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/43691597006).
+[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/43702041872).
 These are normal builds without E2E instrumentation and retain the signed
 development catalog. Earlier `2b3836e` installers passed startup on
 [macOS 14 ARM](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722) and
@@ -25,9 +25,9 @@ on the listed OS/architecture combinations.
 
 ## Windows runtime test kit
 
-The complete offline bundle uses the same `bec77ce` source as the normal
+The complete offline bundle uses the same `82475a9` source as the normal
 installer above and passed both assembly and actual installation in
-[43691599676](https://github.com/Sakeerin/StackCabin/actions/runs/43691599676).
+[43702046121](https://github.com/Sakeerin/StackCabin/actions/runs/43702046121).
 Its seven-day artifacts expire on 22 November. Availability was checked before
 download; the unchanged closed source guard independently verified the exact
 app inputs and all five catalog/prerequisite hashes. The small verification ZIP

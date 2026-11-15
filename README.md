@@ -17,16 +17,16 @@ for current-artifact discovery and checksum verification. Contributors can run
 main-branch build with all four platform artifacts still available.
 
 Development installers built on 15 November 2026 are available in
-[this verified Actions run](https://github.com/Sakeerin/StackCabin/actions/runs/43690043993):
+[this verified Actions run](https://github.com/Sakeerin/StackCabin/actions/runs/43700770858):
 Windows x64 NSIS, Ubuntu x64 deb/AppImage, and separate macOS Intel/Apple Silicon
 DMGs. Choose the matching `development-installers-*` artifact and verify its
 `SHA256SUMS.txt`. These seven-day downloads expire on 22 November. Source is
-`bec77ce`; all four packaging/startup jobs and all eleven code-CI jobs passed.
+`82475a9`; all four packaging/startup jobs and all eleven code-CI jobs passed.
 Signing and clean-machine certification remain release gates.
 
-The complete Windows offline development bundle from the same `bec77ce` source
+The complete Windows offline development bundle from the same `82475a9` source
 passed assembly and real installation in
-[this run](https://github.com/Sakeerin/StackCabin/actions/runs/43691599676).
+[this run](https://github.com/Sakeerin/StackCabin/actions/runs/43702046121).
 Download `development-offline-windows-x64` and use its `offline-windows-x64/`
 folder after extraction. `windows-offline-verification` contains the ZIP checksum,
 source, availability and preflight reports; `windows-offline-installation-evidence`
