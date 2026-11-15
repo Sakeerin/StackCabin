@@ -16,6 +16,8 @@ use std::{
 use tokio_util::sync::CancellationToken;
 
 pub type EventSink = Arc<dyn Fn(AppEvent) + Send + Sync>;
+pub(crate) const MAX_ARCHIVE_BYTES: u64 = 12 * 1024 * 1024 * 1024;
+pub(crate) const MAX_ARCHIVE_ENTRIES: usize = 199_999;
 pub const PLATFORM: &str = if cfg!(windows) {
     "windows"
 } else if cfg!(target_os = "macos") {
@@ -655,12 +657,11 @@ fn output_path(root: &Path, raw: &Path, strip: usize) -> Result<Option<PathBuf>>
 }
 
 pub fn extract_archive(archive: &Path, root: &Path, format: &str, strip: usize) -> Result<()> {
-    const LIMIT: u64 = 12 * 1024 * 1024 * 1024;
     let mut expanded = 0u64;
     match format {
         "zip" => {
             let mut zip = zip::ZipArchive::new(std::fs::File::open(archive)?)?;
-            anyhow::ensure!(zip.len() < 200_000, "Too many archive entries");
+            anyhow::ensure!(zip.len() <= MAX_ARCHIVE_ENTRIES, "Too many archive entries");
             for i in 0..zip.len() {
                 let mut file = zip.by_index(i)?;
                 anyhow::ensure!(
@@ -677,7 +678,7 @@ pub fn extract_archive(archive: &Path, root: &Path, format: &str, strip: usize) 
                 expanded = expanded
                     .checked_add(file.size())
                     .context("Archive size overflow")?;
-                anyhow::ensure!(expanded <= LIMIT, "Archive too large");
+                anyhow::ensure!(expanded <= MAX_ARCHIVE_BYTES, "Archive too large");
                 std::fs::create_dir_all(path.parent().unwrap())?;
                 let mut output = std::fs::OpenOptions::new()
                     .write(true)
@@ -699,7 +700,7 @@ pub fn extract_archive(archive: &Path, root: &Path, format: &str, strip: usize) 
             let mut count = 0;
             for entry in tar.entries()? {
                 count += 1;
-                anyhow::ensure!(count < 200_000, "Too many archive entries");
+                anyhow::ensure!(count <= MAX_ARCHIVE_ENTRIES, "Too many archive entries");
                 let mut entry = entry?;
                 let kind = entry.header().entry_type();
                 // Node's npm/npx symlinks are unnecessary: launch npm-cli.js using the selected Node executable.
@@ -720,7 +721,7 @@ pub fn extract_archive(archive: &Path, root: &Path, format: &str, strip: usize) 
                 expanded = expanded
                     .checked_add(entry.size())
                     .context("Archive size overflow")?;
-                anyhow::ensure!(expanded <= LIMIT, "Archive too large");
+                anyhow::ensure!(expanded <= MAX_ARCHIVE_BYTES, "Archive too large");
                 std::fs::create_dir_all(path.parent().unwrap())?;
                 let mut output = std::fs::OpenOptions::new()
                     .write(true)

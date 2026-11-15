@@ -32,6 +32,10 @@ production acceptance gate remains open.
   forgetting a project. Secrets, dependencies and runtime folders are excluded
   by default. Staging cleanup preserves unrelated files; archive export never
   replaces an existing destination, including one created during the copy.
+- Backup publication counts actual expanded bytes across project files, rewritten
+  settings, database snapshots and its manifest. Creation shares extraction's
+  12-GiB/199,999-entry ceilings and enforces the reader's manifest-size ceiling.
+  A root directory makes backups with no included project files restorable.
 - Atomic configuration publication syncs a complete staged file on the destination
   filesystem, cleans failed staging and retries Windows access/sharing locks for
   up to one second while preserving the last good document.
@@ -72,6 +76,16 @@ production acceptance gate remains open.
   runtime packs; distributed QA apps exclude E2E plugins. See [QA usage](QA_DESKTOP.md).
 
 ## Current verification
+
+The next 15 November application increment adds six backup regressions: streaming
+growth/exact byte boundaries, control-record entry counts, rewritten settings,
+manifest/total limits, real SQLite WAL snapshots and empty/excluded-only projects.
+All 56 Windows core tests passed locally, including failed-backup cleanup and
+retry/restore without losing original data. Small injected test budgets exercise
+the production writer; no multi-gigabyte fixtures are required. The initial SQLite
+fixture assertion incorrectly used main-file length while committed data remained
+in WAL; it now measures SQLite's committed page count/size. Fresh cross-platform
+CI and installers are required for this application-code change.
 
 On 15 November the GitHub API returned zero retained artifacts for both normal
 installer run `42381361969` and offline run `42443747010`. Those successful runs

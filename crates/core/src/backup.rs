@@ -1,7 +1,7 @@
 use crate::{
     database::DatabaseManager,
     models::*,
-    runtime::{directory_size, extract_archive, EventSink},
+    runtime::{directory_size, extract_archive, EventSink, MAX_ARCHIVE_BYTES, MAX_ARCHIVE_ENTRIES},
     store::{atomic_write, safe_relative},
 };
 use anyhow::{Context, Result};
@@ -24,6 +24,67 @@ struct BackupManifest {
     files: BTreeMap<String, String>,
     has_database: bool,
 }
+const MAX_MANIFEST_BYTES: u64 = 16 * 1024 * 1024 - 1;
+
+#[derive(Clone, Copy)]
+struct BackupLimits {
+    bytes: u64,
+    entries: usize,
+    manifest_bytes: u64,
+}
+
+impl Default for BackupLimits {
+    fn default() -> Self {
+        Self {
+            bytes: MAX_ARCHIVE_BYTES,
+            entries: MAX_ARCHIVE_ENTRIES,
+            manifest_bytes: MAX_MANIFEST_BYTES,
+        }
+    }
+}
+
+struct BackupBudget {
+    limits: BackupLimits,
+    bytes: u64,
+    entries: usize,
+}
+
+impl BackupBudget {
+    fn new(limits: BackupLimits) -> Self {
+        Self {
+            limits,
+            bytes: 0,
+            entries: 0,
+        }
+    }
+
+    fn entry(&mut self) -> Result<()> {
+        anyhow::ensure!(
+            self.entries < self.limits.entries,
+            "Backup has too many archive entries"
+        );
+        self.entries += 1;
+        Ok(())
+    }
+
+    fn add_bytes(&mut self, count: u64) -> Result<()> {
+        self.bytes = self.total_with(count)?;
+        Ok(())
+    }
+
+    fn total_with(&self, count: u64) -> Result<u64> {
+        let total = self
+            .bytes
+            .checked_add(count)
+            .context("Backup size overflow")?;
+        anyhow::ensure!(
+            total <= self.limits.bytes,
+            "Backup exceeds the expanded archive size limit"
+        );
+        Ok(total)
+    }
+}
+
 pub struct BackupManager {
     root: PathBuf,
     database: Arc<DatabaseManager>,
@@ -59,6 +120,15 @@ impl BackupManager {
         Ok(result)
     }
     pub async fn create(&self, project: &Project, operation: &str) -> Result<BackupInfo> {
+        self.create_with_limits(project, operation, BackupLimits::default())
+            .await
+    }
+    async fn create_with_limits(
+        &self,
+        project: &Project,
+        operation: &str,
+        limits: BackupLimits,
+    ) -> Result<BackupInfo> {
         let id = uuid::Uuid::new_v4().to_string();
         let staging = tempfile::Builder::new()
             .prefix("backup-")
@@ -93,7 +163,12 @@ impl BackupManager {
             let root = Path::new(&project.path).canonicalize()?;
             let app_root = self.root.canonicalize()?;
             let mut hashes = BTreeMap::new();
-            let mut total = 0u64;
+            let mut budget = BackupBudget::new(limits);
+            // Even a project containing only excluded files must restore to a
+            // real project folder. This directory counts toward the same entry
+            // limit enforced by extraction, just like files and control records.
+            budget.entry()?;
+            writer.add_directory("project/", options.unix_permissions(0o700))?;
             let entries = walkdir::WalkDir::new(&root)
                 .follow_links(false)
                 .into_iter()
@@ -122,30 +197,29 @@ impl BackupManager {
                 }
                 let name = format!("project/{relative}");
                 safe_relative(&name)?;
-                total += entry.metadata()?.len();
-                anyhow::ensure!(
-                    total < 12 * 1024 * 1024 * 1024,
-                    "Backup exceeds 12 GiB safety limit"
-                );
+                budget.entry()?;
                 writer.start_file(&name, options)?;
                 if relative == "stackcabin.json" {
                     let bytes = serde_json::to_vec_pretty(&sanitized_spec(&project.spec))?;
+                    budget.add_bytes(bytes.len() as u64)?;
                     writer.write_all(&bytes)?;
                     hashes.insert(name, hex::encode(Sha256::digest(&bytes)));
                 } else {
                     hashes.insert(
                         name,
-                        copy_hashed(std::fs::File::open(entry.path())?, &mut writer)?,
+                        copy_file_hashed(entry.path(), &mut writer, &mut budget)?,
                     );
                 }
             }
             if database {
+                budget.entry()?;
                 writer.start_file("database.dump", options)?;
                 hashes.insert(
                     "database.dump".into(),
-                    copy_hashed(
-                        std::fs::File::open(staging.path().join("database.dump"))?,
+                    copy_file_hashed(
+                        &staging.path().join("database.dump"),
                         &mut writer,
+                        &mut budget,
                     )?,
                 );
             }
@@ -158,8 +232,15 @@ impl BackupManager {
                 files: hashes,
                 has_database: database,
             };
+            let bytes = serde_json::to_vec_pretty(&manifest)?;
+            anyhow::ensure!(
+                bytes.len() as u64 <= limits.manifest_bytes,
+                "Backup manifest is too large"
+            );
+            budget.entry()?;
+            budget.add_bytes(bytes.len() as u64)?;
             writer.start_file("backup.json", options)?;
-            writer.write_all(&serde_json::to_vec_pretty(&manifest)?)?;
+            writer.write_all(&bytes)?;
             writer.finish()?.sync_all()?;
             temporary
                 .persist_noclobber(&path)
@@ -319,7 +400,7 @@ fn read_manifest(path: &Path) -> Result<BackupManifest> {
     let mut archive = zip::ZipArchive::new(std::fs::File::open(path)?)?;
     let file = archive.by_name("backup.json")?;
     anyhow::ensure!(
-        file.size() < 16 * 1024 * 1024,
+        file.size() <= MAX_MANIFEST_BYTES,
         "Backup manifest is too large"
     );
     Ok(serde_json::from_reader(file)?)
@@ -353,7 +434,22 @@ fn sanitized_spec(spec: &ProjectSpec) -> ProjectSpec {
         .retain(|key, _| !crate::store::sensitive_key(key));
     spec
 }
-fn copy_hashed(mut input: impl Read, output: &mut impl Write) -> Result<String> {
+fn copy_file_hashed(
+    path: &Path,
+    output: &mut impl Write,
+    budget: &mut BackupBudget,
+) -> Result<String> {
+    let input = std::fs::File::open(path)?;
+    // Fail early for known oversized files. The streaming check remains needed
+    // if a source changes or grows after this metadata was read.
+    budget.total_with(input.metadata()?.len())?;
+    copy_hashed(input, output, budget)
+}
+fn copy_hashed(
+    mut input: impl Read,
+    output: &mut impl Write,
+    budget: &mut BackupBudget,
+) -> Result<String> {
     let mut hasher = Sha256::new();
     let mut buffer = [0u8; 65536];
     loop {
@@ -361,6 +457,7 @@ fn copy_hashed(mut input: impl Read, output: &mut impl Write) -> Result<String> 
         if n == 0 {
             break;
         }
+        budget.add_bytes(n as u64)?;
         hasher.update(&buffer[..n]);
         output.write_all(&buffer[..n])?;
     }
@@ -383,6 +480,289 @@ fn copy_directory_contents(source: &Path, destination: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn backup_fixture() -> (tempfile::TempDir, crate::AppCore, Project) {
+        let temp = tempfile::TempDir::new().unwrap();
+        let core = crate::AppCore::new(temp.path().join("app"), Arc::new(|_| {})).unwrap();
+        let source = temp.path().join("โปรเจกต์ backup ทดสอบ");
+        std::fs::create_dir(&source).unwrap();
+        let project = Project {
+            id: uuid::Uuid::new_v4().to_string(),
+            path: source.to_string_lossy().into(),
+            spec: crate::project::default_spec("Fixture", Preset::Static),
+            trusted: true,
+            created_at: chrono::Utc::now().to_rfc3339(),
+        };
+        (temp, core, project)
+    }
+
+    fn assert_no_backup(core: &crate::AppCore) {
+        assert!(core.backups.list().unwrap().is_empty());
+        for directory in ["staging", "backups"] {
+            assert_eq!(
+                std::fs::read_dir(core.store.root.join(directory))
+                    .unwrap()
+                    .count(),
+                0
+            );
+        }
+    }
+
+    #[test]
+    fn streaming_size_limit_counts_actual_chunks_across_files_and_accepts_exact_boundary() {
+        let mut budget = BackupBudget::new(BackupLimits {
+            bytes: 8,
+            ..Default::default()
+        });
+        let mut output = Vec::new();
+        let growing = std::io::Cursor::new(b"abcde").chain(std::io::Cursor::new(b"fghi"));
+        assert!(copy_hashed(growing, &mut output, &mut budget).is_err());
+        assert_eq!(output, b"abcde");
+        assert_eq!(budget.bytes, 5);
+        let hash = copy_hashed(std::io::Cursor::new(b"xyz"), &mut output, &mut budget).unwrap();
+        assert_eq!(hash, hex::encode(Sha256::digest(b"xyz")));
+        assert_eq!(output, b"abcdexyz");
+        assert_eq!(budget.bytes, 8);
+        assert!(copy_hashed(std::io::Cursor::new(b"!"), &mut output, &mut budget).is_err());
+        assert_eq!(output, b"abcdexyz");
+    }
+
+    #[tokio::test]
+    async fn entry_limit_includes_project_root_and_manifest_and_failed_backup_can_retry() {
+        let (temp, core, project) = backup_fixture();
+        let source = Path::new(&project.path).join("hello.txt");
+        std::fs::write(&source, b"keep my work").unwrap();
+        let result = core
+            .backups
+            .create_with_limits(
+                &project,
+                "entry-limit",
+                BackupLimits {
+                    entries: 2,
+                    ..Default::default()
+                },
+            )
+            .await;
+        assert!(format!("{:#}", result.unwrap_err()).contains("too many archive entries"));
+        assert_no_backup(&core);
+        assert_eq!(std::fs::read(&source).unwrap(), b"keep my work");
+        let backup = core
+            .backups
+            .create_with_limits(
+                &project,
+                "retry",
+                BackupLimits {
+                    entries: 3,
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            zip::ZipArchive::new(std::fs::File::open(&backup.path).unwrap())
+                .unwrap()
+                .len(),
+            3
+        );
+        let destination = temp.path().join("กู้คืน entry limit");
+        core.restore(Path::new(&backup.path), &destination, false)
+            .await
+            .unwrap();
+        assert_eq!(
+            std::fs::read(destination.join("hello.txt")).unwrap(),
+            b"keep my work"
+        );
+    }
+
+    #[tokio::test]
+    async fn serialized_project_settings_count_instead_of_source_metadata_length() {
+        let (_temp, core, project) = backup_fixture();
+        let source = Path::new(&project.path).join("stackcabin.json");
+        std::fs::write(&source, b"").unwrap();
+        let expanded = serde_json::to_vec_pretty(&sanitized_spec(&project.spec))
+            .unwrap()
+            .len() as u64;
+        let result = core
+            .backups
+            .create_with_limits(
+                &project,
+                "settings-limit",
+                BackupLimits {
+                    bytes: expanded - 1,
+                    ..Default::default()
+                },
+            )
+            .await;
+        assert!(format!("{:#}", result.unwrap_err()).contains("expanded archive size limit"));
+        assert_no_backup(&core);
+        assert!(std::fs::read(source).unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn manifest_size_and_total_archive_size_fail_before_backup_is_published() {
+        let (_temp, core, project) = backup_fixture();
+        let source = Path::new(&project.path).join("hello.txt");
+        std::fs::write(&source, b"hello").unwrap();
+        for (limits, expected) in [
+            (
+                BackupLimits {
+                    bytes: 5,
+                    ..Default::default()
+                },
+                "expanded archive size limit",
+            ),
+            (
+                BackupLimits {
+                    manifest_bytes: 1,
+                    ..Default::default()
+                },
+                "manifest is too large",
+            ),
+        ] {
+            let result = core
+                .backups
+                .create_with_limits(&project, "manifest-limit", limits)
+                .await;
+            assert!(format!("{:#}", result.unwrap_err()).contains(expected));
+            assert_no_backup(&core);
+            assert_eq!(std::fs::read(&source).unwrap(), b"hello");
+        }
+        core.backups.create(&project, "retry").await.unwrap();
+        assert_eq!(core.backups.list().unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn database_snapshot_shares_the_size_budget_without_losing_source_or_retry() {
+        let (temp, core, _) = backup_fixture();
+        let project = core
+            .create(temp.path(), "sqlite budget", Preset::Static, true)
+            .unwrap();
+        let project = core
+            .attach_database(&project.id, DatabaseEngine::Sqlite)
+            .await
+            .unwrap();
+        let binding = project.spec.database.as_ref().unwrap();
+        let source = Path::new(&project.path).join(&binding.name);
+        let database = rusqlite::Connection::open(&source).unwrap();
+        database
+            .execute_batch(
+                "CREATE TABLE payload(data BLOB); INSERT INTO payload VALUES(zeroblob(32768));",
+            )
+            .unwrap();
+        let project_bytes: u64 = walkdir::WalkDir::new(&project.path)
+            .into_iter()
+            .map(|entry| entry.unwrap())
+            .filter(|entry| {
+                entry.file_type().is_file()
+                    && entry.path() != source
+                    && !excluded(&entry.file_name().to_string_lossy())
+            })
+            .map(|entry| entry.metadata().unwrap().len())
+            .sum();
+        assert!(
+            project_bytes < 8192,
+            "Project files alone must fit this test budget"
+        );
+        // The fixture uses WAL, so the main file may still be small while its
+        // committed pages already exceed the budget. VACUUM INTO must include
+        // those pages in the logical snapshot.
+        let page_count: u64 = database
+            .query_row("PRAGMA page_count", [], |row| row.get(0))
+            .unwrap();
+        let page_size: u64 = database
+            .query_row("PRAGMA page_size", [], |row| row.get(0))
+            .unwrap();
+        assert!(
+            page_count * page_size > 8192,
+            "The database snapshot must exceed this test budget"
+        );
+        let result = core
+            .backups
+            .create_with_limits(
+                &project,
+                "snapshot-limit",
+                BackupLimits {
+                    bytes: 8192,
+                    ..Default::default()
+                },
+            )
+            .await;
+        assert!(format!("{:#}", result.unwrap_err()).contains("expanded archive size limit"));
+        assert_no_backup(&core);
+        assert_eq!(
+            database
+                .query_row("SELECT length(data) FROM payload", [], |row| row
+                    .get::<_, u32>(0))
+                .unwrap(),
+            32768
+        );
+        let backup = core.backups.create(&project, "retry").await.unwrap();
+        let destination = temp.path().join("กู้คืน SQLite budget");
+        let restored = core
+            .restore(Path::new(&backup.path), &destination, true)
+            .await
+            .unwrap();
+        assert_ne!(restored.id, project.id);
+        let restored =
+            rusqlite::Connection::open(destination.join(restored.spec.database.unwrap().name))
+                .unwrap();
+        assert_eq!(
+            restored
+                .query_row("SELECT length(data) FROM payload", [], |row| row
+                    .get::<_, u32>(0))
+                .unwrap(),
+            32768
+        );
+    }
+
+    #[tokio::test]
+    async fn empty_and_fully_excluded_projects_restore_without_restoring_secrets() {
+        for excluded in [false, true] {
+            let (temp, core, project) = backup_fixture();
+            if excluded {
+                std::fs::write(
+                    Path::new(&project.path).join(".env"),
+                    b"secret=keep original",
+                )
+                .unwrap();
+                std::fs::create_dir(Path::new(&project.path).join("node_modules")).unwrap();
+                std::fs::write(
+                    Path::new(&project.path).join("node_modules/dependency.js"),
+                    b"ignored",
+                )
+                .unwrap();
+            }
+            let backup = core
+                .backups
+                .create_with_limits(
+                    &project,
+                    "empty",
+                    BackupLimits {
+                        entries: 2,
+                        ..Default::default()
+                    },
+                )
+                .await
+                .unwrap();
+            let mut archive =
+                zip::ZipArchive::new(std::fs::File::open(&backup.path).unwrap()).unwrap();
+            assert_eq!(archive.len(), 2);
+            assert!(archive.by_name("project/").unwrap().is_dir());
+            let destination = temp.path().join("กู้คืน empty");
+            core.restore(Path::new(&backup.path), &destination, false)
+                .await
+                .unwrap();
+            assert!(destination.join("stackcabin.json").is_file());
+            assert!(!destination.join(".env").exists());
+            assert!(!destination.join("node_modules").exists());
+            if excluded {
+                assert_eq!(
+                    std::fs::read(Path::new(&project.path).join(".env")).unwrap(),
+                    b"secret=keep original"
+                );
+            }
+        }
+    }
 
     #[test]
     fn export_publishes_only_completed_bytes_and_cleans_staging() {
