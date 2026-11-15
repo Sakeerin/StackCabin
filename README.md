@@ -16,20 +16,22 @@ for current-artifact discovery and checksum verification. Contributors can run
 `node .github/scripts/preview-installers.mjs` to locate the latest successful
 main-branch build with all four platform artifacts still available.
 
-Historical development installers built on 7 November 2026 were verified in
-[this verified Actions run](https://github.com/Sakeerin/StackCabin/actions/runs/42381361969):
+Development installers built on 15 November 2026 are available in
+[this verified Actions run](https://github.com/Sakeerin/StackCabin/actions/runs/43690043993):
 Windows x64 NSIS, Ubuntu x64 deb/AppImage, and separate macOS Intel/Apple Silicon
-DMGs. Those seven-day artifacts have expired. Their source is
-`300dc74`, including atomic settings recovery, detailed metadata startup errors
-and exact-byte recovery of the pinned CA archive;
-signing and clean-machine certification remain release gates.
+DMGs. Choose the matching `development-installers-*` artifact and verify its
+`SHA256SUMS.txt`. These seven-day downloads expire on 22 November. Source is
+`bec77ce`; all four packaging/startup jobs and all eleven code-CI jobs passed.
+Signing and clean-machine certification remain release gates.
 
-The complete Windows offline development bundle built on 8 November was verified
-in [this installation run](https://github.com/Sakeerin/StackCabin/actions/runs/42443747010).
-Its seven-day artifacts have also expired. Retained local evidence records real installation,
-all managed tools, database backup/restore and preserved app data on a hosted
-Windows runner. This package uses the verified `300dc74` application binary,
-assembled by `b3c68af` with streamed downloads and a scoped completion receipt.
+The complete Windows offline development bundle from the same `bec77ce` source
+passed assembly and real installation in
+[this run](https://github.com/Sakeerin/StackCabin/actions/runs/43691599676).
+Download `development-offline-windows-x64` and use its `offline-windows-x64/`
+folder after extraction. `windows-offline-verification` contains the ZIP checksum,
+source, availability and preflight reports; `windows-offline-installation-evidence`
+records eleven tools, database backup/restore and preserved app data on a hosted
+Windows runner. These artifacts also expire on 22 November.
 
 Historical internal [Unix QA desktop packs](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691)
 included matching offline PHP 8.4/8.5, Node 22/24 and database runtimes for Linux,

@@ -77,13 +77,24 @@ On 15 November the GitHub API returned zero retained artifacts for both normal
 installer run `42381361969` and offline run `42443747010`. Those successful runs
 remain historical evidence, not current downloads. Fourteen discovery regressions
 and fifteen workflow contracts passed locally; the full related Windows check
-passed all 59 cases, with actionlint passing. Fresh hosted builds are being
-verified for this increment; the previous accepted run details below retain
-their original source and scope.
+passed all 59 cases, with actionlint passing. Fresh builds on `bec77ce` passed
+all eighteen jobs: eleven code CI, four normal installers, one Ubuntu 24.04
+consumer and two Windows offline assembly/installation jobs. The CLI selected
+all four current normal artifacts; both automatic and exact-run discovery passed.
+The downloaded 23-MB Windows ZIP and its installer independently passed SHA-256.
+An earlier three-minute download timed out and was rejected; its partial file was
+hashed and removed before a bounded fifteen-minute retry succeeded. No installer
+was executed on the developer host. Downloads expire on 22 November.
+Raw run/job/artifact metadata, five unchanged shipping input hashes and source
+compatibility are retained in `artifacts/preview-discovery-20261115/` with
+`ACCEPTANCE_SUMMARY.json`, `CLI_DISCOVERY.json` and the downloaded ZIP receipts.
+The six-file small offline evidence ZIP matches the full bundle's GitHub ZIP
+digest and includes the independently checked Windows availability report. The
+881-MB offline bundle was exercised by CI, not downloaded to the developer host.
 
 Hosted verification now uses macOS 15 ARM/Intel after the macOS 14 image's
 retirement. Rosetta remains an explicit x64 compatibility check on ARM hosts;
-Intel hosts always select x64 installer artifacts. Fourteen workflow-contract checks
+Intel hosts always select x64 installer artifacts. Fifteen workflow-contract checks
 cover platform selection and kit/desktop/upgrade artifact wiring. CI also runs
 checksum-pinned actionlint 1.7.12 and rejects retired hosted runner labels.
 QA build/upgrade workflows require an explicit producer `source_run` instead of
@@ -98,16 +109,15 @@ QA catalog signing requires a passed relocation probe for the exact version and
 the reviewed publisher source bytes. Twelve native-stack regression tests cover
 corrupt/substituted archives, missing provenance and incompatible macOS baselines.
 
-The current normal application uses source `300dc74`. The 8 November Windows
-offline bundle was assembled from `b3c68af` using that unchanged verified binary.
+The current normal application and Windows offline bundle both use `bec77ce`.
 They retain exact-byte recovery of the pinned CA archive and the file-backed
 startup probes from `c763b6d`. The earlier release-tool increment added packaging
 admission; the 7 November publisher-refresh and runtime-pack increments hardened
-metadata preservation and offline assembly. The latter has fresh installers and
-a matching offline bundle, with eighteen successful hosted verification jobs.
+metadata preservation and offline assembly; the 8 November increment bounded
+streamed downloads. This increment adds artifact availability before consumption.
 The independently reviewed native catalog handoff retains source `37ab4e5`.
 The reviewed native selection is
-`76955fa`; the downloadable Unix QA desktops below retain their earlier producers.
+`76955fa`; the historical Unix QA desktops below retain their earlier producers.
 The app retains the same signed development catalog and reports
 the metadata path and SQLite extended error code on initialization failure.
 Its resource set excludes the unused CI selection file. The 6 November source/catalog
@@ -118,22 +128,26 @@ That compatibility report binds assembly `2b25154` to the 6 November installer.
 The later publisher-builder script change is outside the source guard's closed
 allowlist. It correctly rejected reuse of the `c763b6d` producer; fresh normal
 installers from `300dc74` were built before the new offline bundle. The guard
-remains unchanged. Current compatibility and all five input hashes are retained
+remains unchanged. The 7 November compatibility and all five input hashes are retained
 in `artifacts/offline-pack-20261107/installer-source-compatibility.json`.
 The streaming-only packaging increment is within the unchanged closed allowlist;
 its compatibility check is retained under `artifacts/runtime-streaming-20261108/`.
+Current compatibility is in
+`artifacts/preview-discovery-20261115/INSTALLER_SOURCE_COMPATIBILITY.json`.
+The [8 November report](https://github.com/Sakeerin/StackCabin/blob/3c11645559887ec57ccc6bbeb47a53d9c659147a/docs/IMPLEMENTATION_STATUS.md)
+retains its earlier run-specific verification counts and download history.
 
 | Check                        | Latest evidence and scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Cross-platform CI            | [42443718418](https://github.com/Sakeerin/StackCabin/actions/runs/42443718418): all eleven jobs passed on source `b3c68af`: Windows x64, Ubuntu 22.04/24.04 x64, native macOS 15 ARM and Intel. Runner logs independently verify thirteen transport and twenty-two pack passes per target with zero failures/skips; fourteen workflow contracts and actionlint 1.7.12 passed. Nonfinal/missing API step records remain preserved in the evidence.                                                                  |
+| Cross-platform CI            | [43690025838](https://github.com/Sakeerin/StackCabin/actions/runs/43690025838): all eleven jobs passed on `bec77ce`, including fourteen discovery cases on each of Windows x64, Ubuntu 22.04/24.04 x64 and native macOS 15 ARM/Intel. All five final step records confirm success. Fifteen workflow contracts, actionlint, transport and offline-pack tests passed.                                                                                                                                                |
 | Core/frontend                | 50 Windows / 45 Unix core tests; four ignored entries are separately invoked child-process fixtures. Fourteen frontend tests, formatting, Clippy and generated IPC checks passed. Forty-seven packaging helper cases include Ubuntu source/license verification, Windows access diagnostics, release source pins, verbose startup and failure output.                                                                                                                                                              |
 | Desktop                      | Four real IPC/SQLite E2E cases and four lifecycle sessions on each CI target, plus two desktop exit-coordination tests. Actual tray pointer interaction remains a clean-VM check.                                                                                                                                                                                                                                                                                                                                  |
 | Native tools                 | Managed Node 22/24, npm/pnpm/Yarn, Caddy and concurrent HTTP passed on all five targets; Windows also exercises PHP 8.4/8.5. Unreachable machine proxies do not redirect loopback health checks.                                                                                                                                                                                                                                                                                                                   |
 | Native transfer checks       | [41803437796](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796): all 109 candidate files passed the retained manifest pin; 40 small evidence files passed 39 checksum records and match independent local assembly. Thirteen corruption/redirect/timeout/cancellation regressions passed on each code-CI target. Full public StackCabin URL verification remains pending publication.                                                                                                               |
 | Unsigned catalog handoff     | [41810673728](https://github.com/Sakeerin/StackCabin/actions/runs/41810673728): the nine-file proposal preserves all 32 signed base entries and adds twelve native records. Both small ZIP digests, eight handoff file hashes, 39 evidence checksums and the 109-file candidate inventory passed independent comparison. The proposal remains review-only; an actual unpublished URL returned HTTP 404 without creating a hosted handoff.                                                                          |
 | Catalog signature checks     | [41958236096](https://github.com/Sakeerin/StackCabin/actions/runs/41958236096): fifteen signing regressions passed on all five code targets using ephemeral keys and synthetic transfer fixtures. They cover exact-byte preservation, separate trust pins, corrupted/incomplete handoffs, wrong keys, CLI secret handling, read-only preflight and destination races. The real retained review-only handoff was rejected before any key access or output creation. No production catalog was signed.               |
-| Normal installers            | [42381361969](https://github.com/Sakeerin/StackCabin/actions/runs/42381361969): all four packaging jobs passed on source `300dc74`, with ten fresh installed Windows starts, installed deb startup and both macOS bundles. Builds exclude E2E features.                                                                                                                                                                                                                                                            |
-| Ubuntu 24.04                 | [42381875969](https://github.com/Sakeerin/StackCabin/actions/runs/42381875969): the same fresh `300dc74` Ubuntu 22.04 deb/AppImage passed checksums and real startup; AppImage used extract-and-run without FUSE.                                                                                                                                                                                                                                                                                                  |
+| Normal installers            | [43690043993](https://github.com/Sakeerin/StackCabin/actions/runs/43690043993): all four packaging jobs passed on `bec77ce`, with ten fresh installed Windows starts, installed deb startup and both macOS bundles. Builds exclude E2E features. Live discovery verifies all four artifacts through 22 November; the Windows ZIP and contained installer also passed independent local hashes.                                                                                                                     |
+| Ubuntu 24.04                 | [43691597006](https://github.com/Sakeerin/StackCabin/actions/runs/43691597006): explicit producer availability passed before download; the same `bec77ce` Ubuntu 22.04 deb/AppImage passed checksums and real startup. AppImage used extract-and-run without FUSE.                                                                                                                                                                                                                                                 |
 | Reviewed Linux packages      | PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41796142648)/[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41796146248), [MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41765946994) and [PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41765727571): all eight jobs passed on Ubuntu 22.04/24.04. The four archives retain 139 library records with exact source/license evidence; 42 source bundles cover 41 distinct Ubuntu source-package versions. |
 | Reviewed macOS packages      | The 2 November PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41382380346)/[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41382383140), [MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41382386213) and [PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41382389092) ARM/Intel packages remain selected. Their source-built runtimes and bundled libraries measured at most 14.0.                                                                        |
 | Combined Unix stack          | [41798068081](https://github.com/Sakeerin/StackCabin/actions/runs/41798068081): the new Linux packages passed both Ubuntu versions with eleven tools, five simultaneous web projects and both database dump/restores. The unchanged macOS packages retain [41387839639](https://github.com/Sakeerin/StackCabin/actions/runs/41387839639), including native ARM/Intel and Rosetta checks and extracted release harnesses.                                                                                           |
@@ -142,7 +156,7 @@ its compatibility check is retained under `artifacts/runtime-streaming-20261108/
 | Earlier macOS 14 ARM         | [41270976722](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722): the `2b3836e` ARM DMG passed checksums, mount/copy, dependency/minimum-OS checks and startup on macOS 14.8.9.                                                                                                                                                                                                                                                                                                                      |
 | Earlier macOS 14 x64         | [41270979416](https://github.com/Sakeerin/StackCabin/actions/runs/41270979416): the `2b3836e` Intel DMG passed those checks through Rosetta on the ARM runner. Current installers and native Intel macOS 14 still need maintained-machine acceptance.                                                                                                                                                                                                                                                              |
 | Actual disk exhaustion       | [41209951170](https://github.com/Sakeerin/StackCabin/actions/runs/41209951170), Ubuntu 24.04: bounded 32 MiB tmpfs produced real ENOSPC for settings writes and runtime extraction; old data survived, staging was cleaned, and retries succeeded after freeing owned space.                                                                                                                                                                                                                                       |
-| Windows offline installation | [42443747010](https://github.com/Sakeerin/StackCabin/actions/runs/42443747010): both jobs passed with packaging source `b3c68af` and unchanged app binary `300dc74`: streamed archive assembly, real wrapper/NSIS installation, eleven tools, five concurrent HTTP projects, both database dump/restores and existing-data preservation under a restricted standard-user token.                                                                                                                                    |
+| Windows offline installation | [43691599676](https://github.com/Sakeerin/StackCabin/actions/runs/43691599676): both jobs passed on `bec77ce`, matching the normal binary. Availability/source/catalog admission, streamed assembly, real wrapper/NSIS installation, eleven tools, five concurrent HTTP projects, both database dump/restores and existing-data preservation under a restricted standard-user token passed. Six small evidence files independently match the producer and bundle ZIP metadata.                                     |
 
 Six atomic-write regressions exercise released/persistent Windows sharing locks,
 read-only files, failed publication cleanup, Thai/space paths and complete reads

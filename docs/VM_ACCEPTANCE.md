@@ -8,13 +8,13 @@ Required machines are Windows 10 22H2 x64, Windows 11 x64, macOS 14 Intel and
 Apple Silicon, and Ubuntu Desktop 22.04/24.04 x64. Rosetta checks supplement a
 native Intel VM; they do not replace it.
 
-Historical normal preview installers from source `300dc74` were verified in
-[run 42381361969](https://github.com/Sakeerin/StackCabin/actions/runs/42381361969)
-for Windows x64, Ubuntu x64 and macOS ARM/Intel. Those artifacts expired before
-15 November. Use [current preview discovery](PREVIEW_INSTALLERS.md), download the
-matching `development-installers-*` artifact and verify `SHA256SUMS.txt`.
-The same `300dc74` Ubuntu 22.04 deb and AppImage also passed
-[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/42381875969).
+Current normal preview installers from source `bec77ce` were verified in
+[run 43690043993](https://github.com/Sakeerin/StackCabin/actions/runs/43690043993)
+on 15 November for Windows x64, Ubuntu x64 and macOS ARM/Intel. Downloads expire
+on 22 November. Use [current preview discovery](PREVIEW_INSTALLERS.md), download
+the matching `development-installers-*` artifact and verify `SHA256SUMS.txt`.
+The same Ubuntu 22.04 deb and AppImage also passed
+[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/43691597006).
 These are normal builds without E2E instrumentation and retain the signed
 development catalog. Earlier `2b3836e` installers passed startup on
 [macOS 14 ARM](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722) and
@@ -25,12 +25,13 @@ on the listed OS/architecture combinations.
 
 ## Windows runtime test kit
 
-The historical complete offline bundle was assembled from `b3c68af` in
-[42443747010](https://github.com/Sakeerin/StackCabin/actions/runs/42443747010),
-using the unchanged `300dc74` normal installer above. Its artifacts have expired.
-Both assembly and actual
-installation jobs passed. The closed source guard permits only the reviewed
-packaging/docs differences and verifies all five catalog/prerequisite hashes.
+The complete offline bundle uses the same `bec77ce` source as the normal
+installer above and passed both assembly and actual installation in
+[43691599676](https://github.com/Sakeerin/StackCabin/actions/runs/43691599676).
+Its seven-day artifacts expire on 22 November. Availability was checked before
+download; the unchanged closed source guard independently verified the exact
+app inputs and all five catalog/prerequisite hashes. The small verification ZIP
+retains the selected producer's availability report alongside source/preflight.
 
 The **Build and verify the Windows offline bundle** workflow now has a separate
 hosted installation job. It downloads the produced artifact and invokes its

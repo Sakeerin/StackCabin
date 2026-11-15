@@ -26,10 +26,11 @@ provenance. Expired/deleted artifacts and those expiring within fifteen minutes
 are unavailable. Discovery considers at most sixty recent successful producers;
 network or authentication errors stop it instead of choosing an older build.
 
-This command reads metadata only. After downloading, compare the actual ZIP's
-SHA-256 with `archiveSha256`, extract it into a new folder and verify the included
-`SHA256SUMS.txt` against the installers. For example, contributors can use the
-same read-only verifier as CI:
+This command reads metadata only. For browser ZIP downloads, compare the actual
+ZIP's SHA-256 with `archiveSha256`, then extract it into a new folder. The reported
+`gh run download` command extracts automatically. In either case, verify the
+included `SHA256SUMS.txt` against the installers. Contributors can use the same
+read-only verifier as CI:
 
 ```sh
 python scripts/verify-installer-checksums.py installers/windows-x64 --platform Windows
