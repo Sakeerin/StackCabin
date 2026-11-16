@@ -8,8 +8,8 @@
 เลือก run ล่าสุดที่สำเร็จและยังมีไฟล์ให้ดาวน์โหลดจาก
 [Build and verify development installers](https://github.com/Sakeerin/StackCabin/actions/workflows/preview-installers.yml)
 หรือดู [วิธีค้นหาชุดที่ยังไม่หมดอายุ](PREVIEW_INSTALLERS.md)
-ชุดวันที่ 15 พฤศจิกายน 2026 จาก source `82475a9` ผ่านครบทั้งสี่เป้าหมายใน
-[run 43700770858](https://github.com/Sakeerin/StackCabin/actions/runs/43700770858) และเก็บถึงวันที่ 22 พฤศจิกายน
+ชุดวันที่ 16 พฤศจิกายน 2026 จาก source `9ff69ab` ผ่านครบทั้งสี่เป้าหมายใน
+[run 43833850190](https://github.com/Sakeerin/StackCabin/actions/runs/43833850190) และเก็บถึงวันที่ 23 พฤศจิกายน
 เลือก Artifact `development-installers-windows-latest` แล้วแตก ZIP และตรวจไฟล์
 ตาม `SHA256SUMS.txt` ไฟล์ติดตั้งอยู่ในโฟลเดอร์ `nsis/` ส่วนแพ็กเกจจากการ build เอง
 อยู่ใน `target/release/bundle/nsis/` Artifact เก็บไว้ 7 วัน
@@ -47,10 +47,10 @@ Windows อาจขอสิทธิ์ผู้ดูแลระบบสำ
 เป็นไฟล์สุดท้ายเมื่อสำเร็จเท่านั้น บันทึกความครบถ้วนนี้ครอบคลุม catalog และ runtime
 ส่วนการตรวจตัวติดตั้ง Windows กับ prerequisites ใช้ manifest ของชุดเต็มอีกชั้นหนึ่ง
 
-ชุดออฟไลน์ล่าสุดวันที่ 15 พฤศจิกายน 2026 ดาวน์โหลดได้จาก
-[run 43702046121](https://github.com/Sakeerin/StackCabin/actions/runs/43702046121)
+ชุดออฟไลน์ล่าสุดวันที่ 16 พฤศจิกายน 2026 ดาวน์โหลดได้จาก
+[run 43836075034](https://github.com/Sakeerin/StackCabin/actions/runs/43836075034)
 เลือก `development-offline-windows-x64` แล้วใช้โฟลเดอร์ `offline-windows-x64/`
-หลังแตก ZIP ชุดนี้ใช้ source `82475a9` และเก็บถึงวันที่ 22 พฤศจิกายน
+หลังแตก ZIP ชุดนี้ใช้ source `9ff69ab` และเก็บถึงวันที่ 23 พฤศจิกายน
 ผ่านการติดตั้งจริง ตรวจ runtime 11 รายการ สำรอง/กู้คืนฐานข้อมูล และเปิดข้อมูลเดิม
 บน GitHub runner แล้ว ผลทดสอบอยู่ใน `windows-offline-installation-evidence`
 ส่วนการรับรองเครื่องสะอาดยังต้องทดสอบตาม [คู่มือ VM](VM_ACCEPTANCE.md)
