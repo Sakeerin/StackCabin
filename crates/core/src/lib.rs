@@ -398,24 +398,20 @@ impl AppCore {
         trusted: bool,
     ) -> Result<Project> {
         let _activity = self.activity()?;
-        let spec = self.backups.restore(archive, destination, trusted).await?;
-        let marker = destination.join(".stackcabin-restore-id");
-        if marker.exists() {
-            let id = std::fs::read_to_string(&marker)?;
-            uuid::Uuid::parse_str(&id)?;
+        let restored = self.backups.restore(archive, destination, trusted).await?;
+        if let Some(id) = restored.project_id {
             let project = Project {
-                id,
+                id: id.to_string(),
                 path: dunce::canonicalize(destination)?.to_string_lossy().into(),
-                spec,
+                spec: restored.spec,
                 trusted,
                 created_at: chrono::Utc::now().to_rfc3339(),
             };
             self.store.save_project(&project)?;
             self.write_lock(&project)?;
-            std::fs::remove_file(marker)?;
             Ok(project)
         } else {
-            self.import_inner(destination, spec, trusted)
+            self.import_inner(destination, restored.spec, trusted)
         }
     }
     pub fn logs(&self, subject: Option<&str>) -> Vec<AppEvent> {

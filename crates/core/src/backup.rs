@@ -90,6 +90,10 @@ pub struct BackupManager {
     database: Arc<DatabaseManager>,
     sink: EventSink,
 }
+pub(crate) struct RestoredProject {
+    pub spec: ProjectSpec,
+    pub project_id: Option<uuid::Uuid>,
+}
 impl BackupManager {
     pub fn new(root: PathBuf, database: Arc<DatabaseManager>, sink: EventSink) -> Self {
         Self {
@@ -274,12 +278,12 @@ impl BackupManager {
         }
         .await
     }
-    pub async fn restore(
+    pub(crate) async fn restore(
         &self,
         archive: &Path,
         destination: &Path,
         trusted: bool,
-    ) -> Result<ProjectSpec> {
+    ) -> Result<RestoredProject> {
         anyhow::ensure!(
             !destination.exists(),
             "Restore into a new folder; existing projects are never overwritten"
@@ -298,17 +302,28 @@ impl BackupManager {
         #[cfg(not(unix))]
         std::fs::create_dir(&staging)?;
         let mut destination_owned = false;
-        let result: Result<ProjectSpec> = async {
+        let result: Result<RestoredProject> = async {
             let manifest = read_manifest(archive)?;
             anyhow::ensure!(manifest.schema_version == 1, "Unsupported backup schema");
             crate::project::validate_spec(&manifest.project)?;
             extract_archive(archive, &staging, "zip", 0)?;
+            // A foreign archive may record a mode readable only by its former
+            // group/owner. Verify and copy in this private workspace first;
+            // restore exact source rwx bits only after destination writes finish.
+            #[cfg(unix)]
+            let source_modes = prepare_restore_permissions(&staging)?;
             for (relative, expected) in &manifest.files {
                 let path = staging.join(safe_relative(relative)?);
                 crate::runtime::verify_checksum(&path, expected)?;
             }
             let project_files = staging.join("project");
             anyhow::ensure!(project_files.is_dir(), "Backup has no project files");
+            // Use the filesystem's own name matching (including Windows case
+            // folding). Only this manager may create the registration marker.
+            anyhow::ensure!(
+                !project_files.join(".stackcabin-restore-id").try_exists()?,
+                "Backup contains a reserved restore marker"
+            );
             // Reject files omitted from the integrity manifest before any destination is written.
             for entry in walkdir::WalkDir::new(&project_files) {
                 let entry = entry?;
@@ -352,9 +367,11 @@ impl BackupManager {
             destination_owned = true;
             copy_directory_contents(&project_files, destination)?;
             let mut spec = manifest.project;
+            let mut project_id = None;
             if manifest.has_database {
+                let id = uuid::Uuid::new_v4();
                 let project = Project {
-                    id: uuid::Uuid::new_v4().to_string(),
+                    id: id.to_string(),
                     path: destination.to_string_lossy().into(),
                     spec: spec.clone(),
                     trusted,
@@ -365,17 +382,30 @@ impl BackupManager {
                         .restore(&project, &staging.join("database.dump"))
                         .await?,
                 );
-                // Preserve the new credential identifier when registering the restored project.
-                atomic_write(
-                    &destination.join(".stackcabin-restore-id"),
-                    project.id.as_bytes(),
-                )?;
+                // Carry credential identity in memory, never through project files.
+                project_id = Some(id);
             }
             atomic_write(
                 &destination.join("stackcabin.json"),
                 &serde_json::to_vec_pretty(&spec)?,
             )?;
-            Ok(spec)
+            #[cfg(unix)]
+            for (relative, mode) in source_modes {
+                use std::os::unix::fs::PermissionsExt;
+                let mode = if matches!(
+                    relative.to_str(),
+                    Some("stackcabin.json" | "stackcabin.lock.json")
+                ) {
+                    0o600
+                } else {
+                    mode
+                };
+                std::fs::set_permissions(
+                    destination.join(relative),
+                    std::fs::Permissions::from_mode(mode),
+                )?;
+            }
+            Ok(RestoredProject { spec, project_id })
         }
         .await;
         if result.is_err() && destination_owned && destination.exists() {
@@ -458,6 +488,23 @@ fn sanitized_spec(spec: &ProjectSpec) -> ProjectSpec {
     spec.environment
         .retain(|key, _| !crate::store::sensitive_key(key));
     spec
+}
+#[cfg(unix)]
+fn prepare_restore_permissions(staging: &Path) -> Result<Vec<(PathBuf, u32)>> {
+    use std::os::unix::fs::PermissionsExt;
+    let project = staging.join("project");
+    let mut modes = Vec::new();
+    for entry in walkdir::WalkDir::new(staging) {
+        let entry = entry?;
+        if entry.file_type().is_file() {
+            let mode = entry.metadata()?.permissions().mode() & 0o777;
+            if let Ok(relative) = entry.path().strip_prefix(&project) {
+                modes.push((relative.to_path_buf(), mode));
+            }
+            std::fs::set_permissions(entry.path(), std::fs::Permissions::from_mode(mode | 0o600))?;
+        }
+    }
+    Ok(modes)
 }
 fn project_file_options(
     options: zip::write::SimpleFileOptions,
@@ -634,49 +681,124 @@ mod tests {
 
     #[tokio::test]
     async fn legacy_v1_backup_without_directory_records_still_restores() {
-        let (temp, core, project) = backup_fixture();
-        let path = temp.path().join("legacy v1.zip");
-        let bytes = b"legacy project bytes";
-        let manifest = BackupManifest {
-            schema_version: 1,
-            id: uuid::Uuid::new_v4().to_string(),
-            created_at: chrono::Utc::now().to_rfc3339(),
-            project: project.spec,
-            files: BTreeMap::from([(
-                "project/original.txt".into(),
-                hex::encode(Sha256::digest(bytes)),
-            )]),
-            has_database: false,
-        };
-        let mut writer = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
-        let options = zip::write::SimpleFileOptions::default().unix_permissions(0o600);
-        writer.start_file("project/original.txt", options).unwrap();
-        writer.write_all(bytes).unwrap();
-        writer.start_file("backup.json", options).unwrap();
-        writer
-            .write_all(&serde_json::to_vec_pretty(&manifest).unwrap())
-            .unwrap();
-        writer.finish().unwrap();
-        let destination = temp.path().join("restored legacy");
-        let restored = core.restore(&path, &destination, false).await.unwrap();
-        assert!(!restored.trusted);
-        assert_eq!(
-            std::fs::read(destination.join("original.txt")).unwrap(),
-            bytes
-        );
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
+        for mode in [0o600, 0o040, 0o000] {
+            let (temp, core, project) = backup_fixture();
+            let path = temp.path().join("legacy v1.zip");
+            let bytes = b"legacy project bytes";
+            let manifest = BackupManifest {
+                schema_version: 1,
+                id: uuid::Uuid::new_v4().to_string(),
+                created_at: chrono::Utc::now().to_rfc3339(),
+                project: project.spec,
+                files: BTreeMap::from([(
+                    "project/original.txt".into(),
+                    hex::encode(Sha256::digest(bytes)),
+                )]),
+                has_database: false,
+            };
+            let mut writer = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
+            writer
+                .start_file(
+                    "project/original.txt",
+                    zip::write::SimpleFileOptions::default().unix_permissions(mode),
+                )
+                .unwrap();
+            writer.write_all(bytes).unwrap();
+            writer
+                .start_file(
+                    "backup.json",
+                    zip::write::SimpleFileOptions::default().unix_permissions(0o600),
+                )
+                .unwrap();
+            writer
+                .write_all(&serde_json::to_vec_pretty(&manifest).unwrap())
+                .unwrap();
+            writer.finish().unwrap();
+            let destination = temp.path().join("restored legacy");
+            let restored = core.restore(&path, &destination, false).await.unwrap();
+            assert!(!restored.trusted);
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let file = destination.join("original.txt");
+                assert_eq!(file.metadata().unwrap().permissions().mode() & 0o777, mode);
+                // Check bytes after verifying that even a foreign owner-unreadable
+                // mode was restored exactly. The owner can change it locally.
+                std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600)).unwrap();
+            }
             assert_eq!(
-                destination
-                    .join("original.txt")
-                    .metadata()
-                    .unwrap()
-                    .permissions()
-                    .mode()
-                    & 0o777,
-                0o600
+                std::fs::read(destination.join("original.txt")).unwrap(),
+                bytes
             );
+        }
+    }
+
+    #[tokio::test]
+    async fn reserved_restore_marker_cannot_replace_an_existing_project() {
+        let (temp, core, _) = backup_fixture();
+        let existing = core
+            .create(temp.path(), "existing project", Preset::Static, true)
+            .unwrap();
+        let original_spec =
+            std::fs::read(Path::new(&existing.path).join("stackcabin.json")).unwrap();
+        let variants: &[(&str, bool)] = if cfg!(windows) {
+            &[
+                (".stackcabin-restore-id", false),
+                (".STACKCABIN-RESTORE-ID", false),
+                (".stackcabin-restore-id", true),
+            ]
+        } else {
+            &[
+                (".stackcabin-restore-id", false),
+                (".stackcabin-restore-id", true),
+            ]
+        };
+        for &(marker, directory) in variants {
+            let path = temp.path().join("forged marker.zip");
+            let name = format!("project/{marker}");
+            let manifest = BackupManifest {
+                schema_version: 1,
+                id: uuid::Uuid::new_v4().to_string(),
+                created_at: chrono::Utc::now().to_rfc3339(),
+                project: existing.spec.clone(),
+                files: if directory {
+                    BTreeMap::new()
+                } else {
+                    BTreeMap::from([(
+                        name.clone(),
+                        hex::encode(Sha256::digest(existing.id.as_bytes())),
+                    )])
+                },
+                has_database: false,
+            };
+            let mut writer = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
+            let options = zip::write::SimpleFileOptions::default().unix_permissions(0o600);
+            if directory {
+                writer
+                    .add_directory(format!("{name}/"), options.unix_permissions(0o700))
+                    .unwrap();
+            } else {
+                writer.start_file(name, options).unwrap();
+                writer.write_all(existing.id.as_bytes()).unwrap();
+            }
+            writer.start_file("backup.json", options).unwrap();
+            writer
+                .write_all(&serde_json::to_vec_pretty(&manifest).unwrap())
+                .unwrap();
+            writer.finish().unwrap();
+            let destination = temp.path().join("must not publish");
+            let error = core.restore(&path, &destination, false).await.unwrap_err();
+            assert!(format!("{error:#}").contains("reserved restore marker"));
+            assert!(!destination.exists());
+            let preserved = core.store.project(&existing.id).unwrap();
+            assert_eq!(preserved.path, existing.path);
+            assert!(preserved.trusted);
+            assert_eq!(core.store.projects().unwrap().len(), 1);
+            assert_eq!(
+                std::fs::read(Path::new(&existing.path).join("stackcabin.json")).unwrap(),
+                original_spec
+            );
+            assert_no_backup(&core);
         }
     }
 

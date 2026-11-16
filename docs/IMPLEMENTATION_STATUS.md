@@ -41,6 +41,10 @@ production acceptance gate remains open.
   sticky bits and rejecting symlinks. App-managed manifests stay private; database
   snapshots/control records retain private modes. The v1 backup schema is unchanged.
   Unix restore staging is created owner-only before extracting any payload.
+  Files are made owner-readable only inside that staging area for integrity
+  checks/copying, then their original rwx modes are applied after writes finish.
+  Restore credential identity travels through an internal UUID result; archives
+  containing the reserved restore marker are rejected before destination writes.
   Directory permissions use platform defaults; ownership/ACLs are not archived.
 - Atomic configuration publication syncs a complete staged file on the destination
   filesystem, cleans failed staging and retries Windows access/sharing locks for
@@ -83,9 +87,11 @@ production acceptance gate remains open.
 
 ## Current verification
 
-The 16 November filesystem increment adds three cross-platform regressions for
+The 16 November filesystem increment adds four cross-platform regressions for
 nested empty directories/exclusions, directory entry budgets and legacy v1 ZIPs
-without directory records. All 59 Windows core tests and Clippy passed locally. Three more
+without directory records (including owner-unreadable modes), plus reserved-marker
+rejection without changing existing project identity. All 60 Windows core tests
+and Clippy passed locally. Three more
 Unix regressions exercise source-file mode round trips with actual execution of
 the restored script, excluded source symlinks, foreign ZIP headers carrying
 privileged/symlink bits, and owner-only staging around permissive source files.
