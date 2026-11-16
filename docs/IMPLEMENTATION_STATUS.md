@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **15 November 2026**.
+Development version: **0.1.0**, checked on **16 November 2026**.
 This is a working development preview. The simultaneous Windows/macOS/Ubuntu
 production acceptance gate remains open.
 
@@ -36,6 +36,11 @@ production acceptance gate remains open.
   settings, database snapshots and its manifest. Creation shares extraction's
   12-GiB/199,999-entry ceilings and enforces the reader's manifest-size ceiling.
   A root directory makes backups with no included project files restorable.
+- Project backups record empty child directories and ordinary Unix source-file
+  permissions. ZIP extraction restores only rwx bits, discarding setuid/setgid/
+  sticky bits and rejecting symlinks. App-managed manifests stay private; database
+  snapshots/control records retain private modes. The v1 backup schema is unchanged.
+  Directory permissions use platform defaults; ownership/ACLs are not archived.
 - Atomic configuration publication syncs a complete staged file on the destination
   filesystem, cleans failed staging and retries Windows access/sharing locks for
   up to one second while preserving the last good document.
@@ -76,6 +81,17 @@ production acceptance gate remains open.
   runtime packs; distributed QA apps exclude E2E plugins. See [QA usage](QA_DESKTOP.md).
 
 ## Current verification
+
+The 16 November filesystem increment adds three cross-platform regressions for
+nested empty directories/exclusions, directory entry budgets and legacy v1 ZIPs
+without directory records. All 59 Windows core tests passed locally. Two more
+Unix regressions exercise source-file mode round trips with actual execution of
+the restored script, excluded source symlinks, and foreign ZIP headers carrying
+privileged/symlink bits. Native Linux/macOS CI and fresh installers are required
+before this increment replaces the earlier verified downloads below. The unused
+post-restore directory-size traversal was removed; no IPC types or catalog bytes
+changed. Older backups lacking execute bits are readable; missing permissions
+are not inferred.
 
 The 15 November application increment on `82475a9` adds six backup regressions: streaming
 growth/exact byte boundaries, control-record entry counts, rewritten settings,
@@ -546,10 +562,7 @@ does not set production approval.
 2. **Certify clean machines.** Run online/offline setup, missing-prerequisite/UAC,
    upgrades, runtime/database, HMR, tray pointer, crash and disk-full checks on
    Windows 10 22H2/11 x64, native macOS 14 Intel/ARM, and Ubuntu Desktop 22.04/24.04
-   x64. Before full filesystem restore is certified, preserve Unix executable
-   modes and empty child directories: current project payload entries use private
-   file modes and only the project root is an explicit directory entry.
-   Hosted runners, WSL2, system-only PATH and Rosetta supplement those checks.
+   x64. Hosted runners, WSL2, system-only PATH and Rosetta supplement those checks.
    [The VM guide](VM_ACCEPTANCE.md) covers the matrix and portable acceptance kits;
    [upgrade acceptance](UPGRADE_ACCEPTANCE.md) defines default/custom preservation.
    GitHub's [macOS 14 runner schedule](https://github.com/actions/runner-images/issues/13518)

@@ -1,7 +1,7 @@
 use crate::{
     database::DatabaseManager,
     models::*,
-    runtime::{directory_size, extract_archive, EventSink, MAX_ARCHIVE_BYTES, MAX_ARCHIVE_ENTRIES},
+    runtime::{extract_archive, EventSink, MAX_ARCHIVE_BYTES, MAX_ARCHIVE_ENTRIES},
     store::{atomic_write, safe_relative},
 };
 use anyhow::{Context, Result};
@@ -182,7 +182,7 @@ impl BackupManager {
                 });
             for entry in entries {
                 let entry = entry?;
-                if !entry.file_type().is_file() {
+                if entry.path() == root {
                     continue;
                 }
                 let relative = entry
@@ -197,8 +197,25 @@ impl BackupManager {
                 }
                 let name = format!("project/{relative}");
                 safe_relative(&name)?;
+                if entry.file_type().is_dir() {
+                    budget.entry()?;
+                    writer.add_directory(format!("{name}/"), options.unix_permissions(0o700))?;
+                    continue;
+                }
+                if !entry.file_type().is_file() {
+                    continue;
+                }
                 budget.entry()?;
-                writer.start_file(&name, options)?;
+                let file_options = if matches!(
+                    relative.as_str(),
+                    "stackcabin.json" | "stackcabin.lock.json"
+                ) {
+                    // These are app-managed configuration, regenerated on restore.
+                    options
+                } else {
+                    project_file_options(options, &entry.metadata()?)
+                };
+                writer.start_file(&name, file_options)?;
                 if relative == "stackcabin.json" {
                     let bytes = serde_json::to_vec_pretty(&sanitized_spec(&project.spec))?;
                     budget.add_bytes(bytes.len() as u64)?;
@@ -434,6 +451,22 @@ fn sanitized_spec(spec: &ProjectSpec) -> ProjectSpec {
         .retain(|key, _| !crate::store::sensitive_key(key));
     spec
 }
+fn project_file_options(
+    options: zip::write::SimpleFileOptions,
+    metadata: &std::fs::Metadata,
+) -> zip::write::SimpleFileOptions {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        // Preserve ordinary source permissions, never setuid/setgid/sticky bits.
+        options.unix_permissions(metadata.permissions().mode() & 0o777)
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = metadata;
+        options
+    }
+}
 fn copy_file_hashed(
     path: &Path,
     output: &mut impl Write,
@@ -473,7 +506,6 @@ fn copy_directory_contents(source: &Path, destination: &Path) -> Result<()> {
             std::fs::copy(entry.path(), target)?;
         }
     }
-    let _ = directory_size(destination);
     Ok(())
 }
 
@@ -506,6 +538,222 @@ mod tests {
                 0
             );
         }
+    }
+
+    #[tokio::test]
+    async fn nested_empty_directories_survive_without_restoring_excluded_trees() {
+        let (temp, core, project) = backup_fixture();
+        let source = Path::new(&project.path);
+        for directory in [
+            "uploads ว่าง/nested/deep",
+            "logs ว่าง",
+            "node_modules/ignored",
+            ".git/objects",
+            ".ssh/private",
+        ] {
+            std::fs::create_dir_all(source.join(directory)).unwrap();
+        }
+        std::fs::write(source.join("readme.txt"), b"keep project content").unwrap();
+        std::fs::write(source.join(".env"), b"TOKEN=keep original").unwrap();
+        let backup = core.backups.create(&project, "directories").await.unwrap();
+        let mut zip = zip::ZipArchive::new(std::fs::File::open(&backup.path).unwrap()).unwrap();
+        for directory in [
+            "project/uploads ว่าง/",
+            "project/uploads ว่าง/nested/",
+            "project/uploads ว่าง/nested/deep/",
+            "project/logs ว่าง/",
+        ] {
+            assert!(zip.by_name(directory).unwrap().is_dir());
+        }
+        let destination = temp.path().join("กู้คืน empty child directories");
+        core.restore(Path::new(&backup.path), &destination, false)
+            .await
+            .unwrap();
+        assert!(destination.join("uploads ว่าง/nested/deep").is_dir());
+        assert!(destination.join("logs ว่าง").is_dir());
+        assert_eq!(
+            std::fs::read(destination.join("readme.txt")).unwrap(),
+            b"keep project content"
+        );
+        for excluded in ["node_modules", ".git", ".ssh", ".env"] {
+            assert!(!destination.join(excluded).exists());
+            assert!(source.join(excluded).exists());
+        }
+    }
+
+    #[tokio::test]
+    async fn empty_child_directories_share_the_entry_budget_and_retry_cleanly() {
+        let (temp, core, project) = backup_fixture();
+        std::fs::create_dir_all(Path::new(&project.path).join("empty/nested")).unwrap();
+        let result = core
+            .backups
+            .create_with_limits(
+                &project,
+                "directory-limit",
+                BackupLimits {
+                    entries: 3,
+                    ..Default::default()
+                },
+            )
+            .await;
+        assert!(format!("{:#}", result.unwrap_err()).contains("too many archive entries"));
+        assert_no_backup(&core);
+        assert!(Path::new(&project.path).join("empty/nested").is_dir());
+        let backup = core
+            .backups
+            .create_with_limits(
+                &project,
+                "retry",
+                BackupLimits {
+                    entries: 4,
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            zip::ZipArchive::new(std::fs::File::open(&backup.path).unwrap())
+                .unwrap()
+                .len(),
+            4
+        );
+        let destination = temp.path().join("restored directories");
+        core.restore(Path::new(&backup.path), &destination, false)
+            .await
+            .unwrap();
+        assert!(destination.join("empty/nested").is_dir());
+    }
+
+    #[tokio::test]
+    async fn legacy_v1_backup_without_directory_records_still_restores() {
+        let (temp, core, project) = backup_fixture();
+        let path = temp.path().join("legacy v1.zip");
+        let bytes = b"legacy project bytes";
+        let manifest = BackupManifest {
+            schema_version: 1,
+            id: uuid::Uuid::new_v4().to_string(),
+            created_at: chrono::Utc::now().to_rfc3339(),
+            project: project.spec,
+            files: BTreeMap::from([(
+                "project/original.txt".into(),
+                hex::encode(Sha256::digest(bytes)),
+            )]),
+            has_database: false,
+        };
+        let mut writer = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
+        let options = zip::write::SimpleFileOptions::default().unix_permissions(0o600);
+        writer.start_file("project/original.txt", options).unwrap();
+        writer.write_all(bytes).unwrap();
+        writer.start_file("backup.json", options).unwrap();
+        writer
+            .write_all(&serde_json::to_vec_pretty(&manifest).unwrap())
+            .unwrap();
+        writer.finish().unwrap();
+        let destination = temp.path().join("restored legacy");
+        let restored = core.restore(&path, &destination, false).await.unwrap();
+        assert!(!restored.trusted);
+        assert_eq!(
+            std::fs::read(destination.join("original.txt")).unwrap(),
+            bytes
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                destination
+                    .join("original.txt")
+                    .metadata()
+                    .unwrap()
+                    .permissions()
+                    .mode()
+                    & 0o777,
+                0o600
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn unix_source_modes_and_executable_script_survive_backup_restore_without_links() {
+        use std::os::unix::fs::{symlink, PermissionsExt};
+        let (temp, core, project) = backup_fixture();
+        let source = Path::new(&project.path);
+        std::fs::create_dir(source.join("scripts ทดสอบ")).unwrap();
+        let script = source.join("scripts ทดสอบ/run.sh");
+        std::fs::write(&script, b"#!/bin/sh\nprintf 'restored executable works'\n").unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let data = source.join("readonly.txt");
+        std::fs::write(&data, b"read-only content").unwrap();
+        std::fs::set_permissions(&data, std::fs::Permissions::from_mode(0o440)).unwrap();
+        std::fs::write(source.join("stackcabin.json"), b"will be sanitized").unwrap();
+        std::fs::set_permissions(
+            source.join("stackcabin.json"),
+            std::fs::Permissions::from_mode(0o755),
+        )
+        .unwrap();
+        let outside = temp.path().join("outside");
+        std::fs::create_dir(&outside).unwrap();
+        std::fs::write(outside.join("keep.txt"), b"outside files stay outside").unwrap();
+        symlink(&outside, source.join("linked directory")).unwrap();
+        symlink(outside.join("keep.txt"), source.join("linked file")).unwrap();
+        let backup = core.backups.create(&project, "unix-modes").await.unwrap();
+        let mut zip = zip::ZipArchive::new(std::fs::File::open(&backup.path).unwrap()).unwrap();
+        assert_eq!(
+            zip.by_name("project/scripts ทดสอบ/run.sh")
+                .unwrap()
+                .unix_mode()
+                .unwrap()
+                & 0o7777,
+            0o755
+        );
+        assert_eq!(
+            zip.by_name("project/readonly.txt")
+                .unwrap()
+                .unix_mode()
+                .unwrap()
+                & 0o7777,
+            0o440
+        );
+        assert_eq!(
+            zip.by_name("project/stackcabin.json")
+                .unwrap()
+                .unix_mode()
+                .unwrap()
+                & 0o7777,
+            0o600
+        );
+        let destination = temp.path().join("กู้คืน executable");
+        core.restore(Path::new(&backup.path), &destination, false)
+            .await
+            .unwrap();
+        let restored = destination.join("scripts ทดสอบ/run.sh");
+        assert_eq!(
+            restored.metadata().unwrap().permissions().mode() & 0o7777,
+            0o755
+        );
+        assert_eq!(
+            destination
+                .join("readonly.txt")
+                .metadata()
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o7777,
+            0o440
+        );
+        assert_eq!(
+            std::fs::read(destination.join("readonly.txt")).unwrap(),
+            b"read-only content"
+        );
+        let output = std::process::Command::new(&restored).output().unwrap();
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"restored executable works");
+        assert!(!destination.join("linked directory").exists());
+        assert!(!destination.join("linked file").exists());
+        assert_eq!(
+            std::fs::read(outside.join("keep.txt")).unwrap(),
+            b"outside files stay outside"
+        );
     }
 
     #[test]

@@ -687,6 +687,11 @@ pub fn extract_archive(archive: &Path, root: &Path, format: &str, strip: usize) 
                     .with_context(|| format!("Cannot extract {}", path.display()))?;
                 std::io::copy(&mut file, &mut output)
                     .with_context(|| format!("Cannot write {}", path.display()))?;
+                #[cfg(unix)]
+                if let Some(mode) = file.unix_mode() {
+                    use std::os::unix::fs::PermissionsExt;
+                    output.set_permissions(std::fs::Permissions::from_mode(mode & 0o777))?;
+                }
             }
         }
         "tar.gz" | "tar.xz" => {

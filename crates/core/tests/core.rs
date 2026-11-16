@@ -183,6 +183,63 @@ fn archived_php_keeps_the_exact_filename_and_official_https_origin() {
         assert!(runtime::php_archive_url(invalid).is_none());
     }
 }
+#[cfg(unix)]
+#[test]
+fn zip_restore_strips_privileged_mode_bits_and_rejects_symbolic_links() {
+    use std::os::unix::fs::PermissionsExt;
+    let temp = TempDir::new().unwrap();
+    for mode in [0o106755u32, 0o120777] {
+        let archive = temp.path().join(format!("mode-{mode:o}.zip"));
+        let mut writer = zip::ZipWriter::new(std::fs::File::create(&archive).unwrap());
+        writer
+            .start_file(
+                "payload",
+                zip::write::SimpleFileOptions::default().unix_permissions(0o755),
+            )
+            .unwrap();
+        writer.write_all(b"ordinary file bytes").unwrap();
+        writer.finish().unwrap();
+        // FileOptions intentionally masks special bits. Patch the untrusted ZIP
+        // header so extraction is tested against modes a foreign tool can emit.
+        let mut bytes = std::fs::read(&archive).unwrap();
+        let central: Vec<_> = bytes
+            .windows(4)
+            .enumerate()
+            .filter(|(_, magic)| *magic == b"PK\x01\x02")
+            .map(|(offset, _)| offset)
+            .collect();
+        assert_eq!(central.len(), 1);
+        let offset = central[0];
+        bytes[offset + 5] = 3; // Unix creator, high byte of version-made-by.
+        bytes[offset + 38..offset + 42].copy_from_slice(&((mode << 16) | 0x20).to_le_bytes());
+        std::fs::write(&archive, bytes).unwrap();
+        let mut zip = zip::ZipArchive::new(std::fs::File::open(&archive).unwrap()).unwrap();
+        assert_eq!(zip.by_index(0).unwrap().unix_mode(), Some(mode));
+        let output = temp.path().join(format!("out-{mode:o}"));
+        std::fs::create_dir(&output).unwrap();
+        let result = runtime::extract_archive(&archive, &output, "zip", 0);
+        if mode & 0o170000 == 0o120000 {
+            assert!(result.is_err());
+            assert!(!output.join("payload").exists());
+        } else {
+            result.unwrap();
+            assert_eq!(
+                std::fs::read(output.join("payload")).unwrap(),
+                b"ordinary file bytes"
+            );
+            assert_eq!(
+                output
+                    .join("payload")
+                    .metadata()
+                    .unwrap()
+                    .permissions()
+                    .mode()
+                    & 0o7777,
+                0o755
+            );
+        }
+    }
+}
 #[test]
 fn corrupted_archives_and_path_traversal_are_rejected() {
     let temp = TempDir::new().unwrap();
