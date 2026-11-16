@@ -288,6 +288,14 @@ impl BackupManager {
             .root
             .join("staging")
             .join(uuid::Uuid::new_v4().to_string());
+        // Restored file modes may deliberately grant group/other access. Keep
+        // their verification workspace owner-only until publication completes.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            std::fs::DirBuilder::new().mode(0o700).create(&staging)?;
+        }
+        #[cfg(not(unix))]
         std::fs::create_dir(&staging)?;
         let mut destination_owned = false;
         let result: Result<ProjectSpec> = async {
@@ -670,6 +678,80 @@ mod tests {
                 0o600
             );
         }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn unix_restore_verifies_permissive_files_inside_an_owner_only_staging_directory() {
+        use std::{
+            os::unix::fs::PermissionsExt,
+            sync::atomic::{AtomicBool, Ordering},
+        };
+        let temp = tempfile::TempDir::new().unwrap();
+        let root = temp.path().join("app");
+        let staging = root.join("staging");
+        let observed = Arc::new(AtomicBool::new(false));
+        let signal = observed.clone();
+        let core = crate::AppCore::new(
+            root,
+            Arc::new(move |event| {
+                if event.message == "Project files verified" {
+                    let entries: Vec<_> = std::fs::read_dir(&staging)
+                        .unwrap()
+                        .map(|entry| entry.unwrap().path())
+                        .collect();
+                    assert_eq!(entries.len(), 1);
+                    assert_eq!(
+                        entries[0].metadata().unwrap().permissions().mode() & 0o777,
+                        0o700
+                    );
+                    assert_eq!(
+                        entries[0]
+                            .join("project/shared.txt")
+                            .metadata()
+                            .unwrap()
+                            .permissions()
+                            .mode()
+                            & 0o777,
+                        0o777
+                    );
+                    signal.store(true, Ordering::SeqCst);
+                }
+            }),
+        )
+        .unwrap();
+        let project = core
+            .create(temp.path(), "permissive fixture", Preset::Static, true)
+            .unwrap();
+        let source = Path::new(&project.path).join("shared.txt");
+        std::fs::write(&source, b"verified content").unwrap();
+        std::fs::set_permissions(&source, std::fs::Permissions::from_mode(0o777)).unwrap();
+        let backup = core.backup(&project.id, "private-staging").await.unwrap();
+        let destination = temp.path().join("restored permissive file");
+        core.restore(Path::new(&backup.path), &destination, false)
+            .await
+            .unwrap();
+        assert!(observed.load(Ordering::SeqCst));
+        assert_eq!(
+            std::fs::read(destination.join("shared.txt")).unwrap(),
+            b"verified content"
+        );
+        assert_eq!(
+            destination
+                .join("shared.txt")
+                .metadata()
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o777
+        );
+        assert_eq!(
+            std::fs::read_dir(core.store.root.join("staging"))
+                .unwrap()
+                .count(),
+            0
+        );
     }
 
     #[cfg(unix)]

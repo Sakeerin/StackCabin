@@ -40,6 +40,7 @@ production acceptance gate remains open.
   permissions. ZIP extraction restores only rwx bits, discarding setuid/setgid/
   sticky bits and rejecting symlinks. App-managed manifests stay private; database
   snapshots/control records retain private modes. The v1 backup schema is unchanged.
+  Unix restore staging is created owner-only before extracting any payload.
   Directory permissions use platform defaults; ownership/ACLs are not archived.
 - Atomic configuration publication syncs a complete staged file on the destination
   filesystem, cleans failed staging and retries Windows access/sharing locks for
@@ -84,10 +85,11 @@ production acceptance gate remains open.
 
 The 16 November filesystem increment adds three cross-platform regressions for
 nested empty directories/exclusions, directory entry budgets and legacy v1 ZIPs
-without directory records. All 59 Windows core tests passed locally. Two more
+without directory records. All 59 Windows core tests and Clippy passed locally. Three more
 Unix regressions exercise source-file mode round trips with actual execution of
-the restored script, excluded source symlinks, and foreign ZIP headers carrying
-privileged/symlink bits. Native Linux/macOS CI and fresh installers are required
+the restored script, excluded source symlinks, foreign ZIP headers carrying
+privileged/symlink bits, and owner-only staging around permissive source files.
+Native Linux/macOS CI and fresh installers are required
 before this increment replaces the earlier verified downloads below. The unused
 post-restore directory-size traversal was removed; no IPC types or catalog bytes
 changed. Older backups lacking execute bits are readable; missing permissions
