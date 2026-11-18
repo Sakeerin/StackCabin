@@ -8,8 +8,8 @@
 เลือก run ล่าสุดที่สำเร็จและยังมีไฟล์ให้ดาวน์โหลดจาก
 [Build and verify development installers](https://github.com/Sakeerin/StackCabin/actions/workflows/preview-installers.yml)
 หรือดู [วิธีค้นหาชุดที่ยังไม่หมดอายุ](PREVIEW_INSTALLERS.md)
-ชุดวันที่ 16 พฤศจิกายน 2026 จาก source `9ff69ab` ผ่านครบทั้งสี่เป้าหมายใน
-[run 43833850190](https://github.com/Sakeerin/StackCabin/actions/runs/43833850190) และเก็บถึงวันที่ 23 พฤศจิกายน
+ชุดวันที่ 18 พฤศจิกายน 2026 จาก source `9f646e0` ผ่านครบทั้งสี่เป้าหมายใน
+[run 44264989816](https://github.com/Sakeerin/StackCabin/actions/runs/44264989816) และเก็บถึงวันที่ 25 พฤศจิกายน
 เลือก Artifact `development-installers-windows-latest` แล้วแตก ZIP และตรวจไฟล์
 ตาม `SHA256SUMS.txt` ไฟล์ติดตั้งอยู่ในโฟลเดอร์ `nsis/` ส่วนแพ็กเกจจากการ build เอง
 อยู่ใน `target/release/bundle/nsis/` Artifact เก็บไว้ 7 วัน
@@ -47,10 +47,10 @@ Windows อาจขอสิทธิ์ผู้ดูแลระบบสำ
 เป็นไฟล์สุดท้ายเมื่อสำเร็จเท่านั้น บันทึกความครบถ้วนนี้ครอบคลุม catalog และ runtime
 ส่วนการตรวจตัวติดตั้ง Windows กับ prerequisites ใช้ manifest ของชุดเต็มอีกชั้นหนึ่ง
 
-ชุดออฟไลน์ล่าสุดวันที่ 16 พฤศจิกายน 2026 ดาวน์โหลดได้จาก
-[run 43836075034](https://github.com/Sakeerin/StackCabin/actions/runs/43836075034)
+ชุดออฟไลน์ล่าสุดวันที่ 18 พฤศจิกายน 2026 ดาวน์โหลดได้จาก
+[run 44266403889](https://github.com/Sakeerin/StackCabin/actions/runs/44266403889)
 เลือก `development-offline-windows-x64` แล้วใช้โฟลเดอร์ `offline-windows-x64/`
-หลังแตก ZIP ชุดนี้ใช้ source `9ff69ab` และเก็บถึงวันที่ 23 พฤศจิกายน
+หลังแตก ZIP ชุดนี้ใช้ source `9f646e0` และเก็บถึงวันที่ 25 พฤศจิกายน
 ผ่านการติดตั้งจริง ตรวจ runtime 11 รายการ สำรอง/กู้คืนฐานข้อมูล และเปิดข้อมูลเดิม
 บน GitHub runner แล้ว ผลทดสอบอยู่ใน `windows-offline-installation-evidence`
 ส่วนการรับรองเครื่องสะอาดยังต้องทดสอบตาม [คู่มือ VM](VM_ACCEPTANCE.md)
@@ -85,7 +85,7 @@ job แรกของ workflow รวมและตรวจไฟล์โด
 และเก็บไว้ 7 วัน แพ็กเกจเหล่านี้ยังไม่ได้เผยแพร่เป็น release สาธารณะ
 
 Linux มี `.deb` และ `.AppImage` โดยไฟล์ที่สร้างบน Ubuntu 22.04 ผ่านการเปิดแอป
-บน Ubuntu 24.04 แล้ว ([ผลทดสอบ](https://github.com/Sakeerin/StackCabin/actions/runs/42381875969))
+บน Ubuntu 24.04 แล้ว ([ผลทดสอบ](https://github.com/Sakeerin/StackCabin/actions/runs/44266398553))
 การรัน AppImage บนเครื่องที่ไม่มี FUSE ใช้:
 
 ```sh
@@ -93,7 +93,7 @@ chmod +x StackCabin_*.AppImage
 APPIMAGE_EXTRACT_AND_RUN=1 ./StackCabin_*.AppImage
 ```
 
-macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 7 พฤศจิกายนผ่านการเปิดแอป
+macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 18 พฤศจิกายนผ่านการเปิดแอป
 บน macOS 15 ทั้งสองสถาปัตยกรรม ส่วนผล macOS 14 เมื่อ 1 พฤศจิกายนเป็นของแพ็กเกจ
 source `2b3836e` รุ่นก่อน ทั้ง Apple Silicon และแพ็กเกจ Intel ผ่าน Rosetta
 แพ็กเกจปัจจุบันยังต้องตรวจ macOS 14 บนเครื่องทดสอบที่ดูแลเอง
@@ -148,6 +148,11 @@ dependencies ของ npm/Composer หรือ prerequisite ของ Linux �
 ก่อนกด Start การเปิดดูแผนตั้งค่าหรือกด Cancel จะไม่รันสคริปต์หรือติดตั้งเครื่องมือ
 ชุดออฟไลน์มี runtime และบริการ ส่วน dependencies ต้องติดตั้งไว้สำหรับระบบนั้น
 หรือมี cache ที่พร้อมใช้ โปรเจกต์ที่นำเข้าอาจรันคำสั่งด้วยสิทธิ์ของผู้ใช้ จึงควรตรวจโค้ดก่อนให้ความเชื่อถือ
+
+ระหว่างที่โปรเจกต์หนึ่งกำลังเริ่มทำงาน ติดตั้ง dependencies หรือสำรองข้อมูล
+ให้รอจนงานนั้นจบก่อนสั่งงานอื่นกับโปรเจกต์เดียวกัน แอปจะแจ้งหากคำสั่งชนกัน
+และยังทำงานกับโปรเจกต์อื่นได้ตามปกติ หากยังไม่ได้ให้ Trust การกด Start
+จะไม่เริ่มฐานข้อมูลหรือเปลี่ยนพอร์ตในไฟล์ตั้งค่าโปรเจกต์
 
 ## ฐานข้อมูลและ backup
 

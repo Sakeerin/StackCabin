@@ -8,13 +8,13 @@ Required machines are Windows 10 22H2 x64, Windows 11 x64, macOS 14 Intel and
 Apple Silicon, and Ubuntu Desktop 22.04/24.04 x64. Rosetta checks supplement a
 native Intel VM; they do not replace it.
 
-Current normal preview installers from source `9ff69ab` were verified in
-[run 43833850190](https://github.com/Sakeerin/StackCabin/actions/runs/43833850190)
-on 16 November for Windows x64, Ubuntu x64 and macOS ARM/Intel. Downloads expire
-on 23 November. Use [current preview discovery](PREVIEW_INSTALLERS.md), download
+Current normal preview installers from source `9f646e0` were verified in
+[run 44264989816](https://github.com/Sakeerin/StackCabin/actions/runs/44264989816)
+on 18 November for Windows x64, Ubuntu x64 and macOS ARM/Intel. Downloads expire
+on 25 November. Use [current preview discovery](PREVIEW_INSTALLERS.md), download
 the matching `development-installers-*` artifact and verify `SHA256SUMS.txt`.
 The same Ubuntu 22.04 deb and AppImage also passed
-[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/43836069730).
+[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/44266398553).
 These are normal builds without E2E instrumentation and retain the signed
 development catalog. Earlier `2b3836e` installers passed startup on
 [macOS 14 ARM](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722) and
@@ -25,10 +25,10 @@ on the listed OS/architecture combinations.
 
 ## Windows runtime test kit
 
-The complete offline bundle uses the same `9ff69ab` source as the normal
+The complete offline bundle uses the same `9f646e0` source as the normal
 installer above and passed both assembly and actual installation in
-[43836075034](https://github.com/Sakeerin/StackCabin/actions/runs/43836075034).
-Its seven-day artifacts expire on 23 November. Availability was checked before
+[44266403889](https://github.com/Sakeerin/StackCabin/actions/runs/44266403889).
+Its seven-day artifacts expire on 25 November. Availability was checked before
 download; the unchanged closed source guard independently verified the exact
 app inputs and all five catalog/prerequisite hashes. The small verification ZIP
 retains the selected producer's availability report alongside source/preflight.
@@ -40,6 +40,9 @@ catalog/trust root, then runs the normal app against an existing ten-project
 fixture under a restricted standard-user token. All eleven managed tools come
 from the same offline pack. Concurrent PHP 8.4/8.5 and Node 22/24 HTTP, logical
 database backup/restore, and preservation before/after app startup are verified.
+The current harness also backs up a running managed project, verifies its restart
+and checks routed/fallback HTTP. Database queries enter through the same guarded
+core methods as desktop IPC. These checks retain the same source/catalog pins.
 The `windows-offline-installation-evidence` artifact includes the transcript,
 pre/post prerequisite checks, native logs and `acceptance.json` with the runner
 image/OS and binary/manifest hashes. Hosted images have preinstalled software;

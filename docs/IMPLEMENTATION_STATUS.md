@@ -100,8 +100,26 @@ start, and retry after failed preparation/start. All 64 Windows core tests and
 Clippy passed locally. Native smoke additionally exercises backup/restart of a
 running managed project and checks both routed and fallback HTTP responses;
 database acceptance uses the same guarded query entry point as desktop IPC.
-Hosted builds and new installer verification are pending for this increment.
-Evidence is retained under `artifacts/project-operations-20261118/`.
+All eighteen accepted jobs passed on `9f646e0`: eleven code CI, four normal
+installers, one Ubuntu 24.04 consumer and two Windows offline jobs. Complete
+executed core logs confirm 64 passes on each of the five targets, with all four
+new cases and four separately exercised child-fixture entries ignored by the
+ordinary suite. Fourteen frontend cases, generated IPC, Clippy and desktop
+E2E/lifecycle checks passed. Native smoke logs confirm backup/restart with routed
+and fallback HTTP twice per target, including unreachable machine proxies.
+The first Windows native job failed to connect to PHP upstream before executing
+any project; only that job was retried on the same source and passed.
+
+Both small offline evidence ZIPs independently match GitHub SHA-256 digests.
+They confirm six control files, ten installation evidence files, eleven tools,
+active-project backup/restart, ten preserved projects, five databases and real
+MariaDB/PostgreSQL logical dump/restore through the guarded query entry point.
+The full bundle was exercised on the hosted runner; it was not downloaded or
+installed on the developer host. Downloads expire on 25 November.
+Evidence and raw logs are retained under `artifacts/project-operations-20261118/`.
+Only this increment's isolated Cargo cache was removed: 2,825 files, 489
+directories and 901,020,092 bytes. Test executable/logs were retained; hashes of
+all 190 tracked files remained unchanged during cleanup.
 
 The preceding 16 November filesystem increment added four cross-platform regressions for
 nested empty directories/exclusions, directory entry budgets and legacy v1 ZIPs
@@ -192,16 +210,18 @@ QA catalog signing requires a passed relocation probe for the exact version and
 the reviewed publisher source bytes. Twelve native-stack regression tests cover
 corrupt/substituted archives, missing provenance and incompatible macOS baselines.
 
-The current normal application and Windows offline bundle both use `9ff69ab`.
+The current normal application and Windows offline bundle both use `9f646e0`.
 They retain exact-byte recovery of the pinned CA archive and the file-backed
 startup probes from `c763b6d`. The earlier release-tool increment added packaging
 admission; the 7 November publisher-refresh and runtime-pack increments hardened
 metadata preservation and offline assembly; the 8 November increment bounded
 streamed downloads. The first 15 November increment added artifact availability
-before consumption; the current application increment aligns backup creation
+before consumption; the 15 November application increment aligned backup creation
 with restore limits and retains the root for empty/excluded-only projects. The
 16 November increment restores Unix source-file modes and empty child directories
 and carries restore identity directly in memory.
+The 18 November increment excludes overlapping commands per project until cleanup
+and checks trust before database startup or port changes.
 The independently reviewed native catalog handoff retains source `37ab4e5`.
 The reviewed native selection is
 `76955fa`; the historical Unix QA desktops below retain their earlier producers.
@@ -225,20 +245,22 @@ The later 15 November compatibility is in
 `artifacts/backup-budget-20261115/INSTALLER_SOURCE_COMPATIBILITY.json`.
 Current compatibility is in
 `artifacts/backup-modes-20261116/INSTALLER_SOURCE_COMPATIBILITY.json`.
+The current source and all five unchanged catalog/prerequisite hashes are bound in
+`artifacts/project-operations-20261118/INSTALLER_SOURCE_COMPATIBILITY.json`.
 The [8 November report](https://github.com/Sakeerin/StackCabin/blob/3c11645559887ec57ccc6bbeb47a53d9c659147a/docs/IMPLEMENTATION_STATUS.md)
 retains its earlier run-specific verification counts and download history.
 
 | Check                        | Latest evidence and scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Cross-platform CI            | [43833845882](https://github.com/Sakeerin/StackCabin/actions/runs/43833845882): all eleven final-source jobs passed on `9ff69ab`. Full executed core logs confirm 60 passes per target, all four new cross-platform cases and the three additional Unix cases on Ubuntu 22.04/24.04 and native macOS 15 ARM/Intel. Restored-script execution, owner-only staging, privileged-mode stripping and reserved-marker rejection passed. Preliminary superseded jobs are excluded.                                        |
-| Core/frontend                | 60 core tests on each of Windows, both Ubuntu versions and macOS ARM/Intel, verified from complete command logs. Four ignored child-fixture entries remain separately exercised by their parent cases. Unix totals include two pre-existing MariaDB path-alias tests omitted by earlier summaries. Fourteen frontend tests, Clippy, formatting, generated IPC, packaging, transport and discovery checks passed.                                                                                                   |
+| Cross-platform CI            | [44264988305](https://github.com/Sakeerin/StackCabin/actions/runs/44264988305): all eleven final-source jobs passed on `9f646e0`. All five executed core logs confirm the four new admission/trust/retry regressions. Native smoke verifies real active-project backup/restart and both HTTP routes twice per target. One initial PHP TCP timeout was retried on unchanged source; earlier attempts remain in retained evidence.                                                                                   |
+| Core/frontend                | 64 core passes per target on Windows, Ubuntu 22.04/24.04 and native macOS ARM/Intel, verified from complete command logs. Four ignored child fixtures are separately exercised. Fourteen frontend cases, Clippy, formatting, generated IPC, desktop E2E/lifecycle and packaging/transport/discovery checks passed.                                                                                                                                                                                                 |
 | Desktop                      | Four real IPC/SQLite E2E cases and four lifecycle sessions on each CI target, plus two desktop exit-coordination tests. Actual tray pointer interaction remains a clean-VM check.                                                                                                                                                                                                                                                                                                                                  |
 | Native tools                 | Managed Node 22/24, npm/pnpm/Yarn, Caddy and concurrent HTTP passed on all five targets; Windows also exercises PHP 8.4/8.5. Unreachable machine proxies do not redirect loopback health checks.                                                                                                                                                                                                                                                                                                                   |
 | Native transfer checks       | [41803437796](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796): all 109 candidate files passed the retained manifest pin; 40 small evidence files passed 39 checksum records and match independent local assembly. Thirteen corruption/redirect/timeout/cancellation regressions passed on each code-CI target. Full public StackCabin URL verification remains pending publication.                                                                                                               |
 | Unsigned catalog handoff     | [41810673728](https://github.com/Sakeerin/StackCabin/actions/runs/41810673728): the nine-file proposal preserves all 32 signed base entries and adds twelve native records. Both small ZIP digests, eight handoff file hashes, 39 evidence checksums and the 109-file candidate inventory passed independent comparison. The proposal remains review-only; an actual unpublished URL returned HTTP 404 without creating a hosted handoff.                                                                          |
 | Catalog signature checks     | [41958236096](https://github.com/Sakeerin/StackCabin/actions/runs/41958236096): fifteen signing regressions passed on all five code targets using ephemeral keys and synthetic transfer fixtures. They cover exact-byte preservation, separate trust pins, corrupted/incomplete handoffs, wrong keys, CLI secret handling, read-only preflight and destination races. The real retained review-only handoff was rejected before any key access or output creation. No production catalog was signed.               |
-| Normal installers            | [43833850190](https://github.com/Sakeerin/StackCabin/actions/runs/43833850190): all four packaging/startup jobs passed on `9ff69ab`, including ten fresh installed Windows starts, installed deb startup and both macOS bundles. Builds exclude E2E plugins. Live discovery selects all four matching artifacts, retained through 23 November.                                                                                                                                                                     |
-| Ubuntu 24.04                 | [43836069730](https://github.com/Sakeerin/StackCabin/actions/runs/43836069730): availability/checksum admission and real startup passed for the same `9ff69ab` Ubuntu 22.04 deb and AppImage. AppImage used extract-and-run without FUSE. The runner queue delay did not change the selected producer.                                                                                                                                                                                                             |
+| Normal installers            | [44264989816](https://github.com/Sakeerin/StackCabin/actions/runs/44264989816): all four packaging/startup jobs passed on `9f646e0`, including ten fresh installed Windows starts, installed deb startup and both macOS bundles. Builds exclude E2E plugins. Live discovery selects all four matching artifacts, retained through 25 November.                                                                                                                                                                     |
+| Ubuntu 24.04                 | [44266398553](https://github.com/Sakeerin/StackCabin/actions/runs/44266398553): availability/checksum admission and real startup passed for the same `9f646e0` Ubuntu 22.04 deb and AppImage. AppImage used extract-and-run without FUSE.                                                                                                                                                                                                                                                                          |
 | Reviewed Linux packages      | PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41796142648)/[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41796146248), [MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41765946994) and [PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41765727571): all eight jobs passed on Ubuntu 22.04/24.04. The four archives retain 139 library records with exact source/license evidence; 42 source bundles cover 41 distinct Ubuntu source-package versions. |
 | Reviewed macOS packages      | The 2 November PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41382380346)/[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41382383140), [MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41382386213) and [PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41382389092) ARM/Intel packages remain selected. Their source-built runtimes and bundled libraries measured at most 14.0.                                                                        |
 | Combined Unix stack          | [41798068081](https://github.com/Sakeerin/StackCabin/actions/runs/41798068081): the new Linux packages passed both Ubuntu versions with eleven tools, five simultaneous web projects and both database dump/restores. The unchanged macOS packages retain [41387839639](https://github.com/Sakeerin/StackCabin/actions/runs/41387839639), including native ARM/Intel and Rosetta checks and extracted release harnesses.                                                                                           |
@@ -247,7 +269,7 @@ retains its earlier run-specific verification counts and download history.
 | Earlier macOS 14 ARM         | [41270976722](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722): the `2b3836e` ARM DMG passed checksums, mount/copy, dependency/minimum-OS checks and startup on macOS 14.8.9.                                                                                                                                                                                                                                                                                                                      |
 | Earlier macOS 14 x64         | [41270979416](https://github.com/Sakeerin/StackCabin/actions/runs/41270979416): the `2b3836e` Intel DMG passed those checks through Rosetta on the ARM runner. Current installers and native Intel macOS 14 still need maintained-machine acceptance.                                                                                                                                                                                                                                                              |
 | Actual disk exhaustion       | [41209951170](https://github.com/Sakeerin/StackCabin/actions/runs/41209951170), Ubuntu 24.04: bounded 32 MiB tmpfs produced real ENOSPC for settings writes and runtime extraction; old data survived, staging was cleaned, and retries succeeded after freeing owned space.                                                                                                                                                                                                                                       |
-| Windows offline installation | [43836075034](https://github.com/Sakeerin/StackCabin/actions/runs/43836075034): both assembly and real installation jobs passed on `9ff69ab` with the matching normal binary. Independently hash-checked small evidence ZIPs confirm six controls, ten installation evidence files, eleven tools, ten persisted projects/five databases and both logical dump/restores using the in-memory restore identity. The full bundle was exercised by CI; it was not downloaded or executed on the developer host.         |
+| Windows offline installation | [44266403889](https://github.com/Sakeerin/StackCabin/actions/runs/44266403889): both assembly and actual installation passed on `9f646e0` with the matching normal binary. Independently hash-checked small ZIPs confirm six controls, ten evidence files, eleven tools, active-project backup/restart, ten preserved projects/five databases and both logical dump/restores through guarded queries. The full bundle was exercised by CI; no developer-host installer ran.                                        |
 
 Six atomic-write regressions exercise released/persistent Windows sharing locks,
 read-only files, failed publication cleanup, Thai/space paths and complete reads
