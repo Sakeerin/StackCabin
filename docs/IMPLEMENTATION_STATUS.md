@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **16 November 2026**.
+Development version: **0.1.0**, checked on **18 November 2026**.
 This is a working development preview. The simultaneous Windows/macOS/Ubuntu
 production acceptance gate remains open.
 
@@ -26,6 +26,12 @@ production acceptance gate remains open.
   Shutdown closes admission, cancels preparation/downloads, drains accepted
   backup/database work and waits for real cleanup before exit. Repeated Quit
   cannot bypass shutdown; closing a window can keep projects running in the tray.
+- Project commands share one admission guard per project: start/stop, settings,
+  dependency preparation, database attachment/queries, backup and forget reject
+  overlapping work until the accepted operation finishes cleanup. Cancellation
+  retains that guard until cleanup; other projects remain available. Backup
+  restarts its project under the existing guard. Untrusted starts reject before
+  starting a database or rewriting the selected port in project settings.
 - Shared MariaDB/PostgreSQL with separate project accounts, OS keychain
   credentials, per-project SQLite and logical database dump/restore.
 - Backup/restore into new project/database identities; source files remain when
@@ -87,7 +93,17 @@ production acceptance gate remains open.
 
 ## Current verification
 
-The 16 November filesystem increment adds four cross-platform regressions for
+The 18 November project-operation increment adds four cross-platform regressions:
+atomic admission and cancellation/cleanup, a paused real backup with conflicting
+commands and independent work on another project, side-effect-free untrusted
+start, and retry after failed preparation/start. All 64 Windows core tests and
+Clippy passed locally. Native smoke additionally exercises backup/restart of a
+running managed project and checks both routed and fallback HTTP responses;
+database acceptance uses the same guarded query entry point as desktop IPC.
+Hosted builds and new installer verification are pending for this increment.
+Evidence is retained under `artifacts/project-operations-20261118/`.
+
+The preceding 16 November filesystem increment added four cross-platform regressions for
 nested empty directories/exclusions, directory entry budgets and legacy v1 ZIPs
 without directory records (including owner-unreadable modes), plus reserved-marker
 rejection without changing existing project identity. All 60 Windows core tests

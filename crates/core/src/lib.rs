@@ -244,7 +244,7 @@ impl AppCore {
         mut spec: ProjectSpec,
         trusted: bool,
     ) -> Result<Project> {
-        let _activity = self.activity()?;
+        let _activity = self.project_activity(id)?;
         anyhow::ensure!(
             !self.supervisor.is_active(id).await,
             "Stop the project before changing its settings"
@@ -260,8 +260,15 @@ impl AppCore {
         Ok(project)
     }
     pub async fn start_project(&self, id: &str) -> Result<ProjectStatus> {
-        let _activity = self.activity()?;
+        let _activity = self.project_activity(id)?;
+        self.start_project_inner(id).await
+    }
+    async fn start_project_inner(&self, id: &str) -> Result<ProjectStatus> {
         let mut project = self.store.project(id)?;
+        anyhow::ensure!(
+            project.trusted,
+            "Trust this project before executing its code"
+        );
         if let Some(binding) = project.spec.database.as_mut() {
             let port = self.databases.start(&binding.engine).await?;
             if port != binding.port {
@@ -280,7 +287,7 @@ impl AppCore {
             .await
     }
     pub async fn prepare(&self, id: &str, operation: &str) -> Result<()> {
-        let activity = self.activities.begin(operation)?;
+        let activity = self.activities.begin_project(operation, id)?;
         let token = activity.token();
         let project = self.store.project(id)?;
         anyhow::ensure!(
@@ -347,12 +354,12 @@ impl AppCore {
         result
     }
     pub async fn forget(&self, id: &str) -> Result<()> {
-        let _activity = self.activity()?;
+        let _activity = self.project_activity(id)?;
         self.supervisor.stop(id).await?;
         self.store.forget(id)
     }
     pub async fn attach_database(&self, id: &str, engine: DatabaseEngine) -> Result<Project> {
-        let _activity = self.activity()?;
+        let _activity = self.project_activity(id)?;
         anyhow::ensure!(
             !self.supervisor.is_active(id).await,
             "Stop the project before changing databases"
@@ -368,7 +375,7 @@ impl AppCore {
         Ok(project)
     }
     pub async fn backup(&self, id: &str, operation: &str) -> Result<BackupInfo> {
-        let _activity = self.activities.begin(operation)?;
+        let _activity = self.activities.begin_project(operation, id)?;
         let project = self.store.project(id)?;
         let was_running = self.supervisor.is_active(id).await;
         if was_running {
@@ -376,7 +383,7 @@ impl AppCore {
         }
         let result = self.backups.create(&project, operation).await;
         if was_running && !self.activities.closed() {
-            if let Err(error) = self.start_project(id).await {
+            if let Err(error) = self.start_project_inner(id).await {
                 if self.activities.closed() {
                     return result;
                 }
@@ -390,6 +397,15 @@ impl AppCore {
             }
         }
         result
+    }
+    pub async fn stop_project(&self, id: &str) -> Result<()> {
+        let _activity = self.project_activity(id)?;
+        self.supervisor.stop(id).await
+    }
+    pub async fn query_database(&self, id: &str, sql: &str) -> Result<String> {
+        let _activity = self.project_activity(id)?;
+        let project = self.store.project(id)?;
+        self.databases.query_project(&project, sql).await
     }
     pub async fn restore(
         &self,
@@ -510,6 +526,9 @@ impl AppCore {
     }
     pub fn activity(&self) -> Result<operations::Operation> {
         self.activities.enter()
+    }
+    fn project_activity(&self, id: &str) -> Result<operations::Operation> {
+        self.activities.enter_project(id)
     }
     pub fn begin_shutdown(&self) {
         self.activities.close();

@@ -305,6 +305,40 @@ async fn main() -> Result<()> {
         println!("PASS {} {:?} {}", project.spec.name, info.state, url);
         ids.push(project.id);
     }
+    if let Some(id) = ids.first() {
+        // Exercise restart under the backup's existing project admission. Calling
+        // the public start method here would conflict with that same operation.
+        tokio::time::timeout(
+            Duration::from_secs(45),
+            core.backup(id, "running-project-backup"),
+        )
+        .await
+        .context("Active project backup/restart timed out")??;
+        anyhow::ensure!(
+            core.supervisor.is_active(id).await,
+            "Backup did not restart its running project"
+        );
+        let status = core
+            .supervisor
+            .statuses()
+            .await
+            .into_iter()
+            .find(|status| &status.project_id == id)
+            .context("Restarted project status is missing")?;
+        let url = status.url.context("Restarted project URL is missing")?;
+        let proxy_port = url
+            .rsplit(':')
+            .next()
+            .context("Restarted proxy port is missing")?;
+        observations[0].0 = format!("http://127.0.0.1:{proxy_port}/");
+        observations[0].2 = status
+            .fallback_url
+            .context("Restarted fallback URL is missing")?;
+        let (routed, host, fallback, runtime) = &observations[0];
+        assert_project_response(routed, host, runtime.as_deref()).await?;
+        assert_project_response(fallback, "127.0.0.1", runtime.as_deref()).await?;
+        println!("PASS active project backup restarts its selected runtime without a conflicting operation");
+    }
     // Database operations use real managed servers and OS credentials when explicitly requested.
     for engine in [DatabaseEngine::Mariadb, DatabaseEngine::Postgres] {
         let component = stackcabin_core::database::engine_id(&engine);
@@ -316,10 +350,9 @@ async fn main() -> Result<()> {
                 true,
             )?;
             let project = core.attach_database(&project.id, engine).await?;
-            core.databases.query_project(&project,"CREATE TABLE cabin_smoke (message VARCHAR(120)); INSERT INTO cabin_smoke VALUES ('hello database');").await?;
+            core.query_database(&project.id,"CREATE TABLE cabin_smoke (message VARCHAR(120)); INSERT INTO cabin_smoke VALUES ('hello database');").await?;
             let result = core
-                .databases
-                .query_project(&project, "SELECT message FROM cabin_smoke;")
+                .query_database(&project.id, "SELECT message FROM cabin_smoke;")
                 .await?;
             anyhow::ensure!(
                 result.contains("hello database"),
@@ -341,8 +374,7 @@ async fn main() -> Result<()> {
                 "Database restore was not attached"
             );
             let result = core
-                .databases
-                .query_project(&restored, "SELECT message FROM cabin_smoke;")
+                .query_database(&restored.id, "SELECT message FROM cabin_smoke;")
                 .await?;
             anyhow::ensure!(
                 result.contains("hello database"),

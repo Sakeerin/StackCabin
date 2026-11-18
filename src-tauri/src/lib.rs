@@ -64,8 +64,7 @@ async fn project_start(core: Core<'_>, id: String) -> Result<ProjectStatus, Stri
 }
 #[tauri::command]
 async fn project_stop(core: Core<'_>, id: String) -> Result<(), String> {
-    let _activity = core.activity().map_err(message)?;
-    core.supervisor.stop(&id).await.map_err(message)
+    core.stop_project(&id).await.map_err(message)
 }
 #[tauri::command]
 async fn project_forget(core: Core<'_>, id: String) -> Result<(), String> {
@@ -127,12 +126,7 @@ async fn database_attach(
 }
 #[tauri::command]
 async fn database_query(core: Core<'_>, id: String, sql: String) -> Result<String, String> {
-    let _activity = core.activity().map_err(message)?;
-    let project = core.store.project(&id).map_err(message)?;
-    core.databases
-        .query_project(&project, &sql)
-        .await
-        .map_err(message)
+    core.query_database(&id, &sql).await.map_err(message)
 }
 #[tauri::command]
 async fn service_start(core: Core<'_>, engine: DatabaseEngine) -> Result<u16, String> {
