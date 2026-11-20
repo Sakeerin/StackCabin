@@ -8,13 +8,13 @@ Required machines are Windows 10 22H2 x64, Windows 11 x64, macOS 14 Intel and
 Apple Silicon, and Ubuntu Desktop 22.04/24.04 x64. Rosetta checks supplement a
 native Intel VM; they do not replace it.
 
-Current normal preview installers from source `9f646e0` were verified in
-[run 44264989816](https://github.com/Sakeerin/StackCabin/actions/runs/44264989816)
-on 18 November for Windows x64, Ubuntu x64 and macOS ARM/Intel. Downloads expire
-on 25 November. Use [current preview discovery](PREVIEW_INSTALLERS.md), download
+Current normal preview installers from source `e63c82c` were verified in
+[run 44693797678](https://github.com/Sakeerin/StackCabin/actions/runs/44693797678)
+on 20 November for Windows x64, Ubuntu x64 and macOS ARM/Intel. Downloads expire
+on 27 November. Use [current preview discovery](PREVIEW_INSTALLERS.md), download
 the matching `development-installers-*` artifact and verify `SHA256SUMS.txt`.
 The same Ubuntu 22.04 deb and AppImage also passed
-[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/44266398553).
+[execution on Ubuntu 24.04](https://github.com/Sakeerin/StackCabin/actions/runs/44694772699).
 These are normal builds without E2E instrumentation and retain the signed
 development catalog. Earlier `2b3836e` installers passed startup on
 [macOS 14 ARM](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722) and
@@ -25,10 +25,10 @@ on the listed OS/architecture combinations.
 
 ## Windows runtime test kit
 
-The complete offline bundle uses the same `9f646e0` source as the normal
+The complete offline bundle uses the same `e63c82c` source as the normal
 installer above and passed both assembly and actual installation in
-[44266403889](https://github.com/Sakeerin/StackCabin/actions/runs/44266403889).
-Its seven-day artifacts expire on 25 November. Availability was checked before
+[44694777349](https://github.com/Sakeerin/StackCabin/actions/runs/44694777349).
+Its seven-day artifacts expire on 27 November. Availability was checked before
 download; the unchanged closed source guard independently verified the exact
 app inputs and all five catalog/prerequisite hashes. The small verification ZIP
 retains the selected producer's availability report alongside source/preflight.
