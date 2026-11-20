@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **18 November 2026**.
+Development version: **0.1.0**, checked on **20 November 2026**.
 This is a working development preview. The simultaneous Windows/macOS/Ubuntu
 production acceptance gate remains open.
 
@@ -92,6 +92,18 @@ production acceptance gate remains open.
   runtime packs; distributed QA apps exclude E2E plugins. See [QA usage](QA_DESKTOP.md).
 
 ## Current verification
+
+The 20 November frontend increment prevents older snapshot responses from
+overwriting a newer completed refresh. Stale failures cannot disconnect the UI
+after a newer success; stale successes cannot overwrite a newer failure. Pending
+polls do not prevent completed responses from updating the screen. Three deferred
+IPC regressions cover out-of-order success/failure combinations. All 17 frontend
+tests and the production TypeScript/Vite build passed locally; hosted checks are
+pending. Evidence is retained in `artifacts/snapshot-ordering-20261120/`.
+The installer links below still refer to the verified 18 November `9f646e0`
+packages; they do not include this UI increment. Their source/catalog compatibility
+guard remains unchanged and will require a fresh producer before offline assembly
+of the newer application.
 
 The 18 November project-operation increment adds four cross-platform regressions:
 atomic admission and cancellation/cleanup, a paused real backup with conflicting

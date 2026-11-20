@@ -204,15 +204,24 @@ export default function App() {
   const [connected, setConnected] = useState(false);
   const taskRef = useRef<Task | null>(null);
   const settingsQueue = useRef<Promise<void>>(Promise.resolve());
+  const snapshotRequested = useRef(0);
+  // Compare completed requests so a slow pending poll cannot starve updates.
+  const snapshotSettled = useRef(0);
   taskRef.current = task;
   const t = translator(snapshot.settings.language);
 
   const refresh = useCallback(async () => {
     if (!desktop) return;
+    const request = ++snapshotRequested.current;
     try {
-      setSnapshot(await api.snapshot());
+      const next = await api.snapshot();
+      if (request < snapshotSettled.current) return;
+      snapshotSettled.current = request;
+      setSnapshot(next);
       setConnected(true);
     } catch (e) {
+      if (request < snapshotSettled.current) return;
+      snapshotSettled.current = request;
       setConnected(false);
       setError(errorText(e));
     }

@@ -24,7 +24,86 @@ vi.mock("./lib/api", async (original) => ({
   },
   subscribe: vi.fn().mockResolvedValue(() => {}),
 }));
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.useRealTimers();
+});
+
+it.each(["older success", "older failure", "newer failure"])(
+  "ignores out-of-order snapshot results: %s",
+  async (scenario) => {
+    vi.useFakeTimers();
+    type State = Awaited<ReturnType<typeof api.snapshot>>;
+    let finishFirst!: (value: State) => void;
+    let failFirst!: (reason: Error) => void;
+    let finishSecond!: (value: State) => void;
+    let failSecond!: (reason: Error) => void;
+    const first = new Promise<State>((resolve, reject) => {
+      finishFirst = resolve;
+      failFirst = reject;
+    });
+    const second = new Promise<State>((resolve, reject) => {
+      finishSecond = resolve;
+      failSecond = reject;
+    });
+    const state = (name: string): State => ({
+      ...emptySnapshot,
+      projects: [
+        {
+          id: "snapshot-project",
+          path: "D:/snapshot-project",
+          trusted: true,
+          createdAt: "2026-11-20",
+          spec: {
+            schemaVersion: 1,
+            name,
+            preset: "static",
+            runtimes: [],
+            processes: [],
+            environment: {},
+            database: null,
+          },
+        },
+      ],
+    });
+    vi.mocked(api.snapshot)
+      .mockReset()
+      .mockReturnValueOnce(first)
+      .mockReturnValueOnce(second)
+      .mockResolvedValue(emptySnapshot);
+    render(<App />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500);
+    });
+    expect(api.snapshot).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      if (scenario === "newer failure")
+        failSecond(new Error("latest refresh failed"));
+      else finishSecond(state("current-project"));
+    });
+    await act(async () => {
+      if (scenario === "older failure")
+        failFirst(new Error("outdated refresh failed"));
+      else finishFirst(state("outdated-project"));
+    });
+    expect(
+      screen.queryByText("outdated-project", { selector: ".project-title" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("outdated refresh failed"),
+    ).not.toBeInTheDocument();
+    if (scenario === "newer failure") {
+      expect(screen.getByText("latest refresh failed")).toBeInTheDocument();
+      expect(
+        screen.queryByText("current-project", { selector: ".project-title" }),
+      ).not.toBeInTheDocument();
+    } else {
+      expect(
+        screen.getByText("current-project", { selector: ".project-title" }),
+      ).toBeInTheDocument();
+    }
+  },
+);
 
 it("waits for explicit trust to be saved before preparation; cancelling a review does neither", async () => {
   const project: Project = {
