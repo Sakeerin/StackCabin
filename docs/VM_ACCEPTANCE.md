@@ -62,8 +62,14 @@ hosted Windows runner. Use the following files to pair the kit with a VM test:
 - `INSTALLER_SHA256SUMS.txt` contains the expected hash of the extracted installer.
 - `SOURCE_COMMIT.txt` and `SHA256SUMS.txt` identify the kit source and executable.
 
-The kit is an
-internal QA harness, separate from the product UI. It needs no system Rust, npm,
+The [24 November Windows VM kit](https://github.com/Sakeerin/StackCabin/actions/runs/45315324381/artifacts/14885163169)
+pairs with [Windows preview 44693797678](https://github.com/Sakeerin/StackCabin/actions/runs/44693797678/artifacts/14609688007).
+Both use application source `e63c82c`. Check the downloaded kit ZIP against
+SHA-256 `66c2c069efe228f958c464604bff1e79b7b5c39743ae0f6be2eb74966afcb619`
+before extraction. The kit download expires on 1 December and the installer
+download expires on 27 November 2026.
+
+This internal QA harness needs no system Rust, npm,
 PHP, Node or database installation. Install StackCabin first so its Microsoft
 prerequisites are available. Verify the kit's binary against `SHA256SUMS.txt`.
 The wrapper also checks that hash automatically and rejects file, junction and
