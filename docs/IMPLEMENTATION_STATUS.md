@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **20 November 2026**.
+Development version: **0.1.0**, checked on **24 November 2026**.
 This is a working development preview. The simultaneous Windows/macOS/Ubuntu
 production acceptance gate remains open.
 
@@ -16,7 +16,9 @@ production acceptance gate remains open.
   block installation before the first download. Stale UI reviews are discarded.
 - Managed per-project PHP/Node versions and package managers; Caddy reverse proxy
   and FastCGI, multiple processes/projects, port fallback, readiness checks and
-  streamed logs. Loopback health checks ignore machine proxies and redirects.
+  streamed logs. History and live delivery share sequence numbers so the UI
+  retains the latest 2,000 events in order across projects. Loopback health
+  checks ignore machine proxies and redirects.
 - Signed catalog and checksum verification, archive traversal checks, bounded
   transport retries, cancellation, offline archives and receipt-last installation.
   Official PHP archive and Node distribution aliases retain exact versions/hashes.
@@ -26,7 +28,7 @@ production acceptance gate remains open.
   Shutdown closes admission, cancels preparation/downloads, drains accepted
   backup/database work and waits for real cleanup before exit. Repeated Quit
   cannot bypass shutdown; closing a window can keep projects running in the tray.
-- Project commands share one admission guard per project: start/stop, settings,
+- Project commands share one admission guard per project: start/stop/restart, settings,
   dependency preparation, database attachment/queries, backup and forget reject
   overlapping work until the accepted operation finishes cleanup. Cancellation
   retains that guard until cleanup; other projects remain available. Backup
@@ -225,7 +227,8 @@ QA catalog signing requires a passed relocation probe for the exact version and
 the reviewed publisher source bytes. Twelve native-stack regression tests cover
 corrupt/substituted archives, missing provenance and incompatible macOS baselines.
 
-The current normal application and Windows offline bundle both use `e63c82c`.
+The 24 November normal installers use `d43ab5e`. The 20 November Windows
+offline bundle and the 24 November Windows VM kit use the `e63c82c` application.
 They retain exact-byte recovery of the pinned CA archive and the file-backed
 startup probes from `c763b6d`. The earlier release-tool increment added packaging
 admission; the 7 November publisher-refresh and runtime-pack increments hardened
@@ -267,15 +270,15 @@ retains its earlier run-specific verification counts and download history.
 
 | Check                        | Latest evidence and scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Cross-platform CI            | [44693270391](https://github.com/Sakeerin/StackCabin/actions/runs/44693270391) passed all eleven jobs on `e63c82c`. All five desktop CI targets passed the out-of-order refresh regression suite, native smoke and desktop checks.                                                                                                                                                                                                                                                                                 |
+| Cross-platform CI            | [45372278964](https://github.com/Sakeerin/StackCabin/actions/runs/45372278964) passed all eleven jobs on `d43ab5e`. All five native targets verified runtime replacement and project HTTP routes after restart. Desktop tests cover overlapping history/live logs and SQL results across projects. |
 | Core/frontend                | Executed logs confirm 64 core and 17 frontend tests passed on each of the five targets. Four ignored child fixtures are exercised separately. Clippy, formatting, generated IPC, desktop E2E and lifecycle checks passed.                                                                                                                                                                                                                                                                                          |
 | Desktop                      | Four real IPC/SQLite E2E cases and four lifecycle sessions on each CI target, plus two desktop exit-coordination tests. Actual tray pointer interaction remains a clean-VM check.                                                                                                                                                                                                                                                                                                                                  |
 | Native tools                 | Managed Node 22/24, npm/pnpm/Yarn, Caddy and concurrent HTTP passed on all five targets; Windows also exercises PHP 8.4/8.5. Unreachable machine proxies do not redirect loopback health checks.                                                                                                                                                                                                                                                                                                                   |
 | Native transfer checks       | [41803437796](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796): all 109 candidate files passed the retained manifest pin; 40 small evidence files passed 39 checksum records and match independent local assembly. Thirteen corruption/redirect/timeout/cancellation regressions passed on each code-CI target. Full public StackCabin URL verification remains pending publication.                                                                                                               |
 | Unsigned catalog handoff     | [41810673728](https://github.com/Sakeerin/StackCabin/actions/runs/41810673728): the nine-file proposal preserves all 32 signed base entries and adds twelve native records. Both small ZIP digests, eight handoff file hashes, 39 evidence checksums and the 109-file candidate inventory passed independent comparison. The proposal remains review-only; an actual unpublished URL returned HTTP 404 without creating a hosted handoff.                                                                          |
 | Catalog signature checks     | [41958236096](https://github.com/Sakeerin/StackCabin/actions/runs/41958236096): fifteen signing regressions passed on all five code targets using ephemeral keys and synthetic transfer fixtures. They cover exact-byte preservation, separate trust pins, corrupted/incomplete handoffs, wrong keys, CLI secret handling, read-only preflight and destination races. The real retained review-only handoff was rejected before any key access or output creation. No production catalog was signed.               |
-| Normal installers            | [44693797678](https://github.com/Sakeerin/StackCabin/actions/runs/44693797678): all four packaging/startup jobs passed on `e63c82c`, including ten fresh installed Windows starts, installed deb startup and both macOS bundles. Builds exclude E2E plugins. Live discovery selects all four matching artifacts, retained through 27 November.                                                                                                                                                                     |
-| Ubuntu 24.04                 | [44694772699](https://github.com/Sakeerin/StackCabin/actions/runs/44694772699): availability/checksum admission and real startup passed for the same `e63c82c` Ubuntu 22.04 deb and AppImage. AppImage used extract-and-run without FUSE.                                                                                                                                                                                                                                                                          |
+| Normal installers            | [45372423493](https://github.com/Sakeerin/StackCabin/actions/runs/45372423493) passed all four packaging and startup jobs on `d43ab5e`, including ten fresh Windows starts. The four artifacts are available through 1 December. |
+| Ubuntu 24.04                 | [44694772699](https://github.com/Sakeerin/StackCabin/actions/runs/44694772699) verified startup of the 20 November `e63c82c` Ubuntu 22.04 deb and AppImage on Ubuntu 24.04. AppImage used extract-and-run without FUSE. |
 | Reviewed Linux packages      | PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41796142648)/[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41796146248), [MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41765946994) and [PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41765727571): all eight jobs passed on Ubuntu 22.04/24.04. The four archives retain 139 library records with exact source/license evidence; 42 source bundles cover 41 distinct Ubuntu source-package versions. |
 | Reviewed macOS packages      | The 2 November PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41382380346)/[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41382383140), [MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41382386213) and [PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41382389092) ARM/Intel packages remain selected. Their source-built runtimes and bundled libraries measured at most 14.0.                                                                        |
 | Combined Unix stack          | [41798068081](https://github.com/Sakeerin/StackCabin/actions/runs/41798068081): the new Linux packages passed both Ubuntu versions with eleven tools, five simultaneous web projects and both database dump/restores. The unchanged macOS packages retain [41387839639](https://github.com/Sakeerin/StackCabin/actions/runs/41387839639), including native ARM/Intel and Rosetta checks and extracted release harnesses.                                                                                           |

@@ -16,22 +16,21 @@ for current-artifact discovery and checksum verification. Contributors can run
 `node .github/scripts/preview-installers.mjs` to locate the latest successful
 main-branch build with all four platform artifacts still available.
 
-Development installers built on 20 November 2026 are available in
-[this verified Actions run](https://github.com/Sakeerin/StackCabin/actions/runs/44693797678):
-Windows x64 NSIS, Ubuntu x64 deb/AppImage, and separate macOS Intel/Apple Silicon
-DMGs. Choose the matching `development-installers-*` artifact and verify its
-`SHA256SUMS.txt`. These seven-day downloads expire on 27 November. Source is
-`e63c82c`; all four packaging/startup jobs and all eleven code-CI jobs passed.
+The [24 November development installers](https://github.com/Sakeerin/StackCabin/actions/runs/45372423493)
+include project restart, ordered logs and the updated SQL console from `d43ab5e`.
+Choose the matching `development-installers-*` artifact for Windows x64 (NSIS),
+Ubuntu x64 (deb/AppImage), or macOS (Intel or Apple Silicon DMG). Verify the
+download with its `SHA256SUMS.txt`. GitHub retains these downloads until 1 December.
 Signing and clean-machine certification remain release gates.
 
-The complete Windows offline development bundle from the same `e63c82c` source
+The 20 November Windows offline development bundle from `e63c82c`
 passed assembly and real installation in
 [this run](https://github.com/Sakeerin/StackCabin/actions/runs/44694777349).
 Download `development-offline-windows-x64` and use its `offline-windows-x64/`
 folder after extraction. `windows-offline-verification` contains the ZIP checksum,
 source, availability and preflight reports; `windows-offline-installation-evidence`
 records eleven tools, database backup/restore and preserved app data on a hosted
-Windows runner. These artifacts also expire on 27 November.
+Windows runner. These offline artifacts expire on 27 November.
 
 Historical internal [Unix QA desktop packs](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691)
 included matching offline PHP 8.4/8.5, Node 22/24 and database runtimes for Linux,

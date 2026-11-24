@@ -8,8 +8,8 @@
 เลือก run ล่าสุดที่สำเร็จและยังมีไฟล์ให้ดาวน์โหลดจาก
 [Build and verify development installers](https://github.com/Sakeerin/StackCabin/actions/workflows/preview-installers.yml)
 หรือดู [วิธีค้นหาชุดที่ยังไม่หมดอายุ](PREVIEW_INSTALLERS.md)
-ชุดวันที่ 20 พฤศจิกายน 2026 จาก source `e63c82c` ผ่านครบทั้งสี่เป้าหมายใน
-[run 44693797678](https://github.com/Sakeerin/StackCabin/actions/runs/44693797678) และเก็บถึงวันที่ 27 พฤศจิกายน
+ชุดวันที่ 24 พฤศจิกายน 2026 จาก commit `d43ab5e` ผ่านครบทั้งสี่เป้าหมายใน
+[run 45372423493](https://github.com/Sakeerin/StackCabin/actions/runs/45372423493) และเก็บถึงวันที่ 1 ธันวาคม
 เลือก Artifact `development-installers-windows-latest` แล้วแตก ZIP และตรวจไฟล์
 ตาม `SHA256SUMS.txt` ไฟล์ติดตั้งอยู่ในโฟลเดอร์ `nsis/` ส่วนแพ็กเกจจากการ build เอง
 อยู่ใน `target/release/bundle/nsis/` Artifact เก็บไว้ 7 วัน
@@ -93,7 +93,7 @@ chmod +x StackCabin_*.AppImage
 APPIMAGE_EXTRACT_AND_RUN=1 ./StackCabin_*.AppImage
 ```
 
-macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 20 พฤศจิกายนผ่านการเปิดแอป
+macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 24 พฤศจิกายนผ่านการเปิดแอป
 บน macOS 15 ทั้งสองสถาปัตยกรรม ส่วนผล macOS 14 เมื่อ 1 พฤศจิกายนเป็นของแพ็กเกจ
 source `2b3836e` รุ่นก่อน ทั้ง Apple Silicon และแพ็กเกจ Intel ผ่าน Rosetta
 แพ็กเกจปัจจุบันยังต้องตรวจ macOS 14 บนเครื่องทดสอบที่ดูแลเอง
@@ -142,6 +142,10 @@ dependencies ของ npm/Composer หรือ prerequisite ของ Linux �
    แล้วกด Continue แอปจะบันทึกความเชื่อถือก่อนเริ่มคำสั่ง
 5. กด Start ดูสถานะและ log แล้วเปิด URL ของโปรเจกต์
 6. หากชื่อ `.localhost` ใช้งานไม่ได้ ใช้ URL สำรอง `http://127.0.0.1:...` ในรายละเอียดโปรเจกต์
+
+หากแก้ค่าที่ต้องอ่านตอนเริ่มโปรเซส ให้กด **เริ่มใหม่ (Restart)** ในหน้ารายละเอียด
+แอปจะหยุดและเปิดโปรเซสของโปรเจกต์ที่เลือกด้วย runtime เดิม จากนั้นตรวจว่าเว็บพร้อมใช้งาน
+ดูเหตุการณ์ตามลำดับในแท็บ **บันทึกการทำงาน (Logs)** ของโปรเจกต์นั้น
 
 การติดตั้ง dependencies ของ Laravel/npm/Composer อาจต้องใช้อินเทอร์เน็ต
 โปรเจกต์ที่ไม่ต้องติดตั้ง dependencies เช่น Static สามารถให้ Trust ในแท็บ Configuration
