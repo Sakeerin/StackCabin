@@ -7,8 +7,8 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { api, emptySnapshot } from "./lib/api";
-import type { Project, ProjectPlan } from "./lib/types";
+import { api, emptySnapshot, subscribe } from "./lib/api";
+import type { AppEvent, Project, ProjectPlan } from "./lib/types";
 import App from "./App";
 
 vi.mock("./lib/api", async (original) => ({
@@ -21,12 +21,182 @@ vi.mock("./lib/api", async (original) => ({
     prepare: vi.fn(),
     install: vi.fn(),
     logs: vi.fn().mockResolvedValue([]),
+    queryDatabase: vi.fn(),
+    restart: vi.fn(),
   },
   subscribe: vi.fn().mockResolvedValue(() => {}),
 }));
 afterEach(() => {
   vi.clearAllMocks();
   vi.useRealTimers();
+});
+
+function databaseProject(id: string): Project {
+  return {
+    id,
+    path: `D:/${id}`,
+    trusted: true,
+    createdAt: "2026-11-24",
+    spec: {
+      schemaVersion: 1,
+      name: id,
+      preset: "static",
+      runtimes: [],
+      processes: [],
+      environment: {},
+      database: { engine: "sqlite", name: "app.sqlite", username: "", port: 0 },
+    },
+  };
+}
+
+it("restarts the selected running project once and disables duplicate actions until it finishes", async () => {
+  const project = databaseProject("shop");
+  const status = {
+    projectId: project.id,
+    url: null,
+    fallbackUrl: null,
+    processes: [
+      {
+        name: "web",
+        pid: 2,
+        state: "running" as const,
+        port: 3030,
+        url: null,
+        error: null,
+      },
+    ],
+  };
+  vi.mocked(api.snapshot).mockResolvedValue({
+    ...emptySnapshot,
+    projects: [project],
+    statuses: [status],
+  });
+  let finish!: (value: typeof status) => void;
+  vi.mocked(api.restart).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  render(<App />);
+  fireEvent.click(
+    await screen.findByText("shop", { selector: ".project-title" }),
+  );
+  const restart = screen.getByRole("button", { name: "Restart" });
+  fireEvent.click(restart);
+  expect(restart).toBeDisabled();
+  fireEvent.click(restart);
+  expect(api.restart).toHaveBeenCalledExactlyOnceWith("shop");
+  await act(async () => finish(status));
+  expect(restart).toBeEnabled();
+});
+
+it("merges overlapping history and live events once in sequence for each project", async () => {
+  const projects = ["shop", "blog"].map(databaseProject);
+  vi.mocked(api.snapshot).mockResolvedValue({ ...emptySnapshot, projects });
+  let registered!: (unlisten: () => void) => void;
+  vi.mocked(subscribe).mockReturnValueOnce(
+    new Promise((resolve) => {
+      registered = resolve;
+    }),
+  );
+  let finishHistory!: (events: AppEvent[]) => void;
+  vi.mocked(api.logs).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finishHistory = resolve;
+    }),
+  );
+  const view = render(<App />);
+  expect(api.logs).not.toHaveBeenCalled();
+  const unlisten = vi.fn();
+  await act(async () => registered(unlisten));
+  expect(api.logs).toHaveBeenCalledWith(null);
+  const receive = vi.mocked(subscribe).mock.calls[0][0];
+  const line = (
+    sequence: number,
+    message: string,
+    subject = "shop",
+  ): AppEvent => ({
+    sequence,
+    subject,
+    message,
+    kind: "log",
+    operationId: "",
+    progress: null,
+    timestamp: "2026-11-24T12:00:00Z",
+  });
+  act(() => {
+    receive(line(5, "last line"));
+    receive(line(3, "same line"));
+    receive(line(4, "blog only", "blog"));
+  });
+  await act(async () =>
+    finishHistory([
+      line(1, "first line"),
+      line(2, "same line"),
+      line(3, "same line"),
+    ]),
+  );
+  fireEvent.click(screen.getByText("shop", { selector: ".project-title" }));
+  fireEvent.click(screen.getByRole("button", { name: "Logs" }));
+  expect(
+    Array.from(
+      view.container.querySelectorAll(".log-lines pre"),
+      (el) => el.textContent,
+    ),
+  ).toEqual(["first line", "same line", "same line", "last line"]);
+  fireEvent.click(screen.getByRole("button", { name: "StackCabin home" }));
+  fireEvent.click(screen.getByText("blog", { selector: ".project-title" }));
+  fireEvent.click(screen.getByRole("button", { name: "Logs" }));
+  expect(
+    Array.from(
+      view.container.querySelectorAll(".log-lines pre"),
+      (el) => el.textContent,
+    ),
+  ).toEqual(["blog only"]);
+  view.unmount();
+  expect(unlisten).toHaveBeenCalledOnce();
+});
+
+it("clears the last SQL result on retry and keeps a late reply with its original project", async () => {
+  const projects = ["shop", "blog"].map(databaseProject);
+  vi.mocked(api.snapshot).mockResolvedValue({ ...emptySnapshot, projects });
+  let finishQuery!: (result: string) => void;
+  vi.mocked(api.queryDatabase)
+    .mockResolvedValueOnce("shop row")
+    .mockRejectedValueOnce(new Error("invalid column"))
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishQuery = resolve;
+        }),
+    )
+    .mockResolvedValueOnce("");
+  render(<App />);
+  fireEvent.click(
+    await screen.findByText("shop", { selector: ".project-title" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Database" }));
+  const run = screen.getByRole("button", { name: "Run SQL" });
+  fireEvent.click(run);
+  expect(await screen.findByText("shop row")).toBeInTheDocument();
+  fireEvent.click(run);
+  expect(await screen.findByText("invalid column")).toBeInTheDocument();
+  expect(screen.queryByText("shop row")).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole("textbox", { name: "SQL" }), {
+    target: { value: "SELECT 2" },
+  });
+  fireEvent.click(run);
+  expect(api.queryDatabase).toHaveBeenLastCalledWith("shop", "SELECT 2");
+  fireEvent.click(screen.getByRole("button", { name: "StackCabin home" }));
+  fireEvent.click(screen.getByText("blog", { selector: ".project-title" }));
+  fireEvent.click(screen.getByRole("button", { name: "Database" }));
+  await act(async () => finishQuery("late shop row"));
+  expect(screen.queryByText("late shop row")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Run SQL" }));
+  expect(api.queryDatabase).toHaveBeenLastCalledWith("blog", "SELECT 1;");
+  expect(
+    await screen.findByText("Query completed with no output."),
+  ).toBeInTheDocument();
 });
 
 it.each(["older success", "older failure", "newer failure"])(

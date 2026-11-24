@@ -242,6 +242,8 @@ pub struct Snapshot {
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct AppEvent {
+    #[ts(type = "number")]
+    pub sequence: u64,
     pub kind: String,
     pub operation_id: String,
     pub subject: String,
@@ -258,6 +260,7 @@ pub fn event(
     progress: Option<f64>,
 ) -> AppEvent {
     AppEvent {
+        sequence: 0,
         kind: kind.into(),
         operation_id: operation.into(),
         subject: subject.into(),

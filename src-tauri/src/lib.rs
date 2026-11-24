@@ -67,6 +67,10 @@ async fn project_stop(core: Core<'_>, id: String) -> Result<(), String> {
     core.stop_project(&id).await.map_err(message)
 }
 #[tauri::command]
+async fn project_restart(core: Core<'_>, id: String) -> Result<ProjectStatus, String> {
+    core.restart_project(&id).await.map_err(message)
+}
+#[tauri::command]
 async fn project_forget(core: Core<'_>, id: String) -> Result<(), String> {
     core.forget(&id).await.map_err(message)
 }
@@ -307,6 +311,7 @@ pub fn run() {
             project_save,
             project_start,
             project_stop,
+            project_restart,
             project_forget,
             project_prepare,
             project_open,

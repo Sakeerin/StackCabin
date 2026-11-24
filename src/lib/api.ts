@@ -41,6 +41,7 @@ export const api = {
     call<Project>("project_save", { id, spec, trusted }),
   start: (id: string) => call<ProjectStatus>("project_start", { id }),
   stop: (id: string) => call<void>("project_stop", { id }),
+  restart: (id: string) => call<ProjectStatus>("project_restart", { id }),
   forget: (id: string) => call<void>("project_forget", { id }),
   prepare: (id: string, operationId: string) =>
     call<void>("project_prepare", { id, operationId }),

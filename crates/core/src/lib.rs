@@ -23,6 +23,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+enum StartMode {
+    Start,
+    Restart,
+}
+
 pub struct AppCore {
     pub store: Arc<store::Store>,
     pub runtimes: Arc<RuntimeManager>,
@@ -39,10 +44,12 @@ impl AppCore {
         std::fs::create_dir_all(&root)?;
         let root = dunce::canonicalize(root)?;
         let store = Arc::new(store::Store::open(&root)?);
-        let events = Arc::new(Mutex::new(VecDeque::new()));
+        let events = Arc::new(Mutex::new(VecDeque::<AppEvent>::new()));
         let ring = events.clone();
-        let sink: EventSink = Arc::new(move |event| {
+        let sink: EventSink = Arc::new(move |mut event| {
             let mut ring = ring.lock().unwrap();
+            // History and live delivery share the order in which events entered the ring.
+            event.sequence = ring.back().map_or(1, |last| last.sequence + 1);
             if ring.len() >= 2000 {
                 ring.pop_front();
             }
@@ -261,14 +268,22 @@ impl AppCore {
     }
     pub async fn start_project(&self, id: &str) -> Result<ProjectStatus> {
         let _activity = self.project_activity(id)?;
-        self.start_project_inner(id).await
+        self.start_project_inner(id, StartMode::Start).await
     }
-    async fn start_project_inner(&self, id: &str) -> Result<ProjectStatus> {
+    pub async fn restart_project(&self, id: &str) -> Result<ProjectStatus> {
+        let _activity = self.project_activity(id)?;
+        self.start_project_inner(id, StartMode::Restart).await
+    }
+    async fn start_project_inner(&self, id: &str, mode: StartMode) -> Result<ProjectStatus> {
         let mut project = self.store.project(id)?;
         anyhow::ensure!(
             project.trusted,
             "Trust this project before executing its code"
         );
+        if matches!(mode, StartMode::Restart) && self.supervisor.is_active(id).await {
+            self.supervisor.stop(id).await?;
+            anyhow::ensure!(!self.activities.closed(), "StackCabin is shutting down");
+        }
         if let Some(binding) = project.spec.database.as_mut() {
             let port = self.databases.start(&binding.engine).await?;
             if port != binding.port {
@@ -383,7 +398,7 @@ impl AppCore {
         }
         let result = self.backups.create(&project, operation).await;
         if was_running && !self.activities.closed() {
-            if let Err(error) = self.start_project_inner(id).await {
+            if let Err(error) = self.start_project_inner(id, StartMode::Start).await {
                 if self.activities.closed() {
                     return result;
                 }
@@ -601,5 +616,33 @@ fn move_new_entry(source: &Path, destination: &Path) -> Result<()> {
             Ok(())
         }
         Err(error) => Err(error).context("Could not move generated starter into the project"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn history_keeps_the_live_sequence_after_buffer_rollover() {
+        let temp = tempfile::tempdir().unwrap();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let core = AppCore::new(
+            temp.path().to_owned(),
+            Arc::new(move |e| tx.send(e).unwrap()),
+        )
+        .unwrap();
+        let line = event("log", "", "project", "repeated line", None);
+        for _ in 0..2003 {
+            (core.sink)(line.clone());
+        }
+        let live: Vec<_> = rx.try_iter().map(|e| e.sequence).collect();
+        assert_eq!(live, (1..=2003).collect::<Vec<_>>());
+        let history: Vec<_> = core
+            .logs(Some("project"))
+            .iter()
+            .map(|e| e.sequence)
+            .collect();
+        assert_eq!(history, live[3..]);
     }
 }

@@ -39,4 +39,4 @@ export type ServiceInfo = { id: string, name: string, state: ProcessState, port:
 
 export type Snapshot = { qaMode: boolean, projects: Array<Project>, statuses: Array<ProjectStatus>, runtimes: Array<RuntimeInfo>, services: Array<ServiceInfo>, backups: Array<BackupInfo>, settings: Settings, platform: string, arch: string, dataDirectory: string, catalogError: string | null, };
 
-export type AppEvent = { kind: string, operationId: string, subject: string, message: string, progress: number | null, timestamp: string, };
+export type AppEvent = { sequence: number, kind: string, operationId: string, subject: string, message: string, progress: number | null, timestamp: string, };

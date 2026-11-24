@@ -68,6 +68,7 @@ async fn a_real_backup_excludes_same_project_mutations_without_blocking_other_pr
     busy(core.save_project(&first.id, changed, false).await);
     busy(core.start_project(&first.id).await);
     busy(core.stop_project(&first.id).await);
+    busy(core.restart_project(&first.id).await);
     busy(core.prepare(&first.id, "conflicting-prepare").await);
     busy(
         core.attach_database(&first.id, DatabaseEngine::Sqlite)
@@ -143,6 +144,9 @@ async fn untrusted_start_rejects_before_database_port_or_project_files_change() 
     let before = std::fs::read(path.join("stackcabin.json")).unwrap();
     let error = core.start_project(&project.id).await.unwrap_err();
     assert!(format!("{error:#}").contains("Trust this project before executing its code"));
+    let error = core.restart_project(&project.id).await.unwrap_err();
+    assert!(format!("{error:#}").contains("Trust this project before executing its code"));
+    assert!(core.logs(Some(&project.id)).is_empty());
     assert_eq!(std::fs::read(path.join("stackcabin.json")).unwrap(), before);
     assert_eq!(
         core.store

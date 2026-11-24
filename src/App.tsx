@@ -75,6 +75,7 @@ import { translator, type T } from "./lib/i18n";
 import { SetupReview } from "./components/SetupReview";
 import { useProjectPlan } from "./lib/useProjectPlan";
 import { runtimeInstallations } from "./lib/project-plan";
+import { mergeLogEvents } from "./lib/log-history";
 import type { ProjectPlan } from "./lib/types";
 
 type Page =
@@ -234,24 +235,41 @@ export default function App() {
     }, 2500);
     let dispose: (() => void) | undefined;
     let disposed = false;
-    void subscribe((event) => {
-      setEvents((current) => [...current.slice(-999), event]);
+    function onEvent(event: AppEvent) {
+      if (disposed) return;
+      setEvents((current) => mergeLogEvents(current, [event]));
       if (
         event.operationId &&
         taskRef.current?.id === event.operationId &&
         event.progress !== null
       )
         setTask((current) =>
-          current ? { ...current, progress: event.progress } : null,
+          current?.id === event.operationId
+            ? { ...current, progress: event.progress }
+            : current,
         );
-    }).then((fn) => {
-      if (disposed) fn();
-      else dispose = fn;
-    });
-    void api
-      .logs(null)
-      .then(setEvents)
-      .catch(() => {});
+    }
+    async function connectLogs() {
+      try {
+        const unlisten = await subscribe(onEvent);
+        if (disposed) {
+          unlisten();
+          return;
+        }
+        dispose = unlisten;
+      } catch (error) {
+        if (disposed) return;
+        setError(errorText(error));
+      }
+      // Register first so events emitted while history is loading are covered.
+      try {
+        const history = await api.logs(null);
+        if (!disposed) setEvents((current) => mergeLogEvents(current, history));
+      } catch (error) {
+        if (!disposed) setError(errorText(error));
+      }
+    }
+    void connectLogs();
     return () => {
       disposed = true;
       clearInterval(timer);
@@ -468,6 +486,7 @@ export default function App() {
           )}
           {project ? (
             <ProjectDetail
+              key={project.id}
               project={project}
               snapshot={snapshot}
               t={t}
@@ -477,6 +496,7 @@ export default function App() {
               run={run}
               onStart={() => run(() => api.start(project.id), t("starting"))}
               onStop={() => run(() => api.stop(project.id), t("stopping"))}
+              onRestart={() => run(() => api.restart(project.id), t("restart"))}
               onSetup={() => setSetupReview({ project, mode: "runtimes" })}
               onPrepare={() =>
                 setSetupReview({ project, mode: "dependencies" })
@@ -601,11 +621,8 @@ export default function App() {
                             .filter((e) => e.kind !== "progress")
                             .slice(-5)
                             .reverse()
-                            .map((e, i) => (
-                              <div
-                                className="activity-item"
-                                key={`${e.timestamp}-${i}`}
-                              >
+                            .map((e) => (
+                              <div className="activity-item" key={e.sequence}>
                                 <span
                                   className={`activity-dot ${e.kind === "error" ? "red" : ""}`}
                                 />
@@ -1384,6 +1401,7 @@ function ProjectDetail({
   run,
   onStart,
   onStop,
+  onRestart,
   onSetup,
   onPrepare,
   onBackup,
@@ -1398,6 +1416,7 @@ function ProjectDetail({
   run: Run;
   onStart: () => void;
   onStop: () => void;
+  onRestart: () => void;
   onSetup: () => void;
   onPrepare: () => void;
   onBackup: () => void;
@@ -1465,19 +1484,34 @@ function ProjectDetail({
             <ExternalLink size={15} />
             {t("open")}
           </button>
+          {(state === "running" || state === "failed") && (
+            <button
+              className="button secondary"
+              disabled={busy || !project.trusted}
+              onClick={onRestart}
+            >
+              <RefreshCw size={15} />
+              {t("restart")}
+            </button>
+          )}
           <button
             className="button primary"
-            disabled={busy}
-            onClick={state === "running" ? onStop : onStart}
+            disabled={
+              busy ||
+              state === "starting" ||
+              state === "stopping" ||
+              (state === "stopped" && !project.trusted)
+            }
+            onClick={state === "stopped" ? onStart : onStop}
           >
             {busy ? (
               <Loader2 size={15} className="spin" />
-            ) : state === "running" ? (
+            ) : state !== "stopped" ? (
               <Square size={14} />
             ) : (
               <Play size={14} />
             )}
-            {state === "running" ? t("stop") : t("start")}
+            {state === "stopped" ? t("start") : t("stop")}
           </button>
         </div>
       </div>
@@ -1629,14 +1663,16 @@ function ProjectDetail({
               <span className="tiny-dot" />
               {project.spec.name}
             </span>
-            <span>{logs.length} entries</span>
+            <span>
+              {t("logEntries")} ({logs.length})
+            </span>
           </div>
           <div className="log-lines">
             {logs.length ? (
-              logs.map((e, i) => (
+              logs.map((e) => (
                 <div
                   className={e.kind === "error" ? "log-error" : ""}
-                  key={`${i}-${e.timestamp}`}
+                  key={e.sequence}
                 >
                   <time>{new Date(e.timestamp).toLocaleTimeString()}</time>
                   <pre>{e.message}</pre>
@@ -1762,26 +1798,34 @@ function ProjectDetail({
               ? names[project.spec.database.engine] || "SQLite"
               : t("noDb")}
           </h2>
-          <p className="muted">{t("dbHelp")}</p>
+          <p className="muted">
+            {t(
+              project.spec.database?.engine === "sqlite"
+                ? "sqliteHelp"
+                : "dbHelp",
+            )}
+          </p>
           {project.spec.database ? (
             <>
               <div className="info-row">
                 <span>{t("name")}</span>
                 <code>{project.spec.database.name}</code>
               </div>
-              <div className="info-row">
-                <span>User</span>
-                <code>{project.spec.database.username || "Local file"}</code>
-              </div>
-              <div className="info-row">
-                <span>{t("port")}</span>
-                <code>{project.spec.database.port || "—"}</code>
-              </div>
-              <p className="muted small">
-                Database connection variables are injected into project
-                processes. Passwords stay in the OS keychain.
-              </p>
+              {project.spec.database.engine !== "sqlite" && (
+                <>
+                  <div className="info-row">
+                    <span>{t("databaseUser")}</span>
+                    <code>{project.spec.database.username || "—"}</code>
+                  </div>
+                  <div className="info-row">
+                    <span>{t("port")}</span>
+                    <code>{project.spec.database.port || "—"}</code>
+                  </div>
+                </>
+              )}
+              <p className="muted small">{t("dbEnvHelp")}</p>
               <DatabaseQuery
+                t={t}
                 projectId={project.id}
                 trusted={project.trusted}
                 busy={busy}
@@ -1820,18 +1864,20 @@ function ProjectDetail({
 }
 
 function DatabaseQuery({
+  t,
   projectId,
   trusted,
   busy,
   run,
 }: {
+  t: T;
   projectId: string;
   trusted: boolean;
   busy: boolean;
   run: Run;
 }) {
   const [sql, setSql] = useState("SELECT 1;");
-  const [result, setResult] = useState("");
+  const [result, setResult] = useState<string | null>(null);
   return (
     <div className="database-query">
       <label className="field">
@@ -1847,13 +1893,18 @@ function DatabaseQuery({
         className="button secondary full"
         disabled={busy || !trusted || !sql.trim()}
         onClick={() =>
-          run(async () => setResult(await api.queryDatabase(projectId, sql)))
+          run(async () => {
+            setResult(null);
+            setResult(await api.queryDatabase(projectId, sql));
+          })
         }
       >
         <Play size={14} />
-        Run SQL
+        {t("runSql")}
       </button>
-      {result && <pre className="query-result">{result}</pre>}
+      {result !== null && (
+        <pre className="query-result">{result || t("queryComplete")}</pre>
+      )}
     </div>
   );
 }

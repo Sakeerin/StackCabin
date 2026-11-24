@@ -305,6 +305,49 @@ async fn main() -> Result<()> {
         println!("PASS {} {:?} {}", project.spec.name, info.state, url);
         ids.push(project.id);
     }
+    // Restart one managed runtime while its neighbours keep their existing routes.
+    if let Some(index) = observations
+        .iter()
+        .rposition(|(_, _, _, runtime)| runtime.is_some())
+    {
+        let id = &ids[index];
+        let old_pid = core
+            .supervisor
+            .statuses()
+            .await
+            .into_iter()
+            .find(|status| &status.project_id == id)
+            .and_then(|status| status.processes.iter().find_map(|p| p.pid))
+            .context("Expected an owned runtime PID before restart")?;
+        let status = core.restart_project(id).await?;
+        let new_pid = status
+            .processes
+            .iter()
+            .find_map(|p| p.pid)
+            .context("Expected a healthy replacement process after restart")?;
+        anyhow::ensure!(
+            old_pid != new_pid,
+            "Restart did not replace the runtime process"
+        );
+        let url = reqwest::Url::parse(
+            status
+                .url
+                .as_deref()
+                .context("Restarted project URL is missing")?,
+        )?;
+        observations[index].0 = format!(
+            "http://127.0.0.1:{}/",
+            url.port_or_known_default().context("Missing proxy port")?
+        );
+        observations[index].2 = status
+            .fallback_url
+            .context("Restarted fallback URL is missing")?;
+        for (routed, host, fallback, runtime) in &observations {
+            assert_project_response(routed, host, runtime.as_deref()).await?;
+            assert_project_response(fallback, "127.0.0.1", runtime.as_deref()).await?;
+        }
+        println!("PASS project restart replaced its runtime process and all project routes serve their selected runtime");
+    }
     if let Some(id) = ids.first() {
         // Exercise restart under the backup's existing project admission. Calling
         // the public start method here would conflict with that same operation.
