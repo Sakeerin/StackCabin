@@ -49,8 +49,20 @@ image/OS and binary/manifest hashes. Hosted images have preinstalled software;
 system-only PATH and unreachable online proxies do not replace the fresh-OS,
 disconnected-network and interactive desktop checks below.
 
-The manual **Build the Windows VM acceptance tool** workflow packages the existing
-Rust `native-smoke` acceptance executable with a PowerShell wrapper. This is an
+The manual **Build the Windows VM acceptance tool** workflow takes the normal
+Windows installer run ID in `installer_run`. An empty input selects the latest
+available Windows preview. The workflow checks out the selected installer's
+commit, verifies its NSIS checksum, and builds the Rust `native-smoke` executable
+and PowerShell wrapper from that checkout. Before publishing the kit it exercises
+the wrapper with the matching offline runtimes under a standard-user token on a
+hosted Windows runner. Use the following files to pair the kit with a VM test:
+
+- `installer-availability.json` identifies the producer, source commit, artifact
+  download and SHA-256 of the installer artifact ZIP.
+- `INSTALLER_SHA256SUMS.txt` contains the expected hash of the extracted installer.
+- `SOURCE_COMMIT.txt` and `SHA256SUMS.txt` identify the kit source and executable.
+
+The kit is an
 internal QA harness, separate from the product UI. It needs no system Rust, npm,
 PHP, Node or database installation. Install StackCabin first so its Microsoft
 prerequisites are available. Verify the kit's binary against `SHA256SUMS.txt`.

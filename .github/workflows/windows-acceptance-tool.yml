@@ -1,23 +1,61 @@
 name: Build the Windows VM acceptance tool
 on:
   workflow_dispatch:
+    inputs:
+      installer_run:
+        description: Normal Windows installer run ID (blank selects latest available)
+        type: string
+        required: false
 permissions:
   contents: read
+  actions: read
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+      - name: Select the Windows installer and its application source
+        id: installer
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INSTALLER_RUN: ${{ inputs.installer_run }}
+        run: |
+          $options = @("--repository=$env:GITHUB_REPOSITORY", '--target=windows-x64')
+          if ($env:INSTALLER_RUN) { $options += "--run-id=$env:INSTALLER_RUN" }
+          $report = Join-Path $env:RUNNER_TEMP 'installer-availability.json'
+          node .github/scripts/preview-installers.mjs @options > $report
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot select an available normal Windows installer' }
+          $selected = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
+          "source=$($selected.sourceCommit)" >> $env:GITHUB_OUTPUT
+          "artifact=$($selected.artifacts[0].artifactId)" >> $env:GITHUB_OUTPUT
+          "run=$($selected.runId)" >> $env:GITHUB_OUTPUT
+          Copy-Item docs/VM_ACCEPTANCE.md (Join-Path $env:RUNNER_TEMP 'VM_ACCEPTANCE.md')
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.installer.outputs.source }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ steps.installer.outputs.artifact }}
+          run-id: ${{ steps.installer.outputs.run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          merge-multiple: true
+          path: artifacts/matching-installer
+      - name: Verify the distributed Windows installer
+        run: python scripts/verify-installer-checksums.py artifacts/matching-installer --platform Windows
       - name: Verify wrapper integrity and workspace safeguards
         run: node --test scripts/test-windows-acceptance.mjs
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build the existing real-runtime acceptance harness
-        run: cargo build --release -p stackcabin-core --example native-smoke
+        run: cargo build --locked --release -p stackcabin-core --example native-smoke
       - name: Prepare the portable test kit
         shell: pwsh
         run: |
@@ -25,14 +63,45 @@ jobs:
           New-Item -ItemType Directory -Force -Path $directory | Out-Null
           Copy-Item target/release/examples/native-smoke.exe $directory
           Copy-Item scripts/Invoke-StackCabinAcceptance.ps1 $directory
-          Copy-Item docs/VM_ACCEPTANCE.md $directory
+          Copy-Item (Join-Path $env:RUNNER_TEMP 'VM_ACCEPTANCE.md') $directory
+          Copy-Item (Join-Path $env:RUNNER_TEMP 'installer-availability.json') $directory
+          Copy-Item artifacts/matching-installer/SHA256SUMS.txt "$directory/INSTALLER_SHA256SUMS.txt"
           Copy-Item LICENSE $directory
           Copy-Item resources/THIRD_PARTY_NOTICES.txt $directory
           $hash = (Get-FileHash "$directory/native-smoke.exe" -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  native-smoke.exe" | Set-Content "$directory/SHA256SUMS.txt" -Encoding utf8
           git rev-parse HEAD | Set-Content "$directory/SOURCE_COMMIT.txt" -Encoding utf8
+      - name: Prepare the matching Windows offline runtimes
+        run: node scripts/offline-pack.mjs --platform=windows --arch=x64 --dev
+      - name: Run the portable kit as a standard user with offline runtimes
+        shell: pwsh
+        run: |
+          $kit = (Resolve-Path artifacts/windows-acceptance).Path
+          $pack = (Resolve-Path artifacts/offline-windows-x64).Path
+          $testRoot = New-Item -ItemType Directory -Path '.local/vm-kit-check'
+          $acl = Get-Acl -LiteralPath $testRoot.FullName
+          $user = [Security.Principal.WindowsIdentity]::GetCurrent().User
+          $acl.SetAccessRule([Security.AccessControl.FileSystemAccessRule]::new($user, 'Modify', 'ContainerInherit, ObjectInherit', 'None', 'Allow'))
+          Set-Acl -LiteralPath $testRoot.FullName -AclObject $acl
+          $workspace = Join-Path $testRoot.FullName 'workspace ทดสอบ'
+          $arguments = @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $kit 'Invoke-StackCabinAcceptance.ps1'), '-Workspace', $workspace, '-OfflinePack', $pack)
+          $log = Join-Path $testRoot.FullName 'wrapper.log'
+          Add-Type -Path scripts/StandardUserAcceptance.cs
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          $env:PSModulePath = ''
+          $env:http_proxy = $env:https_proxy = $env:ALL_PROXY = 'http://127.0.0.1:1'
+          $env:NO_PROXY = ''
+          $ps5 = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
+          $exitCode = [StackCabinAcceptance.StandardUser]::Run($ps5, $arguments, $kit, $log)
+          Get-Content -LiteralPath $log
+          if ($exitCode -ne 0) { throw "Portable acceptance kit failed ($exitCode)" }
+          $result = Get-Content -LiteralPath (Join-Path $workspace 'acceptance.log') -Raw
+          foreach ($message in @('PASS all 5 projects remain reachable with their selected runtime', 'PASS mariadb provision / read / write / dump / restore', 'PASS postgres provision / read / write / dump / restore')) {
+            if (!$result.Contains($message)) { throw "Missing acceptance result: $message" }
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: windows-vm-acceptance
           retention-days: 7
+          if-no-files-found: error
           path: artifacts/windows-acceptance/
