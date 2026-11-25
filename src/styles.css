@@ -772,6 +772,10 @@ main {
   margin: 0 7px;
   color: #b4bdae;
 }
+.project-card-actions {
+  display: flex;
+  gap: 5px;
+}
 .run-button {
   display: flex;
   align-items: center;

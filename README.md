@@ -256,6 +256,11 @@ server's continued health. Run it alone with
 `cargo test -p stackcabin-core --test owner_lifecycle`.
 Desktop WebDriver is compiled
 only with the `e2e` feature and is absent from normal application builds.
+The desktop recovery test starts two managed Node.js processes behind Caddy,
+lets one exit, then exercises Restart and Stop from the Projects list. It
+downloads the pinned Node.js and Caddy archives into the test workspace.
+Set `STACKCABIN_E2E_OFFLINE` to the matching platform's offline runtime
+directory to run the same test with local archives.
 
 The lifecycle probe opens four isolated application sessions. It checks native
 close-to-tray and restore, close without tray, repeated Quit during pending

@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { api, emptySnapshot, subscribe } from "./lib/api";
-import type { AppEvent, Project, ProjectPlan } from "./lib/types";
+import type { AppEvent, ProcessState, Project, ProjectPlan } from "./lib/types";
 import App from "./App";
 
 vi.mock("./lib/api", async (original) => ({
@@ -22,6 +22,8 @@ vi.mock("./lib/api", async (original) => ({
     install: vi.fn(),
     logs: vi.fn().mockResolvedValue([]),
     queryDatabase: vi.fn(),
+    start: vi.fn(),
+    stop: vi.fn(),
     restart: vi.fn(),
   },
   subscribe: vi.fn().mockResolvedValue(() => {}),
@@ -89,6 +91,154 @@ it("restarts the selected running project once and disables duplicate actions un
   await act(async () => finish(status));
   expect(restart).toBeEnabled();
 });
+
+it("offers Stop and Restart on a Thai dashboard card while a sibling still runs", async () => {
+  const project = databaseProject("shop");
+  const web = {
+    name: "web",
+    state: "running" as const,
+    pid: 42,
+    port: 3000,
+    url: null,
+    error: null,
+  };
+  vi.mocked(api.snapshot).mockResolvedValue({
+    ...emptySnapshot,
+    settings: { ...emptySnapshot.settings, language: "th" },
+    projects: [project],
+    statuses: [
+      {
+        projectId: project.id,
+        url: null,
+        fallbackUrl: null,
+        processes: [web, { ...web, name: "vite", state: "stopped", pid: null }],
+      },
+    ],
+  });
+  render(<App />);
+  expect(
+    await screen.findByRole("button", { name: "เริ่มใหม่ shop" }),
+  ).toBeEnabled();
+  expect(screen.getByText("ต้องตรวจสอบ")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "หยุด shop" }));
+  await waitFor(() =>
+    expect(api.stop).toHaveBeenCalledExactlyOnceWith(project.id),
+  );
+  expect(api.start).not.toHaveBeenCalled();
+});
+
+it.each(["starting", "stopping"] as const)(
+  "blocks a duplicate action while a project is %s",
+  async (state) => {
+    const project = databaseProject("shop");
+    const process = {
+      name: "web",
+      state,
+      pid: null,
+      port: null,
+      url: null,
+      error: null,
+    };
+    vi.mocked(api.snapshot).mockResolvedValue({
+      ...emptySnapshot,
+      projects: [project, { ...databaseProject("untrusted"), trusted: false }],
+      statuses: [
+        {
+          projectId: project.id,
+          url: null,
+          fallbackUrl: null,
+          processes: [process],
+        },
+      ],
+    });
+    render(<App />);
+    const label = state === "starting" ? "Starting" : "Stopping";
+    expect(
+      await screen.findByRole("button", { name: `${label} shop` }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Start untrusted" }),
+    ).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Restart shop" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("shop", { selector: ".project-title" }));
+    expect(screen.getByRole("button", { name: label })).toBeDisabled();
+  },
+);
+
+it.each([
+  ["running", true],
+  ["stopped", false],
+] as const)(
+  "shows supervisor errors and gates project changes when a sibling is %s",
+  async (siblingState: ProcessState, active: boolean) => {
+    const project = databaseProject("shop");
+    project.spec.database = null;
+    project.spec.processes = [
+      {
+        name: "web",
+        tool: "node",
+        args: ["server.mjs"],
+        cwd: ".",
+        port: 3000,
+        healthPath: "/",
+      },
+    ];
+    const web = {
+      name: "web",
+      state: siblingState,
+      pid: null,
+      port: null,
+      url: null,
+      error: null,
+    };
+    vi.mocked(api.snapshot).mockResolvedValue({
+      ...emptySnapshot,
+      projects: [project],
+      statuses: [
+        {
+          projectId: project.id,
+          url: null,
+          fallbackUrl: null,
+          processes: [
+            web,
+            { ...web, state: "failed", error: "Web route returned 503" },
+            {
+              ...web,
+              name: "local-proxy",
+              state: "failed",
+              error: "Caddy stopped unexpectedly.",
+            },
+          ],
+        },
+      ],
+    });
+    vi.mocked(api.plan).mockResolvedValue({
+      requirements: [],
+      processes: [],
+      commands: [],
+    });
+    render(<App />);
+    fireEvent.click(
+      await screen.findByText("shop", { selector: ".project-title" }),
+    );
+    expect(screen.getByText(/Web route returned 503/)).toBeVisible();
+    expect(screen.getByText(/Caddy stopped unexpectedly/)).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Install dependencies" }),
+    ).toHaveProperty("disabled", active);
+    fireEvent.click(screen.getByRole("button", { name: "Configuration" }));
+    expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty(
+      "disabled",
+      active,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Database" }));
+    expect(
+      screen.getByRole("button", { name: "Create project database" }),
+    ).toHaveProperty("disabled", active);
+  },
+);
 
 it("merges overlapping history and live events once in sequence for each project", async () => {
   const projects = ["shop", "blog"].map(databaseProject);

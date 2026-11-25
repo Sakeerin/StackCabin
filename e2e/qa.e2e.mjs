@@ -3,55 +3,8 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
+import { invoke, invokeLong } from "./ipc.mjs";
 
-const invoke = (command, args = {}) =>
-  browser.tauri.execute(
-    async (tauri, command, args) => tauri.core.invoke(command, args),
-    command,
-    args,
-  );
-
-// The embedded driver's direct-eval endpoint has its own 30s deadline. Keep
-// long native IPC operations alive in the WebView and poll with short calls.
-const invokeLong = async (command, args) => {
-  const key = randomUUID();
-  await browser.tauri.execute(
-    (tauri, key, command, args) => {
-      const tasks = (window.__stackcabinQaTasks ??= {});
-      const task = (tasks[key] = { done: false });
-      Promise.resolve()
-        .then(() => tauri.core.invoke(command, args))
-        .then(
-          (value) => Object.assign(task, { done: true, value }),
-          (error) => Object.assign(task, { done: true, error: String(error) }),
-        );
-      return true;
-    },
-    key,
-    command,
-    args,
-  );
-  try {
-    await browser.waitUntil(
-      () => browser.execute((key) => window.__stackcabinQaTasks[key].done, key),
-      {
-        timeout: 180000,
-        interval: 500,
-        timeoutMsg: `${command} did not finish`,
-      },
-    );
-    const result = await browser.execute(
-      (key) => window.__stackcabinQaTasks[key],
-      key,
-    );
-    if (result.error) throw new Error(`${command}: ${result.error}`);
-    return result.value;
-  } finally {
-    await browser.execute((key) => {
-      delete window.__stackcabinQaTasks[key];
-    }, key);
-  }
-};
 describe("Unix QA desktop with the matching offline stack", () => {
   it("labels QA mode and installs every selected runtime through real desktop IPC", async () => {
     await browser.setTimeout({ script: 300000 });

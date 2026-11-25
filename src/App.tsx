@@ -64,6 +64,7 @@ import type {
   DatabaseEngine,
   Diagnostic,
   Preset,
+  ProcessState,
   Project,
   ProjectSpec,
   ProjectStatus,
@@ -174,16 +175,12 @@ export function formatBytes(value: number | bigint): string {
   const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 3);
   return `${(bytes / 1024 ** i).toFixed(i ? 1 : 0)} ${["B", "KB", "MB", "GB"][i]}`;
 }
-export function projectState(
-  status?: ProjectStatus,
-): "running" | "stopped" | "failed" | "starting" | "stopping" {
-  if (!status?.processes.length) return "stopped";
-  if (status.processes.some((p) => p.state === "failed")) return "failed";
-  if (status.processes.some((p) => p.state === "starting")) return "starting";
-  if (status.processes.some((p) => p.state === "stopping")) return "stopping";
-  return status.processes.every((p) => p.state === "running")
-    ? "running"
-    : "stopped";
+export function projectState(status?: ProjectStatus): ProcessState {
+  const states = new Set(status?.processes.map((process) => process.state));
+  if (states.has("stopping")) return "stopping";
+  if (states.has("starting")) return "starting";
+  if (states.has("failed") || states.size > 1) return "failed";
+  return states.has("running") ? "running" : "stopped";
 }
 const errorText = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
@@ -494,9 +491,6 @@ export default function App() {
               events={events}
               onBack={() => setSelected(null)}
               run={run}
-              onStart={() => run(() => api.start(project.id), t("starting"))}
-              onStop={() => run(() => api.stop(project.id), t("stopping"))}
-              onRestart={() => run(() => api.restart(project.id), t("restart"))}
               onSetup={() => setSetupReview({ project, mode: "runtimes" })}
               onPrepare={() =>
                 setSetupReview({ project, mode: "dependencies" })
@@ -603,10 +597,7 @@ export default function App() {
                         t={t}
                         onSelect={setSelected}
                         onCreate={() => setWizard("new")}
-                        onStart={(id) =>
-                          run(() => api.start(id), t("starting"))
-                        }
-                        onStop={(id) => run(() => api.stop(id), t("stopping"))}
+                        run={run}
                         busy={busy}
                       />
                     </section>
@@ -664,8 +655,7 @@ export default function App() {
                   onCreate={() => setWizard("new")}
                   onImport={() => setWizard("import")}
                   onSelect={setSelected}
-                  onStart={(id) => run(() => api.start(id), t("starting"))}
-                  onStop={(id) => run(() => api.stop(id), t("stopping"))}
+                  run={run}
                   busy={busy}
                 />
               )}
@@ -1041,14 +1031,68 @@ function EmptyState({
     </div>
   );
 }
+function ProjectControls({
+  project,
+  state,
+  busy,
+  compact = false,
+  run,
+  t,
+}: {
+  project: Project;
+  state: ProcessState;
+  busy: boolean;
+  compact?: boolean;
+  run: Run;
+  t: T;
+}) {
+  const transitioning = state === "starting" || state === "stopping";
+  const start = state === "stopped";
+  const label = t(transitioning ? state : start ? "start" : "stop");
+  const Icon = transitioning ? Loader2 : start ? Play : Square;
+  const restartLabel = `${t("restart")} ${project.spec.name}`;
+  return (
+    <>
+      {(state === "running" || state === "failed") && (
+        <button
+          className={compact ? "run-button is-running" : "button secondary"}
+          aria-label={compact ? restartLabel : undefined}
+          title={compact ? restartLabel : undefined}
+          disabled={busy || !project.trusted}
+          onClick={() => run(() => api.restart(project.id), t("restart"))}
+        >
+          <RefreshCw size={compact ? 13 : 15} />
+          {!compact && t("restart")}
+        </button>
+      )}
+      <button
+        className={
+          compact ? `run-button ${start ? "" : "is-running"}` : "button primary"
+        }
+        aria-label={compact ? `${label} ${project.spec.name}` : undefined}
+        disabled={busy || transitioning || (start && !project.trusted)}
+        onClick={() =>
+          start
+            ? run(() => api.start(project.id), t("starting"))
+            : run(() => api.stop(project.id), t("stopping"))
+        }
+      >
+        <Icon
+          size={compact ? 13 : 15}
+          className={transitioning ? "spin" : undefined}
+        />
+        {label}
+      </button>
+    </>
+  );
+}
 function ProjectGrid({
   projects,
   statuses,
   t,
   onSelect,
   onCreate,
-  onStart,
-  onStop,
+  run,
   busy,
 }: {
   projects: Project[];
@@ -1056,8 +1100,7 @@ function ProjectGrid({
   t: T;
   onSelect: (id: string) => void;
   onCreate: () => void;
-  onStart: (id: string) => void;
-  onStop: (id: string) => void;
+  run: Run;
   busy: boolean;
 }) {
   if (!projects.length)
@@ -1115,21 +1158,16 @@ function ProjectGrid({
                   </>
                 )}
               </span>
-              <button
-                className={`run-button ${state === "running" ? "is-running" : ""}`}
-                disabled={busy}
-                onClick={() =>
-                  state === "running" ? onStop(project.id) : onStart(project.id)
-                }
-                aria-label={`${state === "running" ? "Stop" : "Start"} ${project.spec.name}`}
-              >
-                {state === "running" ? (
-                  <Square size={12} fill="currentColor" />
-                ) : (
-                  <Play size={13} fill="currentColor" />
-                )}
-                {state === "running" ? t("stop") : t("start")}
-              </button>
+              <div className="project-card-actions">
+                <ProjectControls
+                  project={project}
+                  state={state}
+                  busy={busy}
+                  run={run}
+                  t={t}
+                  compact
+                />
+              </div>
             </div>
           </article>
         );
@@ -1143,8 +1181,7 @@ function ProjectsPage({
   onCreate,
   onImport,
   onSelect,
-  onStart,
-  onStop,
+  run,
   busy,
 }: {
   snapshot: Snapshot;
@@ -1152,8 +1189,7 @@ function ProjectsPage({
   onCreate: () => void;
   onImport: () => void;
   onSelect: (id: string) => void;
-  onStart: (id: string) => void;
-  onStop: (id: string) => void;
+  run: Run;
   busy: boolean;
 }) {
   const [search, setSearch] = useState("");
@@ -1222,8 +1258,7 @@ function ProjectsPage({
           t={t}
           onCreate={onCreate}
           onSelect={onSelect}
-          onStart={onStart}
-          onStop={onStop}
+          run={run}
           busy={busy}
         />
       ) : (
@@ -1399,9 +1434,6 @@ function ProjectDetail({
   events,
   onBack,
   run,
-  onStart,
-  onStop,
-  onRestart,
   onSetup,
   onPrepare,
   onBackup,
@@ -1414,9 +1446,6 @@ function ProjectDetail({
   events: AppEvent[];
   onBack: () => void;
   run: Run;
-  onStart: () => void;
-  onStop: () => void;
-  onRestart: () => void;
   onSetup: () => void;
   onPrepare: () => void;
   onBackup: () => void;
@@ -1458,6 +1487,16 @@ function ProjectDetail({
   }, [project.id, project.trusted, JSON.stringify(project.spec)]);
   const status = snapshot.statuses.find((s) => s.projectId === project.id);
   const state = projectState(status);
+  const hasActiveProcess = status?.processes.some(
+    (process) => process.state !== "failed" && process.state !== "stopped",
+  );
+  const processRows = project.spec.processes.map((process) => ({
+    process,
+    info: status?.processes.find((info) => info.name === process.name),
+  }));
+  const additionalErrors = status?.processes.filter(
+    (info) => info.error && !processRows.some((row) => row.info === info),
+  );
   const preset = presets.find((p) => p.id === project.spec.preset)!;
   const logs = events.filter((e) => e.subject === project.id);
   return (
@@ -1484,35 +1523,13 @@ function ProjectDetail({
             <ExternalLink size={15} />
             {t("open")}
           </button>
-          {(state === "running" || state === "failed") && (
-            <button
-              className="button secondary"
-              disabled={busy || !project.trusted}
-              onClick={onRestart}
-            >
-              <RefreshCw size={15} />
-              {t("restart")}
-            </button>
-          )}
-          <button
-            className="button primary"
-            disabled={
-              busy ||
-              state === "starting" ||
-              state === "stopping" ||
-              (state === "stopped" && !project.trusted)
-            }
-            onClick={state === "stopped" ? onStart : onStop}
-          >
-            {busy ? (
-              <Loader2 size={15} className="spin" />
-            ) : state !== "stopped" ? (
-              <Square size={14} />
-            ) : (
-              <Play size={14} />
-            )}
-            {state === "stopped" ? t("start") : t("stop")}
-          </button>
+          <ProjectControls
+            project={project}
+            state={state}
+            busy={busy}
+            run={run}
+            t={t}
+          />
         </div>
       </div>
       {!project.trusted && (
@@ -1550,24 +1567,24 @@ function ProjectDetail({
               <h2>{t("process")}</h2>
               <Code2 size={18} />
             </div>
-            {project.spec.processes.map((process) => {
-              const info = status?.processes.find(
-                (p) => p.name === process.name,
-              );
-              return (
-                <div className="process-row" key={process.name}>
-                  <Terminal size={18} />
-                  <div>
-                    <strong>{process.name}</strong>
-                    <code>
-                      {process.tool} {process.args.join(" ")}
-                    </code>
-                    {info?.error && <p className="error-text">{info.error}</p>}
-                  </div>
-                  <StatusBadge state={info?.state || "stopped"} t={t} />
+            {processRows.map(({ process, info }) => (
+              <div className="process-row" key={process.name}>
+                <Terminal size={18} />
+                <div>
+                  <strong>{process.name}</strong>
+                  <code>
+                    {process.tool} {process.args.join(" ")}
+                  </code>
+                  {info?.error && <p className="error-text">{info.error}</p>}
                 </div>
-              );
-            })}
+                <StatusBadge state={info?.state || "stopped"} t={t} />
+              </div>
+            ))}
+            {additionalErrors?.map((info, index) => (
+              <p className="error-text" key={`${info.name}-${index}`}>
+                <strong>{info.name}</strong> · {info.error}
+              </p>
+            ))}
             {[
               ["browser", status?.url],
               ["loopback", status?.fallbackUrl],
@@ -1609,7 +1626,7 @@ function ProjectDetail({
             </button>
             <button
               className="button secondary full"
-              disabled={busy || state === "running"}
+              disabled={busy || hasActiveProcess}
               onClick={onPrepare}
             >
               <Package size={15} />
@@ -1767,7 +1784,7 @@ function ProjectDetail({
               className="button primary"
               disabled={
                 busy ||
-                state === "running" ||
+                hasActiveProcess ||
                 (trusted && !project.trusted && !configurationReview.plan)
               }
               onClick={() =>
@@ -1844,7 +1861,7 @@ function ProjectDetail({
               </select>
               <button
                 className="button primary"
-                disabled={busy || !project.trusted || state === "running"}
+                disabled={busy || !project.trusted || hasActiveProcess}
                 onClick={() =>
                   run(
                     () => api.attachDatabase(project.id, engine),

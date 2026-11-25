@@ -1,13 +1,9 @@
 import { browser, $, $$ } from "@wdio/globals";
 import assert from "node:assert/strict";
 import path from "node:path";
-async function invoke(command, args = {}) {
-  return browser.tauri.execute(
-    async (tauri, command, args) => tauri.core.invoke(command, args),
-    command,
-    args,
-  );
-}
+import { randomUUID } from "node:crypto";
+import { writeFile, unlink } from "node:fs/promises";
+import { invoke, invokeLong } from "./ipc.mjs";
 describe("StackCabin native desktop", () => {
   before(async () => {
     const handles = await browser.getWindowHandles();
@@ -131,6 +127,122 @@ describe("StackCabin native desktop", () => {
       path.resolve("artifacts/stackcabin-desktop.png"),
     );
   });
+
+  it("recovers and stops a partially failed project from the Projects list", async function () {
+    this.timeout(300000);
+    const project = await invoke("project_create", {
+      parent: process.env.STACKCABIN_E2E_PROJECTS,
+      name: "two-process-project",
+      preset: "node",
+      trusted: true,
+    });
+    const status = async () =>
+      (await invoke("snapshot")).statuses.find(
+        (entry) => entry.projectId === project.id,
+      );
+    const button = (action) =>
+      $(`button[aria-label="${action} two-process-project"]`);
+    const marker = path.join(project.path, "exit-sidecar");
+    async function failSidecar() {
+      await writeFile(marker, "");
+      await $(".project-card .status-badge.failed").waitForDisplayed();
+      const run = await status();
+      assert.equal(
+        run.processes.find((p) => p.name === "sidecar").state,
+        "failed",
+      );
+      assert.equal(
+        run.processes.find((p) => p.name === "web").state,
+        "running",
+      );
+      const response = await fetch(run.fallbackUrl, {
+        signal: AbortSignal.timeout(10000),
+      });
+      assert.equal(response.status, 200);
+      assert.match(await response.text(), /ready to build/);
+      await unlink(marker);
+      return run;
+    }
+    try {
+      const { runtimes } = await invoke("snapshot");
+      const nodeVersion = project.spec.runtimes.find(
+        (r) => r.component === "node",
+      ).version;
+      const node = runtimes.find(
+        ({ artifact }) =>
+          artifact.component === "node" && artifact.version === nodeVersion,
+      );
+      const caddy = runtimes.find(
+        ({ artifact }) => artifact.component === "caddy",
+      );
+      assert.ok(
+        node && caddy,
+        "The pinned Node.js and Caddy runtimes are required",
+      );
+      for (const runtime of [node, caddy]) {
+        if (!runtime.installed)
+          await invokeLong("runtime_install", {
+            id: runtime.artifact.id,
+            operationId: randomUUID(),
+            offlineFolder: process.env.STACKCABIN_E2E_OFFLINE ?? null,
+          });
+      }
+      await writeFile(
+        path.join(project.path, "sidecar.mjs"),
+        [
+          'import "./server.mjs";',
+          'import { existsSync } from "node:fs";',
+          'setInterval(() => { if (existsSync("exit-sidecar")) process.exit(7); }, 100);',
+        ].join("\n"),
+      );
+      const web = {
+        ...project.spec.processes[0],
+        tool: "node",
+        args: ["server.mjs"],
+      };
+      const sidecar = {
+        ...web,
+        name: "sidecar",
+        args: ["sidecar.mjs"],
+        port: 5173,
+      };
+      await invoke("project_save", {
+        id: project.id,
+        spec: { ...project.spec, processes: [web, sidecar] },
+        trusted: true,
+      });
+      await $("nav button:nth-child(2)").click();
+      await button("Start").waitForClickable();
+      await button("Start").click();
+      await button("Stop").waitForClickable({ timeout: 90000 });
+      const failed = await failSidecar();
+      await button("Restart").click();
+      await browser.waitUntil(
+        async () => {
+          const run = await status();
+          return (
+            run?.processes.length === 2 &&
+            run.processes.every((p) => p.state === "running")
+          );
+        },
+        { timeout: 90000 },
+      );
+      const recovered = await status();
+      assert.notEqual(
+        recovered.processes.find((p) => p.name === "web").pid,
+        failed.processes.find((p) => p.name === "web").pid,
+      );
+      await $(".project-card .status-badge.running").waitForDisplayed();
+      await failSidecar();
+      await button("Stop").waitForClickable();
+      await button("Stop").click();
+      await button("Start").waitForClickable();
+      assert.equal(await status(), undefined);
+    } finally {
+      await invoke("project_forget", { id: project.id });
+    }
+  });
 });
 
-if (process.env.STACKCABIN_E2E_OFFLINE) await import("./qa.e2e.mjs");
+if (process.env.STACKCABIN_E2E_QA === "1" && process.env.STACKCABIN_E2E_OFFLINE)
+  await import("./qa.e2e.mjs");
