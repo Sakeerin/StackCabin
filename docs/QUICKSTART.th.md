@@ -8,8 +8,8 @@
 เลือก run ล่าสุดที่สำเร็จและยังมีไฟล์ให้ดาวน์โหลดจาก
 [Build and verify development installers](https://github.com/Sakeerin/StackCabin/actions/workflows/preview-installers.yml)
 หรือดู [วิธีค้นหาชุดที่ยังไม่หมดอายุ](PREVIEW_INSTALLERS.md)
-ชุดวันที่ 24 พฤศจิกายน 2026 จาก commit `d43ab5e` ผ่านครบทั้งสี่เป้าหมายใน
-[run 45372423493](https://github.com/Sakeerin/StackCabin/actions/runs/45372423493) และเก็บถึงวันที่ 1 ธันวาคม
+ชุดวันที่ 25 พฤศจิกายน 2026 จาก commit `cce3541` ผ่านครบทั้งสี่เป้าหมายใน
+[run 45592096910](https://github.com/Sakeerin/StackCabin/actions/runs/45592096910) และเก็บถึงวันที่ 2 ธันวาคม
 เลือก Artifact `development-installers-windows-latest` แล้วแตก ZIP และตรวจไฟล์
 ตาม `SHA256SUMS.txt` ไฟล์ติดตั้งอยู่ในโฟลเดอร์ `nsis/` ส่วนแพ็กเกจจากการ build เอง
 อยู่ใน `target/release/bundle/nsis/` Artifact เก็บไว้ 7 วัน
@@ -47,10 +47,10 @@ Windows อาจขอสิทธิ์ผู้ดูแลระบบสำ
 เป็นไฟล์สุดท้ายเมื่อสำเร็จเท่านั้น บันทึกความครบถ้วนนี้ครอบคลุม catalog และ runtime
 ส่วนการตรวจตัวติดตั้ง Windows กับ prerequisites ใช้ manifest ของชุดเต็มอีกชั้นหนึ่ง
 
-ชุดออฟไลน์ล่าสุดวันที่ 20 พฤศจิกายน 2026 ดาวน์โหลดได้จาก
-[run 44694777349](https://github.com/Sakeerin/StackCabin/actions/runs/44694777349)
+ชุดออฟไลน์วันที่ 25 พฤศจิกายน 2026 ดาวน์โหลดได้จาก
+[run 45593780683](https://github.com/Sakeerin/StackCabin/actions/runs/45593780683)
 เลือก `development-offline-windows-x64` แล้วใช้โฟลเดอร์ `offline-windows-x64/`
-หลังแตก ZIP ชุดนี้ใช้ source `e63c82c` และเก็บถึงวันที่ 27 พฤศจิกายน
+หลังแตก ZIP ชุดนี้ใช้ commit `cce3541` และเก็บถึงวันที่ 2 ธันวาคม
 ผ่านการติดตั้งจริง ตรวจ runtime 11 รายการ สำรอง/กู้คืนฐานข้อมูล และเปิดข้อมูลเดิม
 บน GitHub runner แล้ว ผลทดสอบอยู่ใน `windows-offline-installation-evidence`
 ส่วนการรับรองเครื่องสะอาดยังต้องทดสอบตาม [คู่มือ VM](VM_ACCEPTANCE.md)
@@ -85,7 +85,7 @@ job แรกของ workflow รวมและตรวจไฟล์โด
 และเก็บไว้ 7 วัน แพ็กเกจเหล่านี้ยังไม่ได้เผยแพร่เป็น release สาธารณะ
 
 Linux มี `.deb` และ `.AppImage` โดยไฟล์ที่สร้างบน Ubuntu 22.04 ผ่านการเปิดแอป
-บน Ubuntu 24.04 แล้ว ([ผลทดสอบ](https://github.com/Sakeerin/StackCabin/actions/runs/44694772699))
+บน Ubuntu 24.04 แล้ว ([ผลทดสอบ](https://github.com/Sakeerin/StackCabin/actions/runs/45593780785))
 การรัน AppImage บนเครื่องที่ไม่มี FUSE ใช้:
 
 ```sh
@@ -93,7 +93,7 @@ chmod +x StackCabin_*.AppImage
 APPIMAGE_EXTRACT_AND_RUN=1 ./StackCabin_*.AppImage
 ```
 
-macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 24 พฤศจิกายนผ่านการเปิดแอป
+macOS แยก `.dmg` สำหรับ Apple Silicon และ Intel แพ็กเกจวันที่ 25 พฤศจิกายนผ่านการเปิดแอป
 บน macOS 15 ทั้งสองสถาปัตยกรรม ส่วนผล macOS 14 เมื่อ 1 พฤศจิกายนเป็นของแพ็กเกจ
 source `2b3836e` รุ่นก่อน ทั้ง Apple Silicon และแพ็กเกจ Intel ผ่าน Rosetta
 แพ็กเกจปัจจุบันยังต้องตรวจ macOS 14 บนเครื่องทดสอบที่ดูแลเอง
@@ -143,9 +143,10 @@ dependencies ของ npm/Composer หรือ prerequisite ของ Linux �
 5. กด Start ดูสถานะและ log แล้วเปิด URL ของโปรเจกต์
 6. หากชื่อ `.localhost` ใช้งานไม่ได้ ใช้ URL สำรอง `http://127.0.0.1:...` ในรายละเอียดโปรเจกต์
 
-หากแก้ค่าที่ต้องอ่านตอนเริ่มโปรเซส ให้กด **เริ่มใหม่ (Restart)** ในหน้ารายละเอียด
-แอปจะหยุดและเปิดโปรเซสของโปรเจกต์ที่เลือกด้วย runtime เดิม จากนั้นตรวจว่าเว็บพร้อมใช้งาน
-ดูเหตุการณ์ตามลำดับในแท็บ **บันทึกการทำงาน (Logs)** ของโปรเจกต์นั้น
+หากโปรเซสหนึ่งหยุดทำงานขณะที่โปรเซสอื่นยังรันอยู่ การ์ดโปรเจกต์จะแสดง **ต้องตรวจสอบ**
+กด **เริ่มใหม่ (Restart)** บนการ์ดหรือในหน้ารายละเอียด เพื่อเปิดโปรเซสทั้งหมดอีกครั้งด้วย runtime ที่เลือกไว้
+หากต้องการแก้การตั้งค่าหรือติดตั้ง dependencies ให้กด **หยุด (Stop)** ก่อน
+หน้ารายละเอียดแสดงข้อผิดพลาดของแต่ละโปรเซส และแท็บ **บันทึกการทำงาน (Logs)** แสดงเหตุการณ์ตามลำดับ
 
 การติดตั้ง dependencies ของ Laravel/npm/Composer อาจต้องใช้อินเทอร์เน็ต
 โปรเจกต์ที่ไม่ต้องติดตั้ง dependencies เช่น Static สามารถให้ Trust ในแท็บ Configuration

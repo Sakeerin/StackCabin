@@ -16,21 +16,22 @@ for current-artifact discovery and checksum verification. Contributors can run
 `node .github/scripts/preview-installers.mjs` to locate the latest successful
 main-branch build with all four platform artifacts still available.
 
-The [24 November development installers](https://github.com/Sakeerin/StackCabin/actions/runs/45372423493)
-include project restart, ordered logs and the updated SQL console from `d43ab5e`.
+The [25 November development installers](https://github.com/Sakeerin/StackCabin/actions/runs/45592096910)
+let you stop or restart a partially failed project directly from its card.
+These builds use `cce3541`.
 Choose the matching `development-installers-*` artifact for Windows x64 (NSIS),
 Ubuntu x64 (deb/AppImage), or macOS (Intel or Apple Silicon DMG). Verify the
-download with its `SHA256SUMS.txt`. GitHub retains these downloads until 1 December.
+download with its `SHA256SUMS.txt`. GitHub retains these downloads until 2 December.
 Signing and clean-machine certification remain release gates.
 
-The 20 November Windows offline development bundle from `e63c82c`
+The 25 November Windows offline development bundle from `cce3541`
 passed assembly and real installation in
-[this run](https://github.com/Sakeerin/StackCabin/actions/runs/44694777349).
+[this run](https://github.com/Sakeerin/StackCabin/actions/runs/45593780683).
 Download `development-offline-windows-x64` and use its `offline-windows-x64/`
 folder after extraction. `windows-offline-verification` contains the ZIP checksum,
 source, availability and preflight reports; `windows-offline-installation-evidence`
 records eleven tools, database backup/restore and preserved app data on a hosted
-Windows runner. These offline artifacts expire on 27 November.
+Windows runner. These offline artifacts expire on 2 December.
 
 Historical internal [Unix QA desktop packs](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691)
 included matching offline PHP 8.4/8.5, Node 22/24 and database runtimes for Linux,
