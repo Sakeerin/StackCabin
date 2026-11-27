@@ -346,8 +346,7 @@ impl AppCore {
             }
             if root.join("package.json").exists() {
                 anyhow::ensure!(!token.is_cancelled(), "Operation cancelled");
-                let command =
-                    planning::node_command(&project.spec, root.join("package-lock.json").exists());
+                let command = planning::folder_node_command(&project.spec, root);
                 self.supervisor
                     .run_task_with_parent(&project, &command.tool, &command.args, operation, token)
                     .await?;

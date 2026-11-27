@@ -60,6 +60,7 @@ const en = {
   name: "Project name",
   location: "Parent folder",
   projectFolder: "Project folder",
+  detectedFramework: "Detected project type",
   template: "CHOOSE YOUR STARTING POINT",
   trust: "I trust this project and allow it to execute code on my computer.",
   trustSub:
@@ -232,6 +233,7 @@ const th: Record<Key, string> = {
   name: "ชื่อโปรเจกต์",
   location: "โฟลเดอร์หลัก",
   projectFolder: "โฟลเดอร์โปรเจกต์",
+  detectedFramework: "ประเภทโปรเจกต์ที่ตรวจพบ",
   template: "เลือกจุดเริ่มต้น",
   trust: "ฉันเชื่อถือโปรเจกต์นี้และอนุญาตให้รันโค้ดบนเครื่อง",
   trustSub: "ตัวติดตั้งแพ็กเกจและสคริปต์จะทำงานด้วยสิทธิ์ผู้ใช้ของคุณ",

@@ -95,6 +95,124 @@ fn preview_retains_detected_pnpm_and_yarn_without_duplicate_tools() {
 }
 
 #[test]
+fn imported_dev_servers_forward_the_loopback_host_and_port_with_each_manager() {
+    let temp = TempDir::new().unwrap();
+    for (manager, lock) in [
+        ("npm", "package-lock.json"),
+        ("pnpm", "pnpm-lock.yaml"),
+        ("yarn", "yarn.lock"),
+    ] {
+        for (dependency, host_flag) in [
+            ("react", "--host"),
+            ("vue", "--host"),
+            ("next", "--hostname"),
+            ("laravel", "--host"),
+        ] {
+            let root = temp.path().join(format!("{manager}-{dependency}"));
+            std::fs::create_dir(&root).unwrap();
+            if dependency == "laravel" {
+                std::fs::write(root.join("artisan"), "").unwrap();
+            }
+            std::fs::write(root.join(lock), "").unwrap();
+            let package = serde_json::json!({
+                "scripts": { "dev": "dev-server" }, "dependencies": { (dependency): "1" }
+            });
+            std::fs::write(root.join("package.json"), package.to_string()).unwrap();
+            let spec = project::detect(&root).unwrap();
+            let process = spec.processes.iter().find(|p| p.tool == manager).unwrap();
+            let mut expected = vec!["run", "dev"];
+            if manager == "npm" {
+                expected.push("--");
+            }
+            expected.extend([host_flag, "127.0.0.1", "--port", "${PORT}"]);
+            if dependency != "next" {
+                expected.push("--strictPort");
+            }
+            assert_eq!(process.args, expected, "{manager} / {dependency}");
+        }
+    }
+}
+
+#[test]
+fn direct_node_entry_and_build_only_laravel_use_their_folders_package_manager() {
+    let temp = TempDir::new().unwrap();
+    let core = core(&temp);
+    for (manager, lock, laravel, entry) in [
+        ("pnpm", "pnpm-lock.yaml", false, "node"),
+        ("yarn", "yarn.lock", false, "node"),
+        ("pnpm", "pnpm-lock.yaml", true, "php-web"),
+    ] {
+        let root = temp.path().join(format!("{manager}-{entry}"));
+        std::fs::create_dir(&root).unwrap();
+        if laravel {
+            std::fs::write(root.join("artisan"), "").unwrap();
+        }
+        std::fs::write(root.join(lock), "").unwrap();
+        std::fs::write(
+            root.join("package.json"),
+            r#"{"main":"index.cjs","scripts":{"build":"vite build"}}"#,
+        )
+        .unwrap();
+        let spec = project::detect(&root).unwrap();
+        let plan = core
+            .project_plan(Some(&root), spec.preset.clone(), Some(spec))
+            .unwrap();
+        assert_eq!(plan.processes.len(), 1);
+        assert_eq!(plan.processes[0].tool, entry);
+        assert_eq!(plan.commands.len(), 1);
+        assert_eq!(plan.commands[0].tool, manager);
+        assert_eq!(plan.commands[0].args, ["install"]);
+        assert!(plan.requirements.iter().any(|r| r.component == manager));
+        assert!(plan.requirements.iter().any(|r| r.component == "node"));
+    }
+}
+
+#[test]
+fn importing_keeps_the_runtime_versions_reviewed_for_each_language() {
+    let temp = TempDir::new().unwrap();
+    let core = core(&temp);
+    let root = temp.path().join("ร้านค้า ตัวอย่าง");
+    std::fs::create_dir(&root).unwrap();
+    std::fs::write(root.join("artisan"), "").unwrap();
+    std::fs::write(root.join("package.json"), r#"{"scripts":{"dev":"vite"}}"#).unwrap();
+    let mut spec = project::detect(&root).unwrap();
+    for runtime in &mut spec.runtimes {
+        runtime.version = match runtime.component.as_str() {
+            "php" => "8.4",
+            "node" => "22",
+            other => panic!("Unexpected runtime {other}"),
+        }
+        .into();
+    }
+    let plan = core
+        .project_plan(Some(&root), Preset::Laravel, Some(spec.clone()))
+        .unwrap();
+    let saved = core.import(&root, spec, false).unwrap();
+    assert!(!saved.trusted);
+    let manifest = project::detect(&root).unwrap();
+    let lock: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(root.join("stackcabin.lock.json")).unwrap()).unwrap();
+    let pins = serde_json::to_value(&saved.spec.runtimes).unwrap();
+    assert_eq!(serde_json::to_value(manifest.runtimes).unwrap(), pins);
+    assert_eq!(lock["runtimes"], pins);
+    for (component, branch) in [("php", "8.4"), ("node", "22")] {
+        let reviewed = plan
+            .requirements
+            .iter()
+            .find(|r| r.component == component)
+            .unwrap();
+        let saved = saved
+            .spec
+            .runtimes
+            .iter()
+            .find(|r| r.component == component)
+            .unwrap();
+        assert!(saved.version == branch || saved.version.starts_with(&format!("{branch}.")));
+        assert_eq!(reviewed.version, saved.version);
+    }
+}
+
+#[test]
 fn preview_reports_an_unavailable_pin_without_selecting_a_different_version() {
     let temp = TempDir::new().unwrap();
     let core = core(&temp);

@@ -858,6 +858,7 @@ export default function App() {
       {wizard && (
         <ProjectWizard
           mode={wizard}
+          catalog={snapshot.runtimes}
           t={t}
           busy={busy}
           onClose={() => setWizard(null)}
@@ -1426,6 +1427,54 @@ function RuntimesPage({
   );
 }
 
+function RuntimeFields({
+  value,
+  original,
+  catalog,
+  disabled,
+  onChange,
+}: {
+  value: ProjectSpec["runtimes"];
+  original: ProjectSpec["runtimes"];
+  catalog: RuntimeInfo[];
+  disabled: boolean;
+  onChange: (runtimes: ProjectSpec["runtimes"]) => void;
+}) {
+  return value.map((runtime) => {
+    const { component, version } = runtime;
+    const initial = original.find((r) => r.component === component);
+    const versions = new Set([
+      initial?.version ?? version,
+      version,
+      ...catalog
+        .filter((r) => r.artifact.component === component)
+        .map((r) => r.artifact.version),
+    ]);
+    return (
+      <label className="field" key={component}>
+        {names[component] || component}
+        <select
+          value={version}
+          disabled={disabled}
+          onChange={(event) =>
+            onChange(
+              value.map((r) =>
+                r.component === component
+                  ? { ...r, version: event.target.value }
+                  : r,
+              ),
+            )
+          }
+        >
+          {Array.from(versions, (v) => (
+            <option key={v}>{v}</option>
+          ))}
+        </select>
+      </label>
+    );
+  });
+}
+
 function ProjectDetail({
   project,
   snapshot,
@@ -1713,33 +1762,13 @@ function ProjectDetail({
               }
             />
           </label>
-          {spec.runtimes.map((runtime, index) => (
-            <label className="field" key={runtime.component}>
-              {names[runtime.component] || runtime.component}
-              <select
-                value={runtime.version}
-                onChange={(e) =>
-                  setSpec((current) => ({
-                    ...current,
-                    runtimes: current.runtimes.map((r, i) =>
-                      i === index ? { ...r, version: e.target.value } : r,
-                    ),
-                  }))
-                }
-              >
-                {[
-                  ...new Set([
-                    runtime.version,
-                    ...snapshot.runtimes
-                      .filter((r) => r.artifact.component === runtime.component)
-                      .map((r) => r.artifact.version),
-                  ]),
-                ].map((version) => (
-                  <option key={version}>{version}</option>
-                ))}
-              </select>
-            </label>
-          ))}
+          <RuntimeFields
+            value={spec.runtimes}
+            original={project.spec.runtimes}
+            catalog={snapshot.runtimes}
+            disabled={busy}
+            onChange={(runtimes) => setSpec({ ...spec, runtimes })}
+          />
           <label className="field">
             {t("commands")}
             <textarea
@@ -2186,6 +2215,7 @@ function ReviewSetupDialog({
 }
 function ProjectWizard({
   mode,
+  catalog,
   t,
   busy,
   onClose,
@@ -2193,6 +2223,7 @@ function ProjectWizard({
   onError,
 }: {
   mode: Exclude<Wizard, null>;
+  catalog: RuntimeInfo[];
   t: T;
   busy: boolean;
   onClose: () => void;
@@ -2203,7 +2234,9 @@ function ProjectWizard({
   const [path, setPath] = useState("");
   const [preset, setPreset] = useState<Preset>("node");
   const [trusted, setTrusted] = useState(false);
-  const [spec, setSpec] = useState<ProjectSpec>();
+  const [detected, setDetected] = useState<ProjectSpec>();
+  const [runtimes, setRuntimes] = useState<ProjectSpec["runtimes"]>([]);
+  const spec = detected && { ...detected, runtimes };
   const [archive, setArchive] = useState("");
   const [detecting, setDetecting] = useState(false);
   const preview = useProjectPlan(
@@ -2215,7 +2248,7 @@ function ProjectWizard({
   );
   useEffect(() => {
     setTrusted(false);
-  }, [mode, preset, path, name]);
+  }, [mode, preset, path, name, archive, runtimes]);
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -2223,25 +2256,28 @@ function ProjectWizard({
     return () => dialog?.close();
   }, []);
   async function choose() {
+    setDetecting(true);
     try {
       const folder = await pickDirectory();
       if (!folder) return;
       setPath(folder);
       if (mode === "import") {
-        setSpec(undefined);
-        setDetecting(true);
-        const detected = await api.detect(folder);
-        setSpec(detected);
-        setName(detected.name);
-        setPreset(detected.preset);
+        setTrusted(false);
+        setDetected(undefined);
+        const result = await api.detect(folder);
+        setDetected(result);
+        setRuntimes(result.runtimes);
+        setName(result.name);
+        setPreset(result.preset);
       }
     } catch (e) {
-      onError(errorText(e));
+      if (dialogRef.current?.open) onError(errorText(e));
     } finally {
       setDetecting(false);
     }
   }
   const valid =
+    !detecting &&
     !!path &&
     (mode === "import"
       ? !!spec
@@ -2259,7 +2295,7 @@ function ProjectWizard({
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          if (valid)
+          if (valid && !busy)
             void onSubmit({
               mode,
               name,
@@ -2353,7 +2389,7 @@ function ProjectWizard({
               onClick={() => {
                 void choose();
               }}
-              disabled={detecting}
+              disabled={detecting || busy}
               title={t("choose")}
             >
               {detecting ? (
@@ -2388,20 +2424,23 @@ function ProjectWizard({
             </div>
           </>
         )}
-        {mode === "import" && spec && (
-          <div className="detected-box">
-            <ShieldCheck size={20} />
-            <div>
+        {mode === "import" && detected && (
+          <>
+            <div className="detected-box">
+              <FolderOpen size={20} />
               <strong>
-                {presets.find((p) => p.id === preset)?.name} detected
+                {t("detectedFramework")} ·{" "}
+                {presets.find((p) => p.id === preset)?.name}
               </strong>
-              <p>
-                {spec.processes
-                  .map((p) => `${p.tool} ${p.args.join(" ")}`)
-                  .join(" · ")}
-              </p>
             </div>
-          </div>
+            <RuntimeFields
+              value={runtimes}
+              original={detected.runtimes}
+              catalog={catalog}
+              disabled={busy || detecting}
+              onChange={setRuntimes}
+            />
+          </>
         )}
         {mode !== "restore" && (mode === "new" || !!spec) && (
           <SetupReview {...preview} t={t} />
@@ -2410,7 +2449,9 @@ function ProjectWizard({
           <input
             type="checkbox"
             checked={trusted}
-            disabled={busy || (mode !== "restore" && !preview.plan)}
+            disabled={
+              busy || detecting || (mode !== "restore" && !preview.plan)
+            }
             onChange={(e) => setTrusted(e.target.checked)}
           />
           <span>

@@ -7,15 +7,24 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { api, emptySnapshot, subscribe } from "./lib/api";
-import type { AppEvent, ProcessState, Project, ProjectPlan } from "./lib/types";
+import { api, emptySnapshot, pickDirectory, subscribe } from "./lib/api";
+import type {
+  AppEvent,
+  ProcessState,
+  Project,
+  ProjectPlan,
+  RuntimeInfo,
+} from "./lib/types";
 import App from "./App";
 
 vi.mock("./lib/api", async (original) => ({
   ...(await original<typeof import("./lib/api")>()),
   desktop: true,
+  pickDirectory: vi.fn(),
   api: {
     snapshot: vi.fn(),
+    detect: vi.fn(),
+    import: vi.fn(),
     plan: vi.fn(),
     saveProject: vi.fn(),
     prepare: vi.fn(),
@@ -50,6 +59,139 @@ function databaseProject(id: string): Project {
     },
   };
 }
+
+function catalogRuntime(component: string, version: string): RuntimeInfo {
+  return {
+    artifact: {
+      id: component + "-" + version,
+      component,
+      version,
+      platform: "windows",
+      arch: "x64",
+      url: "",
+      sha256: "",
+      archive: "zip",
+      stripComponents: 0,
+      executables: {},
+      license: "",
+      sourceUrl: "",
+      size: 1,
+    },
+    installed: false,
+    path: null,
+    diskBytes: 0,
+  };
+}
+
+it("reviews independent runtime choices for an import and clears trust when a pin changes", async () => {
+  const project = databaseProject("ร้านค้า");
+  project.path = "D:/โปรเจกต์ ทดสอบ/ร้านค้า";
+  project.spec.preset = "laravel";
+  project.spec.environment = { APP_ENV: "local" };
+  project.spec.runtimes = [
+    { component: "php", version: "8.5" },
+    { component: "node", version: "20.1.0" },
+  ];
+  const plan: ProjectPlan = {
+    requirements: [],
+    processes: [],
+    commands: [{ tool: "yarn", args: ["install"], condition: null }],
+  };
+  vi.mocked(api.snapshot).mockResolvedValue({
+    ...emptySnapshot,
+    settings: { ...emptySnapshot.settings, language: "th" },
+    runtimes: [
+      catalogRuntime("php", "8.4.1"),
+      catalogRuntime("node", "22.1.0"),
+    ],
+  });
+  vi.mocked(pickDirectory).mockResolvedValueOnce(project.path);
+  vi.mocked(api.detect).mockResolvedValueOnce(project.spec);
+  vi.mocked(api.plan).mockResolvedValue(plan);
+  vi.mocked(api.import).mockResolvedValueOnce(project);
+  render(<App />);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "นำเข้าโปรเจกต์" }),
+  );
+  const dialog = within(screen.getByRole("dialog"));
+  fireEvent.click(dialog.getByTitle("เลือกโฟลเดอร์"));
+  await dialog.findByText("yarn install");
+  expect(dialog.getByText("ประเภทโปรเจกต์ที่ตรวจพบ · Laravel")).toBeVisible();
+  const php = dialog.getByRole("combobox", { name: "PHP" });
+  const node = dialog.getByRole("combobox", { name: "Node.js" });
+  expect(node).toHaveValue("20.1.0");
+  expect(within(php).queryByRole("option", { name: "22.1.0" })).toBeNull();
+  fireEvent.change(php, { target: { value: "8.4.1" } });
+  await dialog.findByText("yarn install");
+  fireEvent.click(dialog.getByRole("checkbox"));
+  let finish!: (plan: ProjectPlan) => void;
+  vi.mocked(api.plan).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  fireEvent.change(node, { target: { value: "22.1.0" } });
+  expect(dialog.getByRole("checkbox")).not.toBeChecked();
+  expect(dialog.getByRole("checkbox")).toBeDisabled();
+  expect(
+    within(node).getByRole("option", { name: "20.1.0" }),
+  ).toBeInTheDocument();
+  const expected = {
+    ...project.spec,
+    runtimes: [
+      { component: "php", version: "8.4.1" },
+      { component: "node", version: "22.1.0" },
+    ],
+  };
+  expect(api.plan).toHaveBeenLastCalledWith("laravel", expected, project.path);
+  await act(async () => finish(plan));
+  fireEvent.click(dialog.getByRole("checkbox"));
+  fireEvent.click(dialog.getByRole("button", { name: "เพิ่มโปรเจกต์" }));
+  await waitFor(() =>
+    expect(api.import).toHaveBeenCalledExactlyOnceWith(
+      project.path,
+      expected,
+      true,
+    ),
+  );
+  expect(api.prepare).not.toHaveBeenCalled();
+});
+
+it("keeps the reviewed import on picker cancellation and discards it when another folder fails detection", async () => {
+  vi.mocked(api.snapshot).mockResolvedValue(emptySnapshot);
+  vi.mocked(pickDirectory)
+    .mockResolvedValueOnce("D:/first")
+    .mockResolvedValueOnce(null)
+    .mockResolvedValueOnce("D:/second");
+  vi.mocked(api.detect)
+    .mockResolvedValueOnce(databaseProject("first").spec)
+    .mockRejectedValueOnce(new Error("Invalid project manifest"));
+  vi.mocked(api.plan).mockResolvedValue({
+    processes: [],
+    commands: [],
+    requirements: [],
+  });
+  render(<App />);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Import project" }),
+  );
+  const dialog = within(screen.getByRole("dialog"));
+  const choose = dialog.getByTitle("Choose folder");
+  const trust = dialog.getByRole("checkbox");
+  fireEvent.click(choose);
+  await waitFor(() => expect(trust).toBeEnabled());
+  expect(dialog.queryByRole("combobox")).toBeNull();
+  fireEvent.click(trust);
+  fireEvent.click(choose);
+  await waitFor(() => expect(choose).toBeEnabled());
+  expect(trust).toBeChecked();
+  expect(api.detect).toHaveBeenCalledTimes(1);
+  fireEvent.click(choose);
+  await screen.findByText("Invalid project manifest");
+  expect(trust).not.toBeChecked();
+  expect(dialog.getByRole("button", { name: "Add project" })).toBeDisabled();
+  expect(api.import).not.toHaveBeenCalled();
+});
 
 it("restarts the selected running project once and disables duplicate actions until it finishes", async () => {
   const project = databaseProject("shop");

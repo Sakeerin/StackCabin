@@ -119,7 +119,8 @@ Production releases remain subject to the release gates below.
 ## First project
 
 1. Choose **New project** or **Import project** and select a folder.
-2. Review the detected framework. Leave trust off for code you have not reviewed.
+2. For an import, review the detected project type and select its PHP or Node.js versions.
+   The setup review updates when you change a version. You can add the project with trust off.
 3. In the project overview choose **Set up runtimes**.
 4. Trust the project in Configuration, then choose **Install dependencies**.
 5. Choose **Start** and open its local URL. Use Logs for command output.

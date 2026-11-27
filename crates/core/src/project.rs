@@ -51,16 +51,15 @@ pub fn detect(path: &Path) -> Result<ProjectSpec> {
     };
     let mut spec = default_spec(&name, preset);
     if let Some(package) = package {
-        let manager = if root.join("pnpm-lock.yaml").exists() {
-            "pnpm"
-        } else if root.join("yarn.lock").exists() {
-            "yarn"
-        } else {
-            "npm"
-        };
+        let manager = locked_node_manager(&root);
         for process in &mut spec.processes {
             if process.tool == "npm" {
                 process.tool = manager.into();
+                // The built-in npm templates use a separator to forward server flags.
+                // pnpm and Yarn pass those flags directly after the script name.
+                if manager != "npm" {
+                    process.args.retain(|arg| arg != "--");
+                }
                 if spec.preset == Preset::Node || spec.preset == Preset::Express {
                     if package["scripts"]["dev"].is_string() {
                         process.args = vec!["run".into(), "dev".into()];
@@ -74,7 +73,6 @@ pub fn detect(path: &Path) -> Result<ProjectSpec> {
             }
         }
         if spec.preset == Preset::Laravel && !package["scripts"]["dev"].is_string() {
-            spec.runtimes.retain(|r| r.component != "node");
             spec.processes.retain(|p| p.name != "vite");
         }
     } else if spec.preset == Preset::Laravel {
@@ -82,6 +80,16 @@ pub fn detect(path: &Path) -> Result<ProjectSpec> {
         spec.processes.retain(|p| p.name != "vite");
     }
     Ok(spec)
+}
+
+pub(crate) fn locked_node_manager(root: &Path) -> &'static str {
+    if root.join("pnpm-lock.yaml").is_file() {
+        "pnpm"
+    } else if root.join("yarn.lock").is_file() {
+        "yarn"
+    } else {
+        "npm"
+    }
 }
 
 fn read_json(path: &Path) -> Result<Option<serde_json::Value>> {

@@ -20,12 +20,24 @@ pub fn composer_arguments() -> Vec<String> {
 }
 
 pub fn node_command(spec: &ProjectSpec, locked: bool) -> PreparationCommand {
+    node_install(spec, locked, "npm")
+}
+
+pub(crate) fn folder_node_command(spec: &ProjectSpec, root: &Path) -> PreparationCommand {
+    node_install(
+        spec,
+        root.join("package-lock.json").is_file(),
+        crate::project::locked_node_manager(root),
+    )
+}
+
+fn node_install(spec: &ProjectSpec, locked: bool, fallback: &str) -> PreparationCommand {
     let tool = spec
         .processes
         .iter()
         .find(|p| ["npm", "pnpm", "yarn"].contains(&p.tool.as_str()))
         .map(|p| p.tool.as_str())
-        .unwrap_or("npm");
+        .unwrap_or(fallback);
     PreparationCommand {
         tool: tool.into(),
         args: vec![if tool == "npm" && locked {
@@ -72,10 +84,10 @@ pub fn commands(spec: &ProjectSpec, path: Option<&Path>) -> Vec<PreparationComma
             !matches!(spec.preset, Preset::Static | Preset::Php),
             |root| root.join("package.json").is_file(),
         ) {
-            result.push(node_command(
-                spec,
-                path.is_some_and(|root| root.join("package-lock.json").is_file()),
-            ));
+            result.push(match path {
+                Some(root) => folder_node_command(spec, root),
+                None => node_command(spec, false),
+            });
         }
     }
     result
