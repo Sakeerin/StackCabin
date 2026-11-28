@@ -10,6 +10,7 @@ import type {
   ProjectPlan,
   ProjectSpec,
   ProjectStatus,
+  RuntimeSelection,
   Settings,
   Snapshot,
 } from "./types";
@@ -28,13 +29,27 @@ export async function call<T>(
 export const api = {
   snapshot: () => call<Snapshot>("snapshot"),
   detect: (path: string) => call<ProjectSpec>("project_detect", { path }),
+  template: (preset: Preset) =>
+    call<ProjectSpec>("project_template", { preset }),
   plan: (
     preset: Preset,
     spec: ProjectSpec | null = null,
     path: string | null = null,
   ) => call<ProjectPlan>("project_plan", { preset, spec, path }),
-  create: (parent: string, name: string, preset: Preset, trusted: boolean) =>
-    call<Project>("project_create", { parent, name, preset, trusted }),
+  create: (
+    parent: string,
+    name: string,
+    preset: Preset,
+    trusted: boolean,
+    runtimes?: RuntimeSelection[],
+  ) =>
+    call<Project>("project_create", {
+      parent,
+      name,
+      preset,
+      trusted,
+      runtimes,
+    }),
   import: (path: string, spec: ProjectSpec, trusted: boolean) =>
     call<Project>("project_import", { path, spec, trusted }),
   saveProject: (id: string, spec: ProjectSpec, trusted: boolean) =>

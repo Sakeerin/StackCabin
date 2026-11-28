@@ -235,15 +235,33 @@ impl AppCore {
         preset: Preset,
         trusted: bool,
     ) -> Result<Project> {
+        self.create_with_runtimes(parent, name, preset, trusted, None)
+    }
+    pub fn create_with_runtimes(
+        &self,
+        parent: &Path,
+        name: &str,
+        preset: Preset,
+        trusted: bool,
+        runtimes: Option<Vec<RuntimeSelection>>,
+    ) -> Result<Project> {
         let _activity = self.activity()?;
         let parent = dunce::canonicalize(parent).context("Choose an existing parent directory")?;
         let path = parent.join(name);
-        project::create_files(&path, name, &preset)?;
         let mut spec = project::default_spec(name, preset);
-        self.pin(&mut spec);
-        let project = project::register(&self.store, &path, spec, trusted)?;
-        self.write_lock(&project)?;
-        Ok(project)
+        if let Some(selections) = runtimes {
+            anyhow::ensure!(
+                selections.len() == spec.runtimes.len()
+                    && spec.runtimes.iter().all(|expected| selections
+                        .iter()
+                        .any(|r| r.component == expected.component)),
+                "Select one version for each runtime required by this template"
+            );
+            spec.runtimes = selections;
+        }
+        project::validate_spec(&spec)?;
+        project::create_files(&path, name, &spec.preset)?;
+        self.import_inner(&path, spec, trusted)
     }
     pub async fn save_project(
         &self,

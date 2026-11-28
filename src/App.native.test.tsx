@@ -24,6 +24,8 @@ vi.mock("./lib/api", async (original) => ({
   api: {
     snapshot: vi.fn(),
     detect: vi.fn(),
+    template: vi.fn(),
+    create: vi.fn(),
     import: vi.fn(),
     plan: vi.fn(),
     saveProject: vi.fn(),
@@ -82,6 +84,134 @@ function catalogRuntime(component: string, version: string): RuntimeInfo {
     diskBytes: 0,
   };
 }
+
+it("creates a Laravel starter with the two runtime pins last reviewed", async () => {
+  const path = "D:/งาน ใหม่";
+  const template: Project["spec"] = {
+    ...databaseProject("preview").spec,
+    preset: "laravel",
+    database: null,
+    runtimes: [
+      { component: "php", version: "8.5" },
+      { component: "node", version: "24" },
+    ],
+  };
+  const plan: ProjectPlan = { requirements: [], processes: [], commands: [] };
+  vi.mocked(api.snapshot).mockResolvedValue({
+    ...emptySnapshot,
+    runtimes: [
+      catalogRuntime("php", "8.4.1"),
+      catalogRuntime("node", "22.1.0"),
+    ],
+  });
+  vi.mocked(api.template).mockImplementation(async (preset) =>
+    preset === "laravel"
+      ? template
+      : {
+          ...template,
+          preset,
+          runtimes: [{ component: "node", version: "24" }],
+        },
+  );
+  vi.mocked(api.plan).mockResolvedValue(plan);
+  vi.mocked(pickDirectory).mockResolvedValueOnce(path);
+  vi.mocked(api.create).mockResolvedValueOnce(databaseProject("ร้าน"));
+  render(<App />);
+  fireEvent.click(screen.getAllByRole("button", { name: "New project" })[0]);
+  const dialog = within(screen.getByRole("dialog"));
+  fireEvent.click(dialog.getByRole("button", { name: /Laravel/ }));
+  fireEvent.change(dialog.getByPlaceholderText("my-next-idea"), {
+    target: { value: "ร้าน" },
+  });
+  fireEvent.click(dialog.getByTitle("Choose folder"));
+  const php = await dialog.findByRole("combobox", { name: "PHP" });
+  expect(php).toHaveValue("8.5");
+  expect(dialog.getByRole("combobox", { name: "Node.js" })).toHaveValue("24");
+  fireEvent.change(php, { target: { value: "8.4.1" } });
+  const trust = dialog.getByRole("checkbox");
+  await waitFor(() => expect(trust).toBeEnabled());
+  fireEvent.click(trust);
+  let finish!: (plan: ProjectPlan) => void;
+  vi.mocked(api.plan).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  fireEvent.change(dialog.getByRole("combobox", { name: "Node.js" }), {
+    target: { value: "22.1.0" },
+  });
+  expect(trust).not.toBeChecked();
+  expect(trust).toBeDisabled();
+  const pins = [
+    { component: "php", version: "8.4.1" },
+    { component: "node", version: "22.1.0" },
+  ];
+  expect(api.plan).toHaveBeenLastCalledWith(
+    "laravel",
+    { ...template, runtimes: pins },
+    null,
+  );
+  await act(async () => finish(plan));
+  fireEvent.click(trust);
+  fireEvent.click(dialog.getByRole("button", { name: "Create project" }));
+  await waitFor(() =>
+    expect(api.create).toHaveBeenCalledExactlyOnceWith(
+      path,
+      "ร้าน",
+      "laravel",
+      true,
+      pins,
+    ),
+  );
+  expect(api.prepare).not.toHaveBeenCalled();
+});
+
+it("drops a starter's edits and ignores its late template response after switching to Static", async () => {
+  const base = { ...databaseProject("preview").spec, database: null };
+  vi.mocked(api.snapshot).mockResolvedValue({
+    ...emptySnapshot,
+    runtimes: [catalogRuntime("node", "22.1.0")],
+  });
+  let failLaravel!: (error: Error) => void;
+  vi.mocked(api.template).mockImplementation((preset) =>
+    preset === "laravel"
+      ? new Promise((_, reject) => {
+          failLaravel = reject;
+        })
+      : Promise.resolve({
+          ...base,
+          preset,
+          runtimes:
+            preset === "node" ? [{ component: "node", version: "24" }] : [],
+        }),
+  );
+  vi.mocked(api.plan).mockResolvedValue({
+    requirements: [],
+    commands: [],
+    processes: [],
+  });
+  render(<App />);
+  fireEvent.click(screen.getAllByRole("button", { name: "New project" })[0]);
+  const dialog = within(screen.getByRole("dialog"));
+  fireEvent.change(await dialog.findByRole("combobox", { name: "Node.js" }), {
+    target: { value: "22.1.0" },
+  });
+  await waitFor(() => expect(dialog.getByRole("checkbox")).toBeEnabled());
+  fireEvent.click(dialog.getByRole("checkbox"));
+  fireEvent.click(dialog.getByRole("button", { name: /Laravel/ }));
+  expect(dialog.getByRole("checkbox")).toBeDisabled();
+  fireEvent.click(dialog.getByRole("button", { name: /Static/ }));
+  await waitFor(() => expect(dialog.getByRole("checkbox")).toBeEnabled());
+  await act(async () => failLaravel(new Error("Old template error")));
+  expect(dialog.queryByRole("alert")).toBeNull();
+  expect(dialog.queryByRole("combobox")).toBeNull();
+  expect(dialog.getByRole("checkbox")).not.toBeChecked();
+  expect(api.plan).toHaveBeenLastCalledWith(
+    "static",
+    { ...base, preset: "static" },
+    null,
+  );
+});
 
 it("reviews independent runtime choices for an import and clears trust when a pin changes", async () => {
   const project = databaseProject("ร้านค้า");

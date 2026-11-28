@@ -857,6 +857,7 @@ export default function App() {
       )}
       {wizard && (
         <ProjectWizard
+          key={wizard}
           mode={wizard}
           catalog={snapshot.runtimes}
           t={t}
@@ -871,6 +872,7 @@ export default function App() {
                   input.name,
                   input.preset,
                   input.trusted,
+                  input.spec?.runtimes,
                 );
               else if (input.mode === "restore")
                 project = await api.restore(
@@ -2234,17 +2236,37 @@ function ProjectWizard({
   const [path, setPath] = useState("");
   const [preset, setPreset] = useState<Preset>("node");
   const [trusted, setTrusted] = useState(false);
-  const [detected, setDetected] = useState<ProjectSpec>();
-  const [runtimes, setRuntimes] = useState<ProjectSpec["runtimes"]>([]);
-  const spec = detected && { ...detected, runtimes };
+  const [source, setSource] = useState<{
+    preset: Preset;
+    spec?: ProjectSpec;
+    error?: string;
+  }>();
+  const [runtimes, setRuntimes] = useState<ProjectSpec["runtimes"]>();
+  const currentSource = source?.preset === preset ? source : undefined;
+  const baseSpec = currentSource?.spec;
+  const spec = baseSpec && {
+    ...baseSpec,
+    runtimes: runtimes ?? baseSpec.runtimes,
+  };
   const [archive, setArchive] = useState("");
   const [detecting, setDetecting] = useState(false);
+  useEffect(() => {
+    if (mode !== "new" || !desktop) return;
+    let active = true;
+    api.template(preset).then(
+      (spec) => {
+        if (active) setSource({ preset, spec });
+      },
+      (error: unknown) => {
+        if (active) setSource({ preset, error: errorText(error) });
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [mode, preset]);
   const preview = useProjectPlan(
-    mode === "new"
-      ? { preset }
-      : mode === "import" && spec
-        ? { preset, spec, path }
-        : null,
+    spec ? { preset, spec, path: mode === "import" ? path : undefined } : null,
   );
   useEffect(() => {
     setTrusted(false);
@@ -2263,10 +2285,10 @@ function ProjectWizard({
       setPath(folder);
       if (mode === "import") {
         setTrusted(false);
-        setDetected(undefined);
+        setSource(undefined);
         const result = await api.detect(folder);
-        setDetected(result);
-        setRuntimes(result.runtimes);
+        setSource({ preset: result.preset, spec: result });
+        setRuntimes(undefined);
         setName(result.name);
         setPreset(result.preset);
       }
@@ -2279,6 +2301,7 @@ function ProjectWizard({
   const valid =
     !detecting &&
     !!path &&
+    (mode !== "new" || !!spec) &&
     (mode === "import"
       ? !!spec
       : !!name.trim() && !/[\\/:]/.test(name) && ![".", ".."].includes(name)) &&
@@ -2409,7 +2432,14 @@ function ProjectWizard({
                   type="button"
                   key={p.id}
                   className={`preset-choice ${preset === p.id ? "selected" : ""}`}
-                  onClick={() => setPreset(p.id)}
+                  disabled={busy}
+                  onClick={() => {
+                    if (p.id !== preset) {
+                      setSource(undefined);
+                      setRuntimes(undefined);
+                      setPreset(p.id);
+                    }
+                  }}
                 >
                   <span className={`framework-mark mini ${p.color}`}>
                     {p.mark}
@@ -2424,26 +2454,33 @@ function ProjectWizard({
             </div>
           </>
         )}
-        {mode === "import" && detected && (
-          <>
-            <div className="detected-box">
-              <FolderOpen size={20} />
-              <strong>
-                {t("detectedFramework")} ·{" "}
-                {presets.find((p) => p.id === preset)?.name}
-              </strong>
-            </div>
-            <RuntimeFields
-              value={runtimes}
-              original={detected.runtimes}
-              catalog={catalog}
-              disabled={busy || detecting}
-              onChange={setRuntimes}
-            />
-          </>
+        {mode === "import" && baseSpec && (
+          <div className="detected-box">
+            <FolderOpen size={20} />
+            <strong>
+              {t("detectedFramework")} ·{" "}
+              {presets.find((p) => p.id === preset)?.name}
+            </strong>
+          </div>
+        )}
+        {baseSpec && spec && (
+          <RuntimeFields
+            value={spec.runtimes}
+            original={baseSpec.runtimes}
+            catalog={catalog}
+            disabled={busy || detecting}
+            onChange={setRuntimes}
+          />
         )}
         {mode !== "restore" && (mode === "new" || !!spec) && (
-          <SetupReview {...preview} t={t} />
+          <SetupReview
+            {...preview}
+            t={t}
+            loading={
+              preview.loading || (mode === "new" && desktop && !currentSource)
+            }
+            error={currentSource?.error ?? preview.error}
+          />
         )}
         <label className="checkbox-label trust-checkbox">
           <input

@@ -7,6 +7,84 @@ fn core(temp: &TempDir) -> AppCore {
 }
 
 #[test]
+fn new_laravel_persists_the_reviewed_runtime_versions_without_running_setup() {
+    let temp = TempDir::new().unwrap();
+    let core = core(&temp);
+    let mut template = project::default_spec("preview", Preset::Laravel);
+    template.runtimes[0].version = "8.4".into();
+    template.runtimes[1].version = "22".into();
+    let review = core
+        .project_plan(None, Preset::Laravel, Some(template.clone()))
+        .unwrap();
+    let created = core
+        .create_with_runtimes(
+            temp.path(),
+            "ร้าน ใหม่",
+            Preset::Laravel,
+            false,
+            Some(template.runtimes),
+        )
+        .unwrap();
+    let path = Path::new(&created.path);
+    assert!(!created.trusted);
+    assert_eq!(created.spec.name, "ร้าน ใหม่");
+    assert!(path.join(".stackcabin-laravel-pending").is_file());
+    assert!(!path.join("vendor").exists());
+    let lock: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(path.join("stackcabin.lock.json")).unwrap()).unwrap();
+    let pins = serde_json::to_value(&created.spec.runtimes).unwrap();
+    assert_eq!(lock["runtimes"], pins);
+    assert_eq!(
+        serde_json::to_value(project::detect(path).unwrap().runtimes).unwrap(),
+        pins
+    );
+    for (runtime, expected) in created.spec.runtimes.iter().zip(["8.4", "22"]) {
+        let requirement = review
+            .requirements
+            .iter()
+            .find(|r| r.component == runtime.component)
+            .unwrap();
+        assert_eq!(runtime.version, requirement.version);
+        assert!(
+            runtime.version == expected || runtime.version.starts_with(&format!("{expected}."))
+        );
+    }
+}
+
+#[test]
+fn invalid_starter_selections_leave_the_destination_available_for_retry() {
+    let temp = TempDir::new().unwrap();
+    let core = core(&temp);
+    let selection = |component: &str, version: &str| RuntimeSelection {
+        component: component.into(),
+        version: version.into(),
+    };
+    for (preset, runtimes) in [
+        (Preset::Node, vec![]),
+        (
+            Preset::Laravel,
+            vec![selection("php", "8.5"), selection("php", "8.4")],
+        ),
+        (Preset::Static, vec![selection("node", "22")]),
+        (Preset::React, vec![selection("php", "8.4")]),
+        (Preset::Node, vec![selection("node", "latest")]),
+    ] {
+        assert!(core
+            .create_with_runtimes(temp.path(), "retry", preset, false, Some(runtimes))
+            .is_err());
+        assert!(!temp.path().join("retry").exists());
+        assert!(core.store.projects().unwrap().is_empty());
+    }
+    let created = core
+        .create(temp.path(), "retry", Preset::Node, false)
+        .unwrap();
+    assert_eq!(created.spec.runtimes.len(), 1);
+    let node = &created.spec.runtimes[0];
+    assert_eq!(node.component, "node");
+    assert!(node.version == "24" || node.version.starts_with("24."));
+}
+
+#[test]
 fn every_starter_can_be_previewed_without_creating_or_trusting_a_project() {
     let temp = TempDir::new().unwrap();
     let core = core(&temp);

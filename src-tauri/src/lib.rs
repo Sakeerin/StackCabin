@@ -19,6 +19,10 @@ fn project_detect(path: String) -> Result<ProjectSpec, String> {
     stackcabin_core::project::detect(std::path::Path::new(&path)).map_err(message)
 }
 #[tauri::command]
+fn project_template(preset: Preset) -> ProjectSpec {
+    stackcabin_core::project::default_spec("preview", preset)
+}
+#[tauri::command]
 fn project_plan(
     core: Core<'_>,
     path: Option<String>,
@@ -45,9 +49,16 @@ fn project_create(
     name: String,
     preset: Preset,
     trusted: bool,
+    runtimes: Option<Vec<RuntimeSelection>>,
 ) -> Result<Project, String> {
-    core.create(std::path::Path::new(&parent), &name, preset, trusted)
-        .map_err(message)
+    core.create_with_runtimes(
+        std::path::Path::new(&parent),
+        &name,
+        preset,
+        trusted,
+        runtimes,
+    )
+    .map_err(message)
 }
 #[tauri::command]
 async fn project_save(
@@ -305,6 +316,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             snapshot,
             project_detect,
+            project_template,
             project_plan,
             project_import,
             project_create,

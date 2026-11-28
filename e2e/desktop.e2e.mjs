@@ -20,13 +20,30 @@ describe("StackCabin native desktop", () => {
       async () => !(await $("body").getText()).includes("Browser preview"),
     );
   });
-  it("shows all nine templates and defaults project trust to off", async () => {
+  it("reviews a different Node.js version in the new project wizard before granting trust", async () => {
     await $("button=New project").click();
     await $("dialog").waitForDisplayed();
     assert.equal((await $$(".preset-choice")).length, 9);
     assert.equal(await $("dialog input[type=checkbox]").isSelected(), false);
     await browser.waitUntil(async () =>
       (await $("dialog .setup-review").getText()).includes("npm install"),
+    );
+    const { runtimes } = await invoke("snapshot");
+    const node22 = runtimes.find(
+      ({ artifact }) =>
+        artifact.component === "node" && artifact.version.startsWith("22."),
+    ).artifact.version;
+    const trust = await $("dialog input[type=checkbox]");
+    await trust.scrollIntoView();
+    await trust.click();
+    assert.equal(await trust.isSelected(), true);
+    await browser.execute((version) => {
+      const select = document.querySelector("dialog select");
+      select.value = version;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }, node22);
+    await browser.waitUntil(async () =>
+      (await $("dialog .setup-review").getText()).includes("node " + node22),
     );
     await $("dialog .setup-review").scrollIntoView();
     await browser.saveScreenshot(
@@ -55,8 +72,16 @@ describe("StackCabin native desktop", () => {
       name: "desktop-integration",
       preset: "node",
       trusted: false,
+      runtimes: [{ component: "node", version: "22" }],
     });
     assert.equal(created.trusted, false);
+    const node22 = before.runtimes.find(
+      ({ artifact }) =>
+        artifact.component === "node" && artifact.version.startsWith("22."),
+    ).artifact.version;
+    assert.deepEqual(created.spec.runtimes, [
+      { component: "node", version: node22 },
+    ]);
     await $("nav button:nth-child(2)").click();
     await $(".project-title").waitForDisplayed();
     assert.equal(await $(".project-title").getText(), "desktop-integration");
