@@ -23,8 +23,10 @@ The JSON report records the source commit, artifact IDs, ZIP SHA-256 values,
 expiry times, browser links and argument arrays for `gh run download`. It checks
 the producer's workflow, successful completion, repository identity and artifact
 provenance. Expired/deleted artifacts and those expiring within fifteen minutes
-are unavailable. Discovery considers at most sixty recent successful producers;
-network or authentication errors stop it instead of choosing an older build.
+are unavailable. Discovery considers at most sixty recent successful producers.
+Transient connection failures and HTTP 500, 502, 503 or 504 retry the same
+metadata request up to twice. If those attempts fail, discovery stops. Authentication
+errors, rate limits and malformed JSON stop discovery on the first response.
 
 This command reads metadata only. For browser ZIP downloads, compare the actual
 ZIP's SHA-256 with `archiveSha256`, then extract it into a new folder. The reported

@@ -2,6 +2,7 @@
 // checksum verification. Successful hosted builds do not certify clean machines.
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { verifyInstallerRun } from "../../scripts/verify-offline-installer-source.mjs";
 
@@ -225,25 +226,34 @@ export function parsePreviewArguments(args) {
   return options;
 }
 
-async function githubMetadata(endpoint) {
-  try {
-    const { stdout } = await execute(
-      "gh",
-      ["api", "--hostname", "github.com", endpoint],
-      {
-        encoding: "utf8",
-        timeout: 30_000,
-        maxBuffer: 4 * 1024 ** 2,
-        windowsHide: true,
-      },
-    );
-    return JSON.parse(stdout);
-  } catch {
-    const error = new Error(
-      "Cannot read GitHub metadata. Install GitHub CLI, check gh auth status and network access, then retry.",
-    );
-    error.metadataRequestFailed = true;
-    throw error;
+export async function githubMetadata(endpoint, run = execute, wait = delay) {
+  for (let attempt = 0; ; attempt++) {
+    let response;
+    try {
+      response = await run(
+        "gh",
+        ["api", "--hostname", "github.com", endpoint],
+        {
+          encoding: "utf8",
+          timeout: 30_000,
+          maxBuffer: 4 * 1024 ** 2,
+          windowsHide: true,
+        },
+      );
+    } catch (error) {
+      const stderr = String(error.stderr ?? "");
+      const http = /\bHTTP (\d{3})\b/i.exec(stderr);
+      const retryable = http
+        ? ["500", "502", "503", "504"].includes(http[1])
+        : error.killed === true ||
+          /error connecting to api\.github\.com|connection reset|connection timed out|i\/o timeout|TLS handshake timeout|wsarecv/i.test(
+            stderr,
+          );
+      if (attempt >= 2 || !retryable) throw error;
+      await wait(1000 * (attempt + 1));
+      continue;
+    }
+    return JSON.parse(response.stdout);
   }
 }
 

@@ -2,12 +2,52 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   findPreviewInstallers,
+  githubMetadata,
   parsePreviewArguments,
   previewTargets,
   verifyAvailablePreview,
 } from "../scripts/preview-installers.mjs";
 
 const repository = "Sakeerin/StackCabin";
+
+test("retries transient metadata reads on the same endpoint with bounded delays", async () => {
+  const endpoints = [],
+    delays = [];
+  const request = async (_command, args) => {
+    endpoints.push(args.at(-1));
+    const stderr = ["error connecting to api.github.com", "gh: (HTTP 503)"][
+      endpoints.length - 1
+    ];
+    if (stderr) throw Object.assign(new Error(), { stderr });
+    return { stdout: '{"ok":true}' };
+  };
+  assert.deepEqual(
+    await githubMetadata("selected-run", request, (ms) => delays.push(ms)),
+    { ok: true },
+  );
+  assert.deepEqual(endpoints, Array(3).fill("selected-run"));
+  assert.deepEqual(delays, [1000, 2000]);
+});
+
+test("stops on authentication, rate limits and invalid JSON, and caps repeated transport failures", async () => {
+  for (const [stderr, count] of [
+    ["HTTP 403", 1],
+    ["HTTP 429", 1],
+    ["i/o timeout", 3],
+    ["", 1],
+  ]) {
+    let calls = 0;
+    const request = async () => {
+      calls++;
+      if (stderr) throw Object.assign(new Error(), { stderr });
+      return { stdout: "invalid" };
+    };
+    await assert.rejects(
+      githubMetadata("selected-run", request, async () => {}),
+    );
+    assert.equal(calls, count);
+  }
+});
 const now = Date.parse("2026-11-15T04:00:00Z");
 const options = { repository, runId: "123", now };
 const run = (id = 123) => ({
