@@ -1,6 +1,6 @@
 # Implementation and verification status
 
-Development version: **0.1.0**, checked on **27 November 2026**.
+Development version: **0.1.0**, checked on **28 November 2026**.
 This is a working development preview. The simultaneous Windows/macOS/Ubuntu
 production acceptance gate remains open.
 
@@ -94,6 +94,12 @@ production acceptance gate remains open.
   runtime packs; distributed QA apps exclude E2E plugins. See [QA usage](QA_DESKTOP.md).
 
 ## Current verification
+
+The new-project wizard reads its template from the native core and previews the
+chosen PHP and Node.js versions before creation. On Windows, four newly created
+projects served HTTP concurrently with Node.js 22.23.4, Node.js 24.22.1,
+PHP 8.4.27 and PHP 8.5.12. Each HTTP response reported the version recorded in
+both project manifests. The local suite passed 70 core tests and 29 frontend tests.
 
 The 27 November import dialog lets users review independent PHP and Node.js pins
 before granting trust. Regression tests cover changing a pin, cancelling folder
@@ -240,7 +246,7 @@ QA catalog signing requires a passed relocation probe for the exact version and
 the reviewed publisher source bytes. Twelve native-stack regression tests cover
 corrupt/substituted archives, missing provenance and incompatible macOS baselines.
 
-The 27 November normal installers and Windows offline bundle use `f18aadb`.
+The 28 November normal installers and Windows offline bundle use `8e180bb`.
 The 24 November Windows VM kit is paired with the 20 November `e63c82c`
 installer documented in the [VM guide](VM_ACCEPTANCE.md).
 They retain exact-byte recovery of the pinned CA archive and the file-backed
@@ -284,15 +290,15 @@ retains its earlier run-specific verification counts and download history.
 
 | Check                        | Latest evidence and scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Cross-platform CI | All eleven jobs passed for `f18aadb` across Windows x64, both Ubuntu targets, macOS Intel and Apple Silicon. [CI run](https://github.com/Sakeerin/StackCabin/actions/runs/45942490489) |
-| Core/frontend | On the Windows development host, 68 Rust tests and 27 frontend tests passed. The cross-platform run also passed Clippy, formatting, generated IPC, desktop E2E and lifecycle checks. |
+| Cross-platform CI | All eleven jobs passed for `8e180bb` across Windows x64, both Ubuntu targets, macOS Intel and Apple Silicon. [CI run](https://github.com/Sakeerin/StackCabin/actions/runs/46122905261) |
+| Core/frontend | On the Windows development host, 70 Rust tests and 29 frontend tests passed. The cross-platform run also passed Clippy, formatting, generated IPC, desktop E2E and lifecycle checks. |
 | Desktop                      | Four real IPC/SQLite E2E cases and four lifecycle sessions on each CI target, plus two desktop exit-coordination tests. Actual tray pointer interaction remains a clean-VM check.                                                                                                                                                                                                                                                                                                                                  |
 | Native tools                 | Managed Node 22/24, npm/pnpm/Yarn, Caddy and concurrent HTTP passed on all five targets; Windows also exercises PHP 8.4/8.5. Unreachable machine proxies do not redirect loopback health checks.                                                                                                                                                                                                                                                                                                                   |
 | Native transfer checks       | [41803437796](https://github.com/Sakeerin/StackCabin/actions/runs/41803437796): all 109 candidate files passed the retained manifest pin; 40 small evidence files passed 39 checksum records and match independent local assembly. Thirteen corruption/redirect/timeout/cancellation regressions passed on each code-CI target. Full public StackCabin URL verification remains pending publication.                                                                                                               |
 | Unsigned catalog handoff     | [41810673728](https://github.com/Sakeerin/StackCabin/actions/runs/41810673728): the nine-file proposal preserves all 32 signed base entries and adds twelve native records. Both small ZIP digests, eight handoff file hashes, 39 evidence checksums and the 109-file candidate inventory passed independent comparison. The proposal remains review-only; an actual unpublished URL returned HTTP 404 without creating a hosted handoff.                                                                          |
 | Catalog signature checks     | [41958236096](https://github.com/Sakeerin/StackCabin/actions/runs/41958236096): fifteen signing regressions passed on all five code targets using ephemeral keys and synthetic transfer fixtures. They cover exact-byte preservation, separate trust pins, corrupted/incomplete handoffs, wrong keys, CLI secret handling, read-only preflight and destination races. The real retained review-only handoff was rejected before any key access or output creation. No production catalog was signed.               |
-| Normal installers | All four packaging and startup jobs passed on `f18aadb`. The Windows installer also passed local SHA-256 verification. These downloads expire on 4 December. [Installer build](https://github.com/Sakeerin/StackCabin/actions/runs/45942565023) |
-| Ubuntu 24.04 | The hosted runner installed and launched the 27 November Ubuntu 22.04 deb and launched the AppImage using extract-and-run. [Package verification](https://github.com/Sakeerin/StackCabin/actions/runs/45943439073) |
+| Normal installers | All four packaging and startup jobs passed on `8e180bb`. All five downloaded installers passed local SHA-256 verification. These downloads expire on 5 December. [Installer build](https://github.com/Sakeerin/StackCabin/actions/runs/46122920433) |
+| Ubuntu 24.04 | The hosted runner installed and launched the 28 November Ubuntu 22.04 deb and launched the AppImage using extract-and-run. [Package verification](https://github.com/Sakeerin/StackCabin/actions/runs/46147418522) |
 | Reviewed Linux packages      | PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41796142648)/[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41796146248), [MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41765946994) and [PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41765727571): all eight jobs passed on Ubuntu 22.04/24.04. The four archives retain 139 library records with exact source/license evidence; 42 source bundles cover 41 distinct Ubuntu source-package versions. |
 | Reviewed macOS packages      | The 2 November PHP [8.4](https://github.com/Sakeerin/StackCabin/actions/runs/41382380346)/[8.5](https://github.com/Sakeerin/StackCabin/actions/runs/41382383140), [MariaDB](https://github.com/Sakeerin/StackCabin/actions/runs/41382386213) and [PostgreSQL](https://github.com/Sakeerin/StackCabin/actions/runs/41382389092) ARM/Intel packages remain selected. Their source-built runtimes and bundled libraries measured at most 14.0.                                                                        |
 | Combined Unix stack          | [41798068081](https://github.com/Sakeerin/StackCabin/actions/runs/41798068081): the new Linux packages passed both Ubuntu versions with eleven tools, five simultaneous web projects and both database dump/restores. The unchanged macOS packages retain [41387839639](https://github.com/Sakeerin/StackCabin/actions/runs/41387839639), including native ARM/Intel and Rosetta checks and extracted release harnesses.                                                                                           |
@@ -301,7 +307,7 @@ retains its earlier run-specific verification counts and download history.
 | Earlier macOS 14 ARM         | [41270976722](https://github.com/Sakeerin/StackCabin/actions/runs/41270976722): the `2b3836e` ARM DMG passed checksums, mount/copy, dependency/minimum-OS checks and startup on macOS 14.8.9.                                                                                                                                                                                                                                                                                                                      |
 | Earlier macOS 14 x64         | [41270979416](https://github.com/Sakeerin/StackCabin/actions/runs/41270979416): the `2b3836e` Intel DMG passed those checks through Rosetta on the ARM runner. Current installers and native Intel macOS 14 still need maintained-machine acceptance.                                                                                                                                                                                                                                                              |
 | Actual disk exhaustion       | [41209951170](https://github.com/Sakeerin/StackCabin/actions/runs/41209951170), Ubuntu 24.04: bounded 32 MiB tmpfs produced real ENOSPC for settings writes and runtime extraction; old data survived, staging was cleaned, and retries succeeded after freeing owned space.                                                                                                                                                                                                                                       |
-| Windows offline installation | A hosted Windows runner installed the `f18aadb` bundle and exercised the managed runtimes, database backup/restore and preservation of existing projects. [Offline installation evidence](https://github.com/Sakeerin/StackCabin/actions/runs/45943438143) |
+| Windows offline installation | A hosted Windows runner installed the `8e180bb` bundle and exercised the managed runtimes, database backup/restore and preservation of existing projects. [Offline installation evidence](https://github.com/Sakeerin/StackCabin/actions/runs/46147417681) |
 
 Six atomic-write regressions exercise released/persistent Windows sharing locks,
 read-only files, failed publication cleanup, Thai/space paths and complete reads

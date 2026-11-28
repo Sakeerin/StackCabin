@@ -8,8 +8,8 @@
 เลือก run ล่าสุดที่สำเร็จและยังมีไฟล์ให้ดาวน์โหลดจาก
 [Build and verify development installers](https://github.com/Sakeerin/StackCabin/actions/workflows/preview-installers.yml)
 หรือดู [วิธีค้นหาชุดที่ยังไม่หมดอายุ](PREVIEW_INSTALLERS.md)
-ชุดวันที่ 27 พฤศจิกายน 2026 จาก commit `f18aadb` ผ่านครบทั้งสี่เป้าหมายใน
-[run 45942565023](https://github.com/Sakeerin/StackCabin/actions/runs/45942565023) และเก็บถึงวันที่ 4 ธันวาคม
+ชุดวันที่ 28 พฤศจิกายน 2026 จาก commit `8e180bb` ผ่านครบทั้งสี่เป้าหมายใน
+[run 46122920433](https://github.com/Sakeerin/StackCabin/actions/runs/46122920433) และเก็บถึงวันที่ 5 ธันวาคม
 เลือก Artifact `development-installers-windows-latest` แล้วแตก ZIP และตรวจไฟล์
 ตาม `SHA256SUMS.txt` ไฟล์ติดตั้งอยู่ในโฟลเดอร์ `nsis/` ส่วนแพ็กเกจจากการ build เอง
 อยู่ใน `target/release/bundle/nsis/` Artifact เก็บไว้ 7 วัน
@@ -47,10 +47,10 @@ Windows อาจขอสิทธิ์ผู้ดูแลระบบสำ
 เป็นไฟล์สุดท้ายเมื่อสำเร็จเท่านั้น บันทึกความครบถ้วนนี้ครอบคลุม catalog และ runtime
 ส่วนการตรวจตัวติดตั้ง Windows กับ prerequisites ใช้ manifest ของชุดเต็มอีกชั้นหนึ่ง
 
-ชุดออฟไลน์วันที่ 27 พฤศจิกายน 2026 ดาวน์โหลดได้จาก
-[run 45943438143](https://github.com/Sakeerin/StackCabin/actions/runs/45943438143)
+ชุดออฟไลน์วันที่ 28 พฤศจิกายน 2026 ดาวน์โหลดได้จาก
+[run 46147417681](https://github.com/Sakeerin/StackCabin/actions/runs/46147417681)
 เลือก `development-offline-windows-x64` แล้วใช้โฟลเดอร์ `offline-windows-x64/`
-หลังแตก ZIP ชุดนี้ใช้ commit `f18aadb` และเก็บถึงวันที่ 4 ธันวาคม
+หลังแตก ZIP ชุดนี้ใช้ commit `8e180bb` และเก็บถึงวันที่ 5 ธันวาคม
 ผ่านการติดตั้งจริง ตรวจ runtime 11 รายการ สำรอง/กู้คืนฐานข้อมูล และเปิดข้อมูลเดิม
 บน GitHub runner แล้ว ผลทดสอบอยู่ใน `windows-offline-installation-evidence`
 ส่วนการรับรองเครื่องสะอาดยังต้องทดสอบตาม [คู่มือ VM](VM_ACCEPTANCE.md)
@@ -85,7 +85,7 @@ job แรกของ workflow รวมและตรวจไฟล์โด
 และเก็บไว้ 7 วัน แพ็กเกจเหล่านี้ยังไม่ได้เผยแพร่เป็น release สาธารณะ
 
 Linux มี `.deb` และ `.AppImage` โดยไฟล์ที่สร้างบน Ubuntu 22.04 ผ่านการเปิดแอป
-บน Ubuntu 24.04 แล้ว ([ผลทดสอบ](https://github.com/Sakeerin/StackCabin/actions/runs/45943439073))
+บน Ubuntu 24.04 แล้ว ([ผลทดสอบ](https://github.com/Sakeerin/StackCabin/actions/runs/46147418522))
 การรัน AppImage บนเครื่องที่ไม่มี FUSE ใช้:
 
 ```sh

@@ -16,21 +16,21 @@ for current-artifact discovery and checksum verification. Contributors can run
 `node .github/scripts/preview-installers.mjs` to locate the latest successful
 main-branch build with all four platform artifacts still available.
 
-The [27 November development installers](https://github.com/Sakeerin/StackCabin/actions/runs/45942565023)
-include per-project PHP and Node.js version selection in the import dialog.
-These builds use `f18aadb`.
+The [28 November development installers](https://github.com/Sakeerin/StackCabin/actions/runs/46122920433)
+include per-project PHP and Node.js version selection when creating or importing a project.
+These builds use `8e180bb`.
 Choose the matching `development-installers-*` artifact for Windows x64 (NSIS),
 Ubuntu x64 (deb/AppImage), or macOS (Intel or Apple Silicon DMG). Verify the
-download with its `SHA256SUMS.txt`. GitHub retains these downloads until 4 December.
+download with its `SHA256SUMS.txt`. GitHub retains these downloads until 5 December.
 Signing and clean-machine certification remain release gates.
 
-The 27 November Windows offline development bundle uses the same commit and
-passed installation on a hosted Windows runner. [Offline verification](https://github.com/Sakeerin/StackCabin/actions/runs/45943438143)
+The 28 November Windows offline development bundle uses the same commit and
+passed installation on a hosted Windows runner. [Offline verification](https://github.com/Sakeerin/StackCabin/actions/runs/46147417681)
 Download `development-offline-windows-x64` and use its `offline-windows-x64/`
 folder after extraction. `windows-offline-verification` contains the ZIP checksum,
 source, availability and preflight reports; `windows-offline-installation-evidence`
 records eleven tools, database backup/restore and preserved app data on a hosted
-Windows runner. These offline artifacts expire on 4 December.
+Windows runner. These offline artifacts expire on 5 December.
 
 Historical internal [Unix QA desktop packs](https://github.com/Sakeerin/StackCabin/actions/runs/41389144691)
 included matching offline PHP 8.4/8.5, Node 22/24 and database runtimes for Linux,
